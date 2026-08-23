@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Rune.Bot/Rune.Bot.csproj" />
+    <Project Path="src/Rune.Core/Rune.Core.csproj" />
+    <Project Path="src/Rune.Runtime/Rune.Runtime.csproj" />
+  </Folder>
+</Solution>

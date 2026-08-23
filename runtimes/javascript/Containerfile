@@ -1,0 +1,10 @@
+FROM node:24-alpine
+
+WORKDIR /runtime
+
+COPY runtime.mjs .
+COPY rune.mjs .
+
+USER node
+
+CMD ["node", "runtime.mjs"]

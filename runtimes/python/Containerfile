@@ -1,0 +1,11 @@
+FROM python:3.13-alpine
+
+WORKDIR /runtime
+
+COPY runtime.py .
+
+RUN adduser -D -u 10001 rune
+
+USER rune
+
+CMD ["python", "-u", "runtime.py"]
