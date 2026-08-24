@@ -8,6 +8,9 @@ publish = false
 name = "rune_runtime"
 crate-type = ["cdylib"]
 
+[dependencies]
+wasmtime = { version = "47.0.3", features = ["component-model"] }
+
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
 
