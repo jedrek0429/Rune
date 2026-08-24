@@ -231,11 +231,10 @@ pub unsafe extern "C" fn rune_runtime_action_list_free(list: RuneActionList) {
     }
 
     let slice = ptr::slice_from_raw_parts_mut(list.data, list.len);
-    let mut actions = unsafe { Box::from_raw(slice) };
-    for action in &mut actions {
-        let content = mem::replace(&mut action.content, RuneBuffer::EMPTY);
+    let actions = unsafe { Box::from_raw(slice) };
+    for action in &actions {
         unsafe {
-            free_buffer(content);
+            free_buffer(&action.content);
         }
     }
 }
@@ -275,7 +274,7 @@ unsafe fn bytes_from_raw<'a>(data: *const u8, len: usize) -> Option<&'a [u8]> {
     Some(unsafe { slice::from_raw_parts(data, len) })
 }
 
-unsafe fn free_buffer(buffer: RuneBuffer) {
+unsafe fn free_buffer(buffer: &RuneBuffer) {
     if buffer.data.is_null() {
         return;
     }
