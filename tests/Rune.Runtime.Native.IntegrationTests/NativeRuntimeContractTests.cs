@@ -36,4 +36,31 @@ public sealed class NativeRuntimeContractTests
                 Assert.Equal("Welcome to Rune.", action.Content);
             });
     }
+
+    [Fact]
+    public void Failed_component_discards_actions_and_reports_native_detail()
+    {
+        var componentPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "message_create_component.wasm");
+
+        using var runtime = new RuneNativeRuntime();
+        runtime.LoadComponent(File.ReadAllBytes(componentPath));
+
+        var exception = Assert.Throws<RuneNativeException>(
+            () => runtime.InvokeMessageCreate("trap"));
+
+        Assert.Equal(2, exception.NativeStatus);
+        Assert.Contains(
+            "wasm",
+            exception.NativeDetail,
+            StringComparison.OrdinalIgnoreCase);
+
+        var recovered = runtime.InvokeMessageCreate("Ada");
+
+        Assert.DoesNotContain(
+            recovered.Actions,
+            action => action.Content == "discard me");
+        Assert.Equal(2, recovered.Actions.Count);
+    }
 }
