@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Rune.Runtime.Protocol;
+namespace Rune.Runtime;
 
 public sealed record RuneHostRequest(
     string Type,

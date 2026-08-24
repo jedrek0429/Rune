@@ -1,6 +1,6 @@
 using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
-
+using NetCord.Rest;
 using Rune.Core.Invocations;
 using Rune.Runtime;
 
@@ -10,22 +10,44 @@ public sealed class MessageCreateHandler(
     RuneEventDispatcher dispatcher)
     : IMessageCreateGatewayHandler
 {
-    public ValueTask HandleAsync(Message message)
+    public async ValueTask HandleAsync(
+        Message message)
     {
-        if (message.Author.IsBot)
-            return ValueTask.CompletedTask;
-        if (message.GuildId is not ulong guildId)
-            return ValueTask.CompletedTask;
+        if (message.GuildId is not ulong guildId ||
+            message.Author.IsBot)
+        {
+            return;
+        }
 
-        var invocation = new MessageCreateEventRuneInvocation(
-            InvocationId: Guid.NewGuid(),
-            GuildId: guildId,
-            ChannelId: message.ChannelId,
-            MessageId: message.Id,
-            AuthorId: message.Author.Id,
-            AuthorUsername: message.Author.Username,
-            Content: message.Content);
+        var invocation =
+            new MessageCreateEventRuneInvocation(
+                Guid.NewGuid(),
+                guildId,
+                message.ChannelId,
+                message.Id,
+                message.Author.Id,
+                message.Author.Username,
+                message.Content);
 
-        return dispatcher.DispatchAsync(invocation);
+        var failures =
+            await dispatcher.DispatchAsync(
+                invocation);
+
+        if (failures.Count == 0)
+            return;
+
+        var text =
+            string.Join(
+                '\n',
+                failures
+                    .Take(3)
+                    .Select(failure =>
+                        $"`{failure.RuneName}`: {failure.Message}"));
+
+        await message.ReplyAsync(
+            new ReplyMessageProperties
+            {
+                Content = text
+            });
     }
 }

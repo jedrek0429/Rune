@@ -6,7 +6,6 @@ using NetCord.Rest;
 
 using Rune.Core.Invocations;
 using Rune.Runtime;
-using Rune.Runtime.Protocol;
 
 namespace Rune.Bot.Host;
 

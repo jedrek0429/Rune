@@ -1,47 +1,144 @@
-using System.Collections.Concurrent;
-
 namespace Rune.Core.Runes;
 
 public sealed class RuneRegistry
 {
-    private readonly ConcurrentDictionary<Guid, RegisteredRune> _runes = [];
+    private readonly object _gate = new();
 
-    public void Add(RegisteredRune rune)
+    private readonly Dictionary<Guid, RegisteredRune>
+        _runes = [];
+
+    public bool Add(
+        RegisteredRune rune)
     {
-        if (!_runes.TryAdd(rune.Id, rune))
-            throw new InvalidOperationException(
-                $"Rune {rune.Id} is already registered.");
+        lock (_gate)
+        {
+            if (_runes.Values.Any(existing =>
+                existing.GuildId == rune.GuildId &&
+                string.Equals(
+                    existing.Name,
+                    rune.Name,
+                    StringComparison.OrdinalIgnoreCase)))
+            {
+                return false;
+            }
+
+            _runes.Add(
+                rune.Id,
+                rune);
+
+            return true;
+        }
+    }
+
+    public RegisteredRune? Get(
+        ulong guildId,
+        string name)
+    {
+        lock (_gate)
+        {
+            return _runes.Values
+                .FirstOrDefault(rune =>
+                    rune.GuildId == guildId &&
+                    string.Equals(
+                        rune.Name,
+                        name,
+                        StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    public IReadOnlyList<RegisteredRune> GetRunes(
+        ulong guildId)
+    {
+        lock (_gate)
+        {
+            return _runes.Values
+                .Where(rune =>
+                    rune.GuildId == guildId)
+                .OrderBy(rune =>
+                    rune.Name)
+                .ToArray();
+        }
     }
 
     public IReadOnlyList<RegisteredRune> GetEventRunes(
         ulong guildId,
         RuneEventType eventType)
     {
-        return _runes.Values
-            .Where(rune =>
-                rune.GuildId == guildId &&
-                rune.EventType == eventType &&
-                rune.Enabled)
-            .ToArray();
+        lock (_gate)
+        {
+            return _runes.Values
+                .Where(rune =>
+                    rune.GuildId == guildId &&
+                    rune.EventType == eventType &&
+                    rune.Enabled)
+                .ToArray();
+        }
     }
 
-    public IReadOnlyList<RegisteredRune> GetRunes(
-        ulong guildId)
-    {
-        return _runes.Values
-            .Where(rune => rune.GuildId == guildId)
-            .ToArray();
-    }
-
-    public bool Exists(
+    public bool Remove(
         ulong guildId,
-        string name)
+        string name,
+        out RegisteredRune? rune)
     {
-        return _runes.Values.Any(rune =>
-            rune.GuildId == guildId &&
-            string.Equals(
-                rune.Name,
-                name,
-                StringComparison.OrdinalIgnoreCase));
+        lock (_gate)
+        {
+            rune = _runes.Values
+                .FirstOrDefault(candidate =>
+                    candidate.GuildId == guildId &&
+                    string.Equals(
+                        candidate.Name,
+                        name,
+                        StringComparison.OrdinalIgnoreCase));
+
+            if (rune is null)
+                return false;
+
+            return _runes.Remove(rune.Id);
+        }
+    }
+
+    public bool SetEnabled(
+        ulong guildId,
+        string name,
+        bool enabled,
+        out RegisteredRune? rune)
+    {
+        lock (_gate)
+        {
+            var current =
+                _runes.Values
+                    .FirstOrDefault(candidate =>
+                        candidate.GuildId == guildId &&
+                        string.Equals(
+                            candidate.Name,
+                            name,
+                            StringComparison.OrdinalIgnoreCase));
+
+            if (current is null)
+            {
+                rune = null;
+                return false;
+            }
+
+            rune = current with
+            {
+                Enabled = enabled
+            };
+
+            _runes[current.Id] =
+                rune;
+
+            return true;
+        }
+    }
+
+    public void Replace(
+        RegisteredRune rune)
+    {
+        lock (_gate)
+        {
+            _runes[rune.Id] =
+                rune;
+        }
     }
 }

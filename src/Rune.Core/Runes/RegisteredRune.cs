@@ -7,5 +7,6 @@ public sealed record RegisteredRune(
     RuneLanguage Language,
     RuneEventType EventType,
     string Source,
+    byte[] Wasm,
     bool Enabled
 );

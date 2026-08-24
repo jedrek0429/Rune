@@ -1,5 +1,4 @@
 using Rune.Core.Invocations;
-using Rune.Runtime.Protocol;
 
 namespace Rune.Runtime;
 
