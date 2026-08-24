@@ -57,6 +57,23 @@ message.author.username
 await message.reply("Hello!")
 ```
 
+Rust:
+
+```rust
+fn rune(message: RuneMessage) -> FnResult<()> {
+    message.id;
+    message.channel_id;
+    message.content;
+
+    message.author.id;
+    message.author.username;
+
+    message.reply("Hello!")?;
+
+    Ok(())
+}
+```
+
 ## Running locally
 
 Rune currently requires the Extism JavaScript and Python compilers:
