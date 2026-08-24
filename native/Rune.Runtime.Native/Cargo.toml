@@ -1,0 +1,16 @@
+[package]
+name = "rune-runtime-native"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "rune_runtime"
+crate-type = ["cdylib"]
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+all = "deny"
+pedantic = "deny"

@@ -6,6 +6,11 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <NativeRuntimeManifest>$(MSBuildThisFileDirectory)../../native/Rune.Runtime.Native/Cargo.toml</NativeRuntimeManifest>
+    <NativeRuntimeOutput>$(MSBuildThisFileDirectory)../../target/release</NativeRuntimeOutput>
+    <NativeRuntimeLibrary Condition="$([MSBuild]::IsOSPlatform('Linux'))">librune_runtime.so</NativeRuntimeLibrary>
+    <NativeRuntimeLibrary Condition="$([MSBuild]::IsOSPlatform('OSX'))">librune_runtime.dylib</NativeRuntimeLibrary>
+    <NativeRuntimeLibrary Condition="$([MSBuild]::IsOSPlatform('Windows'))">rune_runtime.dll</NativeRuntimeLibrary>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,5 +25,12 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Rune.Runtime/Rune.Runtime.csproj" />
   </ItemGroup>
+
+  <Target Name="BuildNativeRuntime" AfterTargets="Build">
+    <Exec Command="cargo build --manifest-path &quot;$(NativeRuntimeManifest)&quot; --release" />
+    <Copy
+      SourceFiles="$(NativeRuntimeOutput)/$(NativeRuntimeLibrary)"
+      DestinationFolder="$(OutDir)" />
+  </Target>
 
 </Project>
