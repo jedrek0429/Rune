@@ -5,11 +5,11 @@ using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
 using NetCord.Hosting.Services;
 using NetCord.Hosting.Services.ApplicationCommands;
+using Rune.Bot;
 using Rune.Bot.Host;
 using Rune.Core.Runes;
 using Rune.Runtime;
 using Rune.Runtime.Compilation;
-using Rune.Runtime.Wasm;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -28,35 +28,50 @@ builder.Services
 
 builder.Services
     .AddSingleton<RuneRegistry>()
-    .AddSingleton(
-        new RuneCompilerOptions
-        {
-            JavaScriptCompiler = Path.Combine(
-                Environment.GetFolderPath(
-                    Environment.SpecialFolder.UserProfile),
-                ".local/bin/extism-js"),
+    .AddSingleton<RuneService>()
+    .AddSingleton<RuneUploadReader>()
+    .AddRuneCompilation(options =>
+    {
+        var home =
+            Environment.GetFolderPath(
+                Environment.SpecialFolder.UserProfile);
 
-            PythonCompiler = Path.Combine(
-                Environment.GetFolderPath(
-                    Environment.SpecialFolder.UserProfile),
-                ".local/bin/extism-py"),
+        options.JavaScriptCompiler =
+            Path.Combine(
+                home,
+                ".local/bin/extism-js");
 
-            Timeout = TimeSpan.FromSeconds(30)
-        })
-    .AddSingleton(
-        new RuneRuntimeOptions
-        {
-            ExecutionTimeout =
-                TimeSpan.FromSeconds(2),
+        options.PythonCompiler =
+            Path.Combine(
+                home,
+                ".local/bin/extism-py");
 
-            MaxMemoryPages = 4096,
-            MaxConcurrentExecutions = 16,
-            MaxHostRequestsPerInvocation = 32,
-            MaxReplyLength = 2000
-        })
-    .AddSingleton<RuneCompiler>()
-    .AddSingleton<RuneWasmCache>()
-    .AddSingleton<RuneExecutor>()
+        options.RustCompiler = "cargo";
+
+        options.JavaScriptTimeout =
+            TimeSpan.FromSeconds(30);
+
+        options.PythonTimeout =
+            TimeSpan.FromSeconds(30);
+
+        options.RustTimeout =
+            TimeSpan.FromMinutes(2);
+
+        options.RustTargetDirectory =
+            Path.Combine(
+                Path.GetTempPath(),
+                "rune-rust-target");
+    })
+    .AddRuneRuntime(options =>
+    {
+        options.ExecutionTimeout =
+            TimeSpan.FromSeconds(2);
+
+        options.MaxMemoryPages = 4096;
+        options.MaxConcurrentExecutions = 16;
+        options.MaxHostRequestsPerInvocation = 32;
+        options.MaxReplyLength = 2000;
+    })
     .AddSingleton<RuneEventDispatcher>()
     .AddSingleton<
         IRuneHostRequestHandler,

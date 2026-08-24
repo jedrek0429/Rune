@@ -10,3 +10,8 @@ public sealed record RegisteredRune(
     byte[] Wasm,
     bool Enabled
 );
+
+public sealed record CompiledRune(
+    byte[] Wasm,
+    IReadOnlyList<string> Diagnostics
+);

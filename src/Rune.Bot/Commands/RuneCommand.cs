@@ -6,9 +6,8 @@ using NetCord.Services;
 using NetCord.Services.ApplicationCommands;
 
 using Rune.Core.Runes;
-using Rune.Runtime.Compilation;
+using Rune.Runtime;
 using Rune.Runtime.Exceptions;
-using Rune.Runtime.Wasm;
 
 namespace Rune.Bot.Commands;
 
@@ -16,16 +15,11 @@ namespace Rune.Bot.Commands;
     "rune",
     "Manage runes")]
 public sealed class RuneCommand(
-    RuneRegistry registry,
-    RuneCompiler compiler,
-    RuneWasmCache wasmCache,
-    RuneExecutor executor,
-    IHttpClientFactory httpClientFactory)
+    RuneRegistry runeRegistry,
+    RuneService runeService,
+    RuneUploadReader uploadReader)
     : ApplicationCommandModule<ApplicationCommandContext>
 {
-    private const int MaxSourceSize =
-        64 * 1024;
-
     [RequireUserPermissions<ApplicationCommandContext>(
         Permissions.ManageGuild)]
     [SubSlashCommand(
@@ -56,7 +50,7 @@ public sealed class RuneCommand(
             return;
         }
 
-        if (registry.Get(
+        if (runeRegistry.Get(
                 guildId,
                 name) is not null)
         {
@@ -67,7 +61,7 @@ public sealed class RuneCommand(
         }
 
         var upload =
-            await ReadRuneAsync(file);
+            await uploadReader.ReadAsync(file);
 
         if (upload.Error is not null)
         {
@@ -77,32 +71,12 @@ public sealed class RuneCommand(
 
         try
         {
-            var wasm =
-                await compiler.CompileAsync(
-                    upload.Language!.Value,
-                    upload.Source!);
-
-            // Native WASM validation + expected export.
-            wasmCache.Validate(wasm);
-
             var rune =
-                new RegisteredRune(
-                    Guid.NewGuid(),
+                await runeService.RegisterAsync(
                     guildId,
                     name,
-                    upload.Language.Value,
-                    RuneEventType.MessageCreate,
-                    upload.Source!,
-                    wasm,
-                    true);
-
-            if (!registry.Add(rune))
-            {
-                await FinishAsync(
-                    $"A rune named `{name}` already exists.");
-
-                return;
-            }
+                    upload.Language!.Value,
+                    upload.Source!);
 
             await FinishAsync(
                 $"Registered `{rune.Name}` ({rune.Language}).");
@@ -111,6 +85,10 @@ public sealed class RuneCommand(
         {
             await FinishAsync(
                 $"Rune rejected:\n{exception.Message}");
+        }
+        catch (InvalidOperationException exception)
+        {
+            await FinishAsync(exception.Message);
         }
     }
 
@@ -128,7 +106,7 @@ public sealed class RuneCommand(
         }
 
         var runes =
-            registry.GetRunes(guildId);
+            runeRegistry.GetRunes(guildId);
 
         if (runes.Count == 0)
             return "No runes are registered.";
@@ -168,7 +146,7 @@ public sealed class RuneCommand(
         }
 
         var rune =
-            registry.Get(
+            runeRegistry.Get(
                 guildId,
                 name);
 
@@ -203,19 +181,15 @@ public sealed class RuneCommand(
             return "Runes are scoped to servers.";
         }
 
-        if (!registry.SetEnabled(
+        var rune =
+            await runeService.SetEnabledAsync(
                 guildId,
                 name,
-                false,
-                out var rune))
-        {
-            return $"Rune `{name}` was not found.";
-        }
+                false);
 
-        await executor.StopAsync(
-            rune!.Id);
-
-        return $"Disabled `{rune.Name}`.";
+        return rune is null
+            ? $"Rune `{name}` was not found."
+            : $"Disabled `{rune.Name}`.";
     }
 
     [RequireUserPermissions<ApplicationCommandContext>(
@@ -223,7 +197,7 @@ public sealed class RuneCommand(
     [SubSlashCommand(
         "enable",
         "Enable a rune")]
-    public string Enable(
+    public async Task<string> EnableAsync(
         string name)
     {
         if (Context.Interaction.GuildId
@@ -232,19 +206,15 @@ public sealed class RuneCommand(
             return "Runes are scoped to servers.";
         }
 
-        if (!registry.SetEnabled(
+        var rune =
+            await runeService.SetEnabledAsync(
                 guildId,
                 name,
-                true,
-                out var rune))
-        {
-            return $"Rune `{name}` was not found.";
-        }
+                true);
 
-        executor.Resume(
-            rune!.Id);
-
-        return $"Enabled `{rune.Name}`.";
+        return rune is null
+            ? $"Rune `{name}` was not found."
+            : $"Enabled `{rune.Name}`.";
     }
 
     [RequireUserPermissions<ApplicationCommandContext>(
@@ -261,18 +231,14 @@ public sealed class RuneCommand(
             return "Runes are scoped to servers.";
         }
 
-        if (!registry.Remove(
+        var rune =
+            await runeService.RemoveAsync(
                 guildId,
-                name,
-                out var rune))
-        {
-            return $"Rune `{name}` was not found.";
-        }
+                name);
 
-        await executor.StopAsync(
-            rune!.Id);
-
-        return $"Removed `{rune.Name}`.";
+        return rune is null
+            ? $"Rune `{name}` was not found."
+            : $"Removed `{rune.Name}`.";
     }
 
     [RequireUserPermissions<ApplicationCommandContext>(
@@ -296,7 +262,7 @@ public sealed class RuneCommand(
         }
 
         var current =
-            registry.Get(
+            runeRegistry.Get(
                 guildId,
                 name);
 
@@ -309,7 +275,7 @@ public sealed class RuneCommand(
         }
 
         var upload =
-            await ReadRuneAsync(file);
+            await uploadReader.ReadAsync(file);
 
         if (upload.Error is not null)
         {
@@ -319,35 +285,11 @@ public sealed class RuneCommand(
 
         try
         {
-            // Build and validate before touching the currently
-            // working version.
-            var wasm =
-                await compiler.CompileAsync(
+            var updated =
+                await runeService.UpdateAsync(
+                    current,
                     upload.Language!.Value,
                     upload.Source!);
-
-            wasmCache.Validate(wasm);
-
-            var updated =
-                current with
-                {
-                    Language =
-                        upload.Language.Value,
-
-                    Source =
-                        upload.Source!,
-
-                    Wasm =
-                        wasm
-                };
-
-            await executor.StopAsync(
-                current.Id);
-
-            registry.Replace(updated);
-
-            if (updated.Enabled)
-                executor.Resume(updated.Id);
 
             await FinishAsync(
                 $"Updated `{updated.Name}` ({updated.Language}).");
@@ -359,70 +301,6 @@ public sealed class RuneCommand(
         }
     }
 
-    private async Task<RuneUpload> ReadRuneAsync(
-        Attachment file)
-    {
-        if (file.Size > MaxSourceSize)
-        {
-            return RuneUpload.Fail(
-                "Rune source may not exceed 64 KiB.");
-        }
-
-        RuneLanguage? language =
-            Path.GetExtension(
-                    file.FileName)
-                .ToLowerInvariant()
-            switch
-            {
-                ".js" or ".mjs" =>
-                    RuneLanguage.JavaScript,
-
-                ".py" =>
-                    RuneLanguage.Python,
-
-                _ => null
-            };
-
-        if (language is null)
-        {
-            return RuneUpload.Fail(
-                "Supported files are `.js`, `.mjs`, and `.py`.");
-        }
-
-        try
-        {
-            var client =
-                httpClientFactory.CreateClient();
-
-            using var response =
-                await client.GetAsync(
-                    file.Url);
-
-            response.EnsureSuccessStatusCode();
-
-            var bytes =
-                await response.Content
-                    .ReadAsByteArrayAsync();
-
-            if (bytes.Length > MaxSourceSize)
-            {
-                return RuneUpload.Fail(
-                    "Rune source may not exceed 64 KiB.");
-            }
-
-            return new RuneUpload(
-                language,
-                Encoding.UTF8.GetString(
-                    bytes),
-                null);
-        }
-        catch (HttpRequestException)
-        {
-            return RuneUpload.Fail(
-                "The uploaded file could not be downloaded.");
-        }
-    }
-
     private Task DeferAsync()
     {
         return Context.Interaction
@@ -431,25 +309,12 @@ public sealed class RuneCommand(
                     MessageFlags.Ephemeral));
     }
 
-    private async Task FinishAsync(
+    private Task FinishAsync(
         string content)
     {
-        await Context.Interaction
+        return Context.Interaction
             .ModifyResponseAsync(
                 message =>
                     message.Content = content);
-    }
-
-    private sealed record RuneUpload(
-        RuneLanguage? Language,
-        string? Source,
-        string? Error)
-    {
-        public static RuneUpload Fail(
-            string error)
-            => new(
-                null,
-                null,
-                error);
     }
 }

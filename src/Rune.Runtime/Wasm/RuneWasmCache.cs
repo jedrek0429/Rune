@@ -134,7 +134,7 @@ public sealed class RuneWasmCache(
             var initialisation =
                 new PluginIntializationOptions
                 {
-                    WithWasi = true,
+                    WithWasi = false,
                     FuelLimit =
                         options.FuelLimit
                 };
