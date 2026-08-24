@@ -10,6 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wasmtime = { version = "47.0.3", features = ["component-model"] }
+wasmtime-wasi = "47.0.3"
 
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

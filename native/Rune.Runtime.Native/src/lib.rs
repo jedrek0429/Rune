@@ -4,8 +4,9 @@ use std::ptr;
 use std::slice;
 use std::sync::Mutex;
 
-use wasmtime::component::{Component, HasSelf, Linker};
+use wasmtime::component::{Component, HasSelf, Linker, ResourceTable};
 use wasmtime::{Engine, Store};
+use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
 const ABI_VERSION: u32 = 1;
 const STATUS_OK: i32 = 0;
@@ -25,14 +26,34 @@ struct RuneRuntime {
     component: Mutex<Option<Component>>,
 }
 
-#[derive(Default)]
 struct InvocationState {
     replies: Vec<String>,
+    wasi: WasiCtx,
+    resources: ResourceTable,
+}
+
+impl InvocationState {
+    fn new() -> Self {
+        Self {
+            replies: Vec::new(),
+            wasi: WasiCtx::builder().build(),
+            resources: ResourceTable::new(),
+        }
+    }
 }
 
 impl bindings::MessageCreateRuneImports for InvocationState {
     fn reply(&mut self, content: String) {
         self.replies.push(content);
+    }
+}
+
+impl WasiView for InvocationState {
+    fn ctx(&mut self) -> WasiCtxView<'_> {
+        WasiCtxView {
+            ctx: &mut self.wasi,
+            table: &mut self.resources,
+        }
     }
 }
 
@@ -125,8 +146,9 @@ pub unsafe extern "C" fn rune_runtime_invoke_message_create(
         let mut linker = Linker::new(&runtime.engine);
         bindings::MessageCreateRune::add_to_linker::<_, HasSelf<_>>(&mut linker, |state| state)
             .map_err(|_| STATUS_RUNTIME_ERROR)?;
+        wasmtime_wasi::p2::add_to_linker_sync(&mut linker).map_err(|_| STATUS_RUNTIME_ERROR)?;
 
-        let mut store = Store::new(&runtime.engine, InvocationState::default());
+        let mut store = Store::new(&runtime.engine, InvocationState::new());
         let bindings = bindings::MessageCreateRune::instantiate(&mut store, &component, &linker)
             .map_err(|_| STATUS_RUNTIME_ERROR)?;
         bindings
