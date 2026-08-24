@@ -7,7 +7,7 @@ use std::slice;
 use std::sync::Mutex;
 
 use wasmtime::component::{Component, HasSelf, Linker, ResourceTable};
-use wasmtime::{Engine, Store};
+use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
 const ABI_VERSION: u32 = 3;
@@ -16,6 +16,7 @@ const STATUS_INVALID_ARGUMENT: i32 = 1;
 const STATUS_RUNTIME_ERROR: i32 = 2;
 const STATUS_PANIC: i32 = 3;
 const ACTION_REPLY: u32 = 1;
+const INVOCATION_FUEL: u64 = 1_000_000;
 
 mod bindings {
     wasmtime::component::bindgen!({
@@ -156,14 +157,18 @@ pub extern "C" fn rune_runtime_abi_version() -> u32 {
 #[no_mangle]
 pub extern "C" fn rune_runtime_create() -> *mut c_void {
     match catch_unwind(|| {
-        Box::into_raw(Box::new(RuneRuntime {
-            engine: Engine::default(),
+        let mut config = Config::new();
+        config.consume_fuel(true);
+        let engine = Engine::new(&config)?;
+        let runtime = Box::into_raw(Box::new(RuneRuntime {
+            engine,
             component: Mutex::new(None),
-        }))
-        .cast()
+        }));
+
+        Ok::<*mut c_void, wasmtime::Error>(runtime.cast())
     }) {
-        Ok(runtime) => runtime,
-        Err(_) => ptr::null_mut(),
+        Ok(Ok(runtime)) => runtime,
+        Ok(Err(_)) | Err(_) => ptr::null_mut(),
     }
 }
 
@@ -310,6 +315,9 @@ unsafe fn invoke_message_create(
     wasmtime_wasi::p2::add_to_linker_sync(&mut linker).map_err(NativeFailure::runtime)?;
 
     let mut store = Store::new(&runtime.engine, InvocationState::new());
+    store
+        .set_fuel(INVOCATION_FUEL)
+        .map_err(NativeFailure::runtime)?;
     let bindings = bindings::MessageCreateRune::instantiate(&mut store, &component, &linker)
         .map_err(NativeFailure::runtime)?;
     bindings
