@@ -14,6 +14,15 @@ impl bindings::Guest for Component {
             panic!("intentional integration-test trap");
         }
 
+        if author_username == "fuel" {
+            let mut value = 0_u64;
+            for index in 0..50_000_000_u64 {
+                value = std::hint::black_box(value.wrapping_add(index));
+            }
+            bindings::reply(&value.to_string());
+            return;
+        }
+
         bindings::reply(&format!("Hello, {author_username}!"));
         bindings::reply("Welcome to Rune.");
     }

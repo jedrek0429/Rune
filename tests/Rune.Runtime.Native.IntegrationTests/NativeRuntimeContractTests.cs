@@ -63,4 +63,24 @@ public sealed class NativeRuntimeContractTests
             action => action.Content == "discard me");
         Assert.Equal(2, recovered.Actions.Count);
     }
+
+    [Fact]
+    public void Cpu_bound_component_is_stopped_by_fuel_budget()
+    {
+        var componentPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "message_create_component.wasm");
+
+        using var runtime = new RuneNativeRuntime();
+        runtime.LoadComponent(File.ReadAllBytes(componentPath));
+
+        var exception = Assert.Throws<RuneNativeException>(
+            () => runtime.InvokeMessageCreate("fuel"));
+
+        Assert.Equal(2, exception.NativeStatus);
+        Assert.Contains(
+            "fuel",
+            exception.NativeDetail,
+            StringComparison.OrdinalIgnoreCase);
+    }
 }
