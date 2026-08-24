@@ -1,4 +1,5 @@
 use std::ffi::c_void;
+use std::mem;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
 use std::slice;
@@ -8,11 +9,12 @@ use wasmtime::component::{Component, HasSelf, Linker, ResourceTable};
 use wasmtime::{Engine, Store};
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
-const ABI_VERSION: u32 = 1;
+const ABI_VERSION: u32 = 2;
 const STATUS_OK: i32 = 0;
 const STATUS_INVALID_ARGUMENT: i32 = 1;
 const STATUS_RUNTIME_ERROR: i32 = 2;
 const STATUS_PANIC: i32 = 3;
+const ACTION_REPLY: u32 = 1;
 
 mod bindings {
     wasmtime::component::bindgen!({
@@ -68,6 +70,60 @@ impl RuneBuffer {
         data: ptr::null_mut(),
         len: 0,
     };
+
+    fn from_bytes(bytes: Vec<u8>) -> Self {
+        if bytes.is_empty() {
+            return Self::EMPTY;
+        }
+
+        let mut bytes = bytes.into_boxed_slice();
+        let buffer = Self {
+            data: bytes.as_mut_ptr(),
+            len: bytes.len(),
+        };
+        mem::forget(bytes);
+        buffer
+    }
+}
+
+#[repr(C)]
+pub struct RuneAction {
+    kind: u32,
+    content: RuneBuffer,
+}
+
+#[repr(C)]
+pub struct RuneActionList {
+    data: *mut RuneAction,
+    len: usize,
+}
+
+impl RuneActionList {
+    const EMPTY: Self = Self {
+        data: ptr::null_mut(),
+        len: 0,
+    };
+
+    fn from_replies(replies: Vec<String>) -> Self {
+        if replies.is_empty() {
+            return Self::EMPTY;
+        }
+
+        let mut actions = replies
+            .into_iter()
+            .map(|content| RuneAction {
+                kind: ACTION_REPLY,
+                content: RuneBuffer::from_bytes(content.into_bytes()),
+            })
+            .collect::<Vec<_>>()
+            .into_boxed_slice();
+        let list = Self {
+            data: actions.as_mut_ptr(),
+            len: actions.len(),
+        };
+        mem::forget(actions);
+        list
+    }
 }
 
 #[no_mangle]
@@ -114,21 +170,21 @@ pub unsafe extern "C" fn rune_runtime_load_component(
 ///
 /// `runtime` must be a handle returned by `rune_runtime_create`,
 /// `author_data` must identify `author_len` readable bytes, and
-/// `reply` must be writable. A successful buffer must be released with
-/// `rune_runtime_buffer_free`.
+/// `actions` must be writable. A successful action list must be released
+/// with `rune_runtime_action_list_free`.
 #[no_mangle]
 pub unsafe extern "C" fn rune_runtime_invoke_message_create(
     runtime: *mut c_void,
     author_data: *const u8,
     author_len: usize,
-    reply: *mut RuneBuffer,
+    actions: *mut RuneActionList,
 ) -> i32 {
-    if reply.is_null() {
+    if actions.is_null() {
         return STATUS_INVALID_ARGUMENT;
     }
 
     unsafe {
-        reply.write(RuneBuffer::EMPTY);
+        actions.write(RuneActionList::EMPTY);
     }
 
     ffi_status(|| {
@@ -155,18 +211,9 @@ pub unsafe extern "C" fn rune_runtime_invoke_message_create(
             .call_handle_message_create(&mut store, author)
             .map_err(|_| STATUS_RUNTIME_ERROR)?;
 
-        let content = store
-            .data()
-            .replies
-            .first()
-            .cloned()
-            .ok_or(STATUS_RUNTIME_ERROR)?;
-        let bytes = content.into_bytes().into_boxed_slice();
-        let len = bytes.len();
-        let data = Box::into_raw(bytes).cast::<u8>();
-
+        let replies = mem::take(&mut store.data_mut().replies);
         unsafe {
-            reply.write(RuneBuffer { data, len });
+            actions.write(RuneActionList::from_replies(replies));
         }
 
         Ok(())
@@ -175,17 +222,21 @@ pub unsafe extern "C" fn rune_runtime_invoke_message_create(
 
 /// # Safety
 ///
-/// `buffer` must either be empty or have been returned by a successful call
+/// `list` must either be empty or have been returned by a successful call
 /// to `rune_runtime_invoke_message_create`, and must be released only once.
 #[no_mangle]
-pub unsafe extern "C" fn rune_runtime_buffer_free(buffer: RuneBuffer) {
-    if buffer.data.is_null() {
+pub unsafe extern "C" fn rune_runtime_action_list_free(list: RuneActionList) {
+    if list.data.is_null() {
         return;
     }
 
-    let slice = ptr::slice_from_raw_parts_mut(buffer.data, buffer.len);
-    unsafe {
-        drop(Box::from_raw(slice));
+    let slice = ptr::slice_from_raw_parts_mut(list.data, list.len);
+    let mut actions = unsafe { Box::from_raw(slice) };
+    for action in &mut actions {
+        let content = mem::replace(&mut action.content, RuneBuffer::EMPTY);
+        unsafe {
+            free_buffer(content);
+        }
     }
 }
 
@@ -224,6 +275,17 @@ unsafe fn bytes_from_raw<'a>(data: *const u8, len: usize) -> Option<&'a [u8]> {
     Some(unsafe { slice::from_raw_parts(data, len) })
 }
 
+unsafe fn free_buffer(buffer: RuneBuffer) {
+    if buffer.data.is_null() {
+        return;
+    }
+
+    let slice = ptr::slice_from_raw_parts_mut(buffer.data, buffer.len);
+    unsafe {
+        drop(Box::from_raw(slice));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -242,6 +304,21 @@ mod tests {
         assert_eq!(status, STATUS_INVALID_ARGUMENT);
         unsafe {
             rune_runtime_destroy(runtime);
+        }
+    }
+
+    #[test]
+    fn creates_ordered_reply_actions() {
+        let list =
+            RuneActionList::from_replies(vec!["first".to_owned(), "second".to_owned()]);
+
+        let actions = unsafe { slice::from_raw_parts(list.data, list.len) };
+        assert_eq!(actions.len(), 2);
+        assert_eq!(actions[0].kind, ACTION_REPLY);
+        assert_eq!(actions[1].kind, ACTION_REPLY);
+
+        unsafe {
+            rune_runtime_action_list_free(list);
         }
     }
 }

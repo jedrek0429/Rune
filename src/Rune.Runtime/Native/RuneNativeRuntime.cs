@@ -33,35 +33,32 @@ public sealed class RuneNativeRuntime : IDisposable
         }
     }
 
-    public unsafe string InvokeMessageCreate(string authorUsername)
+    public unsafe RuneInvocationResult InvokeMessageCreate(string authorUsername)
     {
         ArgumentNullException.ThrowIfNull(authorUsername);
         ObjectDisposedException.ThrowIf(handle == nint.Zero, this);
 
         var author = Encoding.UTF8.GetBytes(authorUsername);
-        NativeBuffer reply = default;
+        NativeActionList nativeActions;
+        int status;
 
         fixed (byte* authorData = author)
         {
-            ThrowIfFailed(
-                NativeMethods.InvokeMessageCreate(
-                    handle,
-                    authorData,
-                    (nuint)author.Length,
-                    out reply),
-                "The component invocation failed.");
+            status = NativeMethods.InvokeMessageCreate(
+                handle,
+                authorData,
+                (nuint)author.Length,
+                out nativeActions);
         }
 
         try
         {
-            var length = checked((int)reply.Length);
-            var bytes = new byte[length];
-            Marshal.Copy(reply.Data, bytes, 0, length);
-            return Encoding.UTF8.GetString(bytes);
+            ThrowIfFailed(status, "The component invocation failed.");
+            return DecodeActions(nativeActions);
         }
         finally
         {
-            NativeMethods.FreeBuffer(reply);
+            NativeMethods.FreeActionList(nativeActions);
         }
     }
 
@@ -74,6 +71,46 @@ public sealed class RuneNativeRuntime : IDisposable
         }
 
         GC.SuppressFinalize(this);
+    }
+
+    private static unsafe RuneInvocationResult DecodeActions(NativeActionList nativeActions)
+    {
+        var length = checked((int)nativeActions.Length);
+        if (length > 0 && nativeActions.Data == nint.Zero)
+        {
+            throw new RuneNativeException("The native runtime returned an invalid action list.");
+        }
+
+        var actions = new RuneAction[length];
+        var nativeAction = (NativeAction*)nativeActions.Data;
+
+        for (var index = 0; index < length; index++)
+        {
+            var kind = (RuneActionKind)nativeAction[index].Kind;
+            actions[index] = new RuneAction(
+                kind,
+                DecodeBuffer(nativeAction[index].Content));
+        }
+
+        return new RuneInvocationResult(actions);
+    }
+
+    private static string DecodeBuffer(NativeBuffer buffer)
+    {
+        var length = checked((int)buffer.Length);
+        if (length == 0)
+        {
+            return string.Empty;
+        }
+
+        if (buffer.Data == nint.Zero)
+        {
+            throw new RuneNativeException("The native runtime returned an invalid buffer.");
+        }
+
+        var bytes = new byte[length];
+        Marshal.Copy(buffer.Data, bytes, 0, length);
+        return Encoding.UTF8.GetString(bytes);
     }
 
     private static void ThrowIfFailed(int status, string message)

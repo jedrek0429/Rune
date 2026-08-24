@@ -9,6 +9,20 @@ internal readonly struct NativeBuffer
     internal readonly nuint Length;
 }
 
+[StructLayout(LayoutKind.Sequential)]
+internal readonly struct NativeAction
+{
+    internal readonly uint Kind;
+    internal readonly NativeBuffer Content;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal readonly struct NativeActionList
+{
+    internal readonly nint Data;
+    internal readonly nuint Length;
+}
+
 internal static partial class NativeMethods
 {
     private const string LibraryName = "rune_runtime";
@@ -38,12 +52,12 @@ internal static partial class NativeMethods
         nint runtime,
         byte* authorData,
         nuint authorLength,
-        out NativeBuffer reply);
+        out NativeActionList actions);
 
     [LibraryImport(
         LibraryName,
-        EntryPoint = "rune_runtime_buffer_free")]
-    internal static partial void FreeBuffer(NativeBuffer buffer);
+        EntryPoint = "rune_runtime_action_list_free")]
+    internal static partial void FreeActionList(NativeActionList actions);
 
     [LibraryImport(
         LibraryName,
