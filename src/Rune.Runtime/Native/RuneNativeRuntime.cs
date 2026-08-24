@@ -29,7 +29,8 @@ public sealed class RuneNativeRuntime : IDisposable
                     handle,
                     componentData,
                     (nuint)component.Length),
-                "The component could not be loaded.");
+                "The component could not be loaded.",
+                string.Empty);
         }
     }
 
@@ -40,6 +41,7 @@ public sealed class RuneNativeRuntime : IDisposable
 
         var author = Encoding.UTF8.GetBytes(authorUsername);
         NativeActionList nativeActions;
+        NativeBuffer nativeError;
         int status;
 
         fixed (byte* authorData = author)
@@ -48,17 +50,22 @@ public sealed class RuneNativeRuntime : IDisposable
                 handle,
                 authorData,
                 (nuint)author.Length,
-                out nativeActions);
+                out nativeActions,
+                out nativeError);
         }
 
         try
         {
-            ThrowIfFailed(status, "The component invocation failed.");
+            ThrowIfFailed(
+                status,
+                "The component invocation failed.",
+                DecodeBuffer(nativeError));
             return DecodeActions(nativeActions);
         }
         finally
         {
             NativeMethods.FreeActionList(nativeActions);
+            NativeMethods.FreeBuffer(nativeError);
         }
     }
 
@@ -113,11 +120,14 @@ public sealed class RuneNativeRuntime : IDisposable
         return Encoding.UTF8.GetString(bytes);
     }
 
-    private static void ThrowIfFailed(int status, string message)
+    private static void ThrowIfFailed(
+        int status,
+        string message,
+        string nativeDetail)
     {
         if (status != 0)
         {
-            throw new RuneNativeException($"{message} Native status: {status}.");
+            throw new RuneNativeException(message, status, nativeDetail);
         }
     }
 }

@@ -8,7 +8,7 @@ public sealed class NativeRuntimeContractTests
     [Fact]
     public void Native_runtime_exposes_supported_abi_version()
     {
-        Assert.Equal(2U, RuneNativeRuntime.AbiVersion);
+        Assert.Equal(3U, RuneNativeRuntime.AbiVersion);
     }
 
     [Fact]

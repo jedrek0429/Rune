@@ -52,12 +52,18 @@ internal static partial class NativeMethods
         nint runtime,
         byte* authorData,
         nuint authorLength,
-        out NativeActionList actions);
+        out NativeActionList actions,
+        out NativeBuffer error);
 
     [LibraryImport(
         LibraryName,
         EntryPoint = "rune_runtime_action_list_free")]
     internal static partial void FreeActionList(NativeActionList actions);
+
+    [LibraryImport(
+        LibraryName,
+        EntryPoint = "rune_runtime_buffer_free")]
+    internal static partial void FreeBuffer(NativeBuffer buffer);
 
     [LibraryImport(
         LibraryName,

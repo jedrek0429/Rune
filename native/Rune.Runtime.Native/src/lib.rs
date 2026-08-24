@@ -1,4 +1,5 @@
 use std::ffi::c_void;
+use std::fmt;
 use std::mem;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
@@ -9,7 +10,7 @@ use wasmtime::component::{Component, HasSelf, Linker, ResourceTable};
 use wasmtime::{Engine, Store};
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
-const ABI_VERSION: u32 = 2;
+const ABI_VERSION: u32 = 3;
 const STATUS_OK: i32 = 0;
 const STATUS_INVALID_ARGUMENT: i32 = 1;
 const STATUS_RUNTIME_ERROR: i32 = 2;
@@ -55,6 +56,27 @@ impl WasiView for InvocationState {
         WasiCtxView {
             ctx: &mut self.wasi,
             table: &mut self.resources,
+        }
+    }
+}
+
+struct NativeFailure {
+    status: i32,
+    detail: String,
+}
+
+impl NativeFailure {
+    fn invalid(detail: impl Into<String>) -> Self {
+        Self {
+            status: STATUS_INVALID_ARGUMENT,
+            detail: detail.into(),
+        }
+    }
+
+    fn runtime(error: impl fmt::Display) -> Self {
+        Self {
+            status: STATUS_RUNTIME_ERROR,
+            detail: format!("{error:#}"),
         }
     }
 }
@@ -170,54 +192,53 @@ pub unsafe extern "C" fn rune_runtime_load_component(
 ///
 /// `runtime` must be a handle returned by `rune_runtime_create`,
 /// `author_data` must identify `author_len` readable bytes, and
-/// `actions` must be writable. A successful action list must be released
-/// with `rune_runtime_action_list_free`.
+/// `actions` and `error` must be writable. A successful action list must
+/// be released with `rune_runtime_action_list_free`; an error buffer must
+/// be released with `rune_runtime_buffer_free`.
 #[no_mangle]
 pub unsafe extern "C" fn rune_runtime_invoke_message_create(
     runtime: *mut c_void,
     author_data: *const u8,
     author_len: usize,
     actions: *mut RuneActionList,
+    error: *mut RuneBuffer,
 ) -> i32 {
-    if actions.is_null() {
+    if actions.is_null() || error.is_null() {
         return STATUS_INVALID_ARGUMENT;
     }
 
     unsafe {
         actions.write(RuneActionList::EMPTY);
+        error.write(RuneBuffer::EMPTY);
     }
 
-    ffi_status(|| {
-        let runtime = unsafe { runtime_ref(runtime) }.ok_or(STATUS_INVALID_ARGUMENT)?;
-        let author_bytes =
-            unsafe { bytes_from_raw(author_data, author_len) }.ok_or(STATUS_INVALID_ARGUMENT)?;
-        let author = std::str::from_utf8(author_bytes).map_err(|_| STATUS_INVALID_ARGUMENT)?;
-        let component = runtime
-            .component
-            .lock()
-            .map_err(|_| STATUS_RUNTIME_ERROR)?
-            .clone()
-            .ok_or(STATUS_RUNTIME_ERROR)?;
+    let outcome = catch_unwind(AssertUnwindSafe(|| unsafe {
+        invoke_message_create(runtime, author_data, author_len)
+    }));
 
-        let mut linker = Linker::new(&runtime.engine);
-        bindings::MessageCreateRune::add_to_linker::<_, HasSelf<_>>(&mut linker, |state| state)
-            .map_err(|_| STATUS_RUNTIME_ERROR)?;
-        wasmtime_wasi::p2::add_to_linker_sync(&mut linker).map_err(|_| STATUS_RUNTIME_ERROR)?;
-
-        let mut store = Store::new(&runtime.engine, InvocationState::new());
-        let bindings = bindings::MessageCreateRune::instantiate(&mut store, &component, &linker)
-            .map_err(|_| STATUS_RUNTIME_ERROR)?;
-        bindings
-            .call_handle_message_create(&mut store, author)
-            .map_err(|_| STATUS_RUNTIME_ERROR)?;
-
-        let replies = mem::take(&mut store.data_mut().replies);
-        unsafe {
-            actions.write(RuneActionList::from_replies(replies));
+    match outcome {
+        Ok(Ok(list)) => {
+            unsafe {
+                actions.write(list);
+            }
+            STATUS_OK
         }
-
-        Ok(())
-    })
+        Ok(Err(failure)) => {
+            let status = failure.status;
+            unsafe {
+                error.write(RuneBuffer::from_bytes(failure.detail.into_bytes()));
+            }
+            status
+        }
+        Err(_) => {
+            unsafe {
+                error.write(RuneBuffer::from_bytes(
+                    b"the native runtime panicked".to_vec(),
+                ));
+            }
+            STATUS_PANIC
+        }
+    }
 }
 
 /// # Safety
@@ -241,6 +262,17 @@ pub unsafe extern "C" fn rune_runtime_action_list_free(list: RuneActionList) {
 
 /// # Safety
 ///
+/// `buffer` must either be empty or have been returned by this library, and
+/// must be released only once.
+#[no_mangle]
+pub unsafe extern "C" fn rune_runtime_buffer_free(buffer: RuneBuffer) {
+    unsafe {
+        free_buffer(&buffer);
+    }
+}
+
+/// # Safety
+///
 /// `runtime` must be null or a handle returned by `rune_runtime_create`,
 /// and it must be destroyed only once.
 #[no_mangle]
@@ -252,6 +284,40 @@ pub unsafe extern "C" fn rune_runtime_destroy(runtime: *mut c_void) {
     unsafe {
         drop(Box::from_raw(runtime.cast::<RuneRuntime>()));
     }
+}
+
+unsafe fn invoke_message_create(
+    runtime: *mut c_void,
+    author_data: *const u8,
+    author_len: usize,
+) -> Result<RuneActionList, NativeFailure> {
+    let runtime = unsafe { runtime_ref(runtime) }
+        .ok_or_else(|| NativeFailure::invalid("the runtime handle is null"))?;
+    let author_bytes = unsafe { bytes_from_raw(author_data, author_len) }
+        .ok_or_else(|| NativeFailure::invalid("the author buffer is null"))?;
+    let author = std::str::from_utf8(author_bytes)
+        .map_err(|error| NativeFailure::invalid(error.to_string()))?;
+    let component = runtime
+        .component
+        .lock()
+        .map_err(|_| NativeFailure::runtime("the component lock is poisoned"))?
+        .clone()
+        .ok_or_else(|| NativeFailure::runtime("no component is loaded"))?;
+
+    let mut linker = Linker::new(&runtime.engine);
+    bindings::MessageCreateRune::add_to_linker::<_, HasSelf<_>>(&mut linker, |state| state)
+        .map_err(NativeFailure::runtime)?;
+    wasmtime_wasi::p2::add_to_linker_sync(&mut linker).map_err(NativeFailure::runtime)?;
+
+    let mut store = Store::new(&runtime.engine, InvocationState::new());
+    let bindings = bindings::MessageCreateRune::instantiate(&mut store, &component, &linker)
+        .map_err(NativeFailure::runtime)?;
+    bindings
+        .call_handle_message_create(&mut store, author)
+        .map_err(NativeFailure::runtime)?;
+
+    let replies = mem::take(&mut store.data_mut().replies);
+    Ok(RuneActionList::from_replies(replies))
 }
 
 fn ffi_status(operation: impl FnOnce() -> Result<(), i32>) -> i32 {
