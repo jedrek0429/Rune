@@ -11,6 +11,8 @@
     <NativeRuntimeLibrary Condition="$([MSBuild]::IsOSPlatform('Linux'))">librune_runtime.so</NativeRuntimeLibrary>
     <NativeRuntimeLibrary Condition="$([MSBuild]::IsOSPlatform('OSX'))">librune_runtime.dylib</NativeRuntimeLibrary>
     <NativeRuntimeLibrary Condition="$([MSBuild]::IsOSPlatform('Windows'))">rune_runtime.dll</NativeRuntimeLibrary>
+    <FixtureManifest>$(MSBuildThisFileDirectory)../fixtures/message-create-component/Cargo.toml</FixtureManifest>
+    <FixtureOutput>$(MSBuildThisFileDirectory)../fixtures/message-create-component/target/wasm32-wasip2/release/message_create_component.wasm</FixtureOutput>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,11 +28,11 @@
     <ProjectReference Include="../../src/Rune.Runtime/Rune.Runtime.csproj" />
   </ItemGroup>
 
-  <Target Name="BuildNativeRuntime" AfterTargets="Build">
+  <Target Name="BuildNativeRuntimeAndFixture" AfterTargets="Build">
     <Exec Command="cargo build --manifest-path &quot;$(NativeRuntimeManifest)&quot; --release" />
-    <Copy
-      SourceFiles="$(NativeRuntimeOutput)/$(NativeRuntimeLibrary)"
-      DestinationFolder="$(OutDir)" />
+    <Exec Command="cargo build --manifest-path &quot;$(FixtureManifest)&quot; --target wasm32-wasip2 --release" />
+    <Copy SourceFiles="$(NativeRuntimeOutput)/$(NativeRuntimeLibrary)" DestinationFolder="$(OutDir)" />
+    <Copy SourceFiles="$(FixtureOutput)" DestinationFiles="$(OutDir)/message_create_component.wasm" />
   </Target>
 
 </Project>

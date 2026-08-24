@@ -1,0 +1,6 @@
+package rune:spike@0.1.0;
+
+world message-create-rune {
+    import reply: func(content: string);
+    export handle-message-create: func(author-username: string);
+}

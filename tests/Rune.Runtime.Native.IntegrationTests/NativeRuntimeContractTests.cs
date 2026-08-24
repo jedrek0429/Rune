@@ -9,4 +9,19 @@ public sealed class NativeRuntimeContractTests
     {
         Assert.Equal(1U, RuneNativeRuntime.AbiVersion);
     }
+
+    [Fact]
+    public void Component_reply_crosses_the_native_boundary()
+    {
+        var componentPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "message_create_component.wasm");
+
+        using var runtime = new RuneNativeRuntime();
+        runtime.LoadComponent(File.ReadAllBytes(componentPath));
+
+        var reply = runtime.InvokeMessageCreate("Ada");
+
+        Assert.Equal("Hello, Ada!", reply);
+    }
 }
