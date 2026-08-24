@@ -10,7 +10,9 @@
 
 Rune lets you upload scripts directly through Discord and run them as isolated WebAssembly modules.
 
-Runes are written in familiar languages such as JavaScript and Python, while Rune provides a common Discord-facing API.
+Runes are written in languages such as JavaScript and Python, while Rune provides a common Discord-facing API.
+
+The goal is to support as many languages as possible.
 
 ```javascript
 if (message.content === "hello") {
