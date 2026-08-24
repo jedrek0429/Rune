@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Install Binaryen
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binaryen
+
+          wasm-opt --version
+          wasm-merge --version
+
+      - name: Install Extism compilers
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
+
+          curl -fsSLO https://raw.githubusercontent.com/extism/js-pdk/main/install.sh
+          bash install.sh
+          rm install.sh
+
+          curl -fsSL https://raw.githubusercontent.com/extism/python-pdk/main/install.sh | bash
+
+          extism-js --help >/dev/null
+          extism-py --help >/dev/null
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release
