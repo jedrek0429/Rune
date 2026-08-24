@@ -1,4 +1,5 @@
 using Rune.Runtime.Native;
+using Xunit;
 
 namespace Rune.Runtime.Native.IntegrationTests;
 
