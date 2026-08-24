@@ -12,7 +12,7 @@ public sealed class NativeRuntimeContractTests
     }
 
     [Fact]
-    public void Component_reply_crosses_the_native_boundary()
+    public void Component_actions_cross_the_native_boundary_in_order()
     {
         var componentPath = Path.Combine(
             AppContext.BaseDirectory,
@@ -21,8 +21,19 @@ public sealed class NativeRuntimeContractTests
         using var runtime = new RuneNativeRuntime();
         runtime.LoadComponent(File.ReadAllBytes(componentPath));
 
-        var reply = runtime.InvokeMessageCreate("Ada");
+        var result = runtime.InvokeMessageCreate("Ada");
 
-        Assert.Equal("Hello, Ada!", reply);
+        Assert.Collection(
+            result.Actions,
+            action =>
+            {
+                Assert.Equal(RuneActionKind.Reply, action.Kind);
+                Assert.Equal("Hello, Ada!", action.Content);
+            },
+            action =>
+            {
+                Assert.Equal(RuneActionKind.Reply, action.Kind);
+                Assert.Equal("Welcome to Rune.", action.Content);
+            });
     }
 }

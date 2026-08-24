@@ -10,6 +10,7 @@ struct Component;
 impl bindings::Guest for Component {
     fn handle_message_create(author_username: String) {
         bindings::reply(&format!("Hello, {author_username}!"));
+        bindings::reply("Welcome to Rune.");
     }
 }
 
