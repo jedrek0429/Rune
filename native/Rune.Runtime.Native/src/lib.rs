@@ -82,12 +82,8 @@ pub unsafe extern "C" fn rune_runtime_load_component(
         let runtime = unsafe { runtime_ref(runtime) }.ok_or(STATUS_INVALID_ARGUMENT)?;
         let bytes = unsafe { bytes_from_raw(component_data, component_len) }
             .ok_or(STATUS_INVALID_ARGUMENT)?;
-        let component =
-            Component::new(&runtime.engine, bytes).map_err(|_| STATUS_RUNTIME_ERROR)?;
-        let mut loaded = runtime
-            .component
-            .lock()
-            .map_err(|_| STATUS_RUNTIME_ERROR)?;
+        let component = Component::new(&runtime.engine, bytes).map_err(|_| STATUS_RUNTIME_ERROR)?;
+        let mut loaded = runtime.component.lock().map_err(|_| STATUS_RUNTIME_ERROR)?;
         *loaded = Some(component);
         Ok(())
     })
@@ -127,16 +123,12 @@ pub unsafe extern "C" fn rune_runtime_invoke_message_create(
             .ok_or(STATUS_RUNTIME_ERROR)?;
 
         let mut linker = Linker::new(&runtime.engine);
-        bindings::MessageCreateRune::add_to_linker::<_, HasSelf<_>>(
-            &mut linker,
-            |state| state,
-        )
-        .map_err(|_| STATUS_RUNTIME_ERROR)?;
+        bindings::MessageCreateRune::add_to_linker::<_, HasSelf<_>>(&mut linker, |state| state)
+            .map_err(|_| STATUS_RUNTIME_ERROR)?;
 
         let mut store = Store::new(&runtime.engine, InvocationState::default());
-        let bindings =
-            bindings::MessageCreateRune::instantiate(&mut store, &component, &linker)
-                .map_err(|_| STATUS_RUNTIME_ERROR)?;
+        let bindings = bindings::MessageCreateRune::instantiate(&mut store, &component, &linker)
+            .map_err(|_| STATUS_RUNTIME_ERROR)?;
         bindings
             .call_handle_message_create(&mut store, author)
             .map_err(|_| STATUS_RUNTIME_ERROR)?;
