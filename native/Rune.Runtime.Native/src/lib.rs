@@ -309,8 +309,7 @@ mod tests {
 
     #[test]
     fn creates_ordered_reply_actions() {
-        let list =
-            RuneActionList::from_replies(vec!["first".to_owned(), "second".to_owned()]);
+        let list = RuneActionList::from_replies(vec!["first".to_owned(), "second".to_owned()]);
 
         let actions = unsafe { slice::from_raw_parts(list.data, list.len) };
         assert_eq!(actions.len(), 2);
