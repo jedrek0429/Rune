@@ -392,11 +392,20 @@ unsafe fn invoke_message_create(
 }
 
 fn validate_component(engine: &Engine, component: &Component) -> Result<(), wasmtime::Error> {
-    if !component
-        .component_type()
-        .imports(engine)
-        .all(|(name, _)| is_approved_import(name))
-    {
+    let mut approved = true;
+    for (name, _) in component.component_type().imports(engine) {
+        eprintln!(
+            "Rune Component import: {name} ({})",
+            if is_approved_import(name) {
+                "approved"
+            } else {
+                "rejected"
+            }
+        );
+        approved &= is_approved_import(name);
+    }
+
+    if !approved {
         return Err(wasmtime::Error::msg(
             "the component declares an unapproved import",
         ));
