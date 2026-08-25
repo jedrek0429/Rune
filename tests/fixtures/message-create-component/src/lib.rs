@@ -23,6 +23,14 @@ impl bindings::Guest for Component {
             return;
         }
 
+        if author_username == "memory" {
+            bindings::reply("discard me");
+            let allocation = vec![0_u8; 32 * 1024 * 1024];
+            std::hint::black_box(&allocation);
+            bindings::reply("memory allocation succeeded");
+            return;
+        }
+
         bindings::reply(&format!("Hello, {author_username}!"));
         bindings::reply("Welcome to Rune.");
     }

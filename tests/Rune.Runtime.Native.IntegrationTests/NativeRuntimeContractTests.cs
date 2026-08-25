@@ -83,4 +83,31 @@ public sealed class NativeRuntimeContractTests
             exception.NativeDetail,
             StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void Memory_hungry_component_is_stopped_without_leaking_buffered_actions()
+    {
+        var componentPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "message_create_component.wasm");
+
+        using var runtime = new RuneNativeRuntime();
+        runtime.LoadComponent(File.ReadAllBytes(componentPath));
+
+        var exception = Assert.Throws<RuneNativeException>(
+            () => runtime.InvokeMessageCreate("memory"));
+
+        Assert.Equal(2, exception.NativeStatus);
+        Assert.Contains(
+            "memory",
+            exception.NativeDetail,
+            StringComparison.OrdinalIgnoreCase);
+
+        var recovered = runtime.InvokeMessageCreate("Ada");
+
+        Assert.DoesNotContain(
+            recovered.Actions,
+            action => action.Content == "discard me");
+        Assert.Equal(2, recovered.Actions.Count);
+    }
 }
