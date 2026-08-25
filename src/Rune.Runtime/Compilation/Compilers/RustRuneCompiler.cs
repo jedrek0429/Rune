@@ -13,6 +13,7 @@ public sealed class RustRuneCompiler(
         RuneLanguage.Rust;
 
     public async ValueTask<CompiledRune> CompileAsync(
+        RuneEventType eventType,
         string source,
         CancellationToken cancellationToken = default)
     {
@@ -52,7 +53,7 @@ public sealed class RustRuneCompiler(
 
             await File.WriteAllTextAsync(
                 input,
-                BuildWrapper(source),
+                BuildWrapper(eventType, source),
                 Encoding.UTF8,
                 cancellationToken);
 
@@ -110,62 +111,111 @@ public sealed class RustRuneCompiler(
     }
 
     private static string BuildWrapper(
+        RuneEventType eventType,
         string source)
     {
-    return $$"""
+        var argumentType = eventType switch
+        {
+            RuneEventType.MessageCreate => "Message",
+            RuneEventType.MessageDelete => "MessageDeleteEventArgs",
+            RuneEventType.MessageReactionAdd =>
+                "MessageReactionAddEventArgs",
+            RuneEventType.MessageReactionRemove =>
+                "MessageReactionRemoveEventArgs",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(eventType),
+                eventType,
+                "The gateway event is not supported.")
+        };
+
+        return $$"""
 use extism_pdk::*;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-pub struct RuneInvocation {
-    pub message: RuneMessage,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct RuneUser {
+pub struct User {
     pub id: u64,
     pub username: String,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct RuneMessage {
+#[serde(rename_all = "camelCase")]
+pub struct Message {
     pub id: u64,
-
-    #[serde(rename = "channelId")]
     pub channel_id: u64,
-
     pub content: String,
-    pub author: RuneUser,
+    pub author: User,
 }
 
-#[host_fn]
-extern "ExtismHost" {
-    fn rune_message_reply(content: String);
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageDeleteEventArgs {
+    pub channel_id: u64,
+    pub guild_id: Option<u64>,
+    pub message_id: u64,
 }
 
-impl RuneMessage {
-    pub fn reply(
-        &self,
-        content: impl Into<String>)
-        -> FnResult<()>
-    {
-        unsafe {
-            rune_message_reply(
-                content.into())?;
+#[derive(Debug, Deserialize)]
+pub struct MessageReactionEmoji {
+    pub animated: bool,
+    pub id: Option<u64>,
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(try_from = "u8")]
+pub enum ReactionType {
+    Normal,
+    Burst,
+}
+
+impl TryFrom<u8> for ReactionType {
+    type Error = String;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Normal),
+            1 => Ok(Self::Burst),
+            _ => Err(format!("unsupported reaction type {value}")),
         }
-
-        Ok(())
     }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageReactionAddEventArgs {
+    pub burst: bool,
+    pub channel_id: u64,
+    pub emoji: MessageReactionEmoji,
+    pub guild_id: Option<u64>,
+    pub message_author_id: Option<u64>,
+    pub message_id: u64,
+    #[serde(rename = "type")]
+    pub type_: ReactionType,
+    pub user_id: u64,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageReactionRemoveEventArgs {
+    pub burst: bool,
+    pub channel_id: u64,
+    pub emoji: MessageReactionEmoji,
+    pub guild_id: Option<u64>,
+    pub message_id: u64,
+    #[serde(rename = "type")]
+    pub type_: ReactionType,
+    pub user_id: u64,
 }
 
 {{source}}
 
 #[plugin_fn]
 pub fn handle(_: ()) -> FnResult<()> {
-    let Json(invocation): Json<RuneInvocation> =
+    let Json(argument): Json<{{argumentType}}> =
         input()?;
 
-    rune(invocation.message)
+    rune(argument)
 }
 """;
     }

@@ -5,6 +5,7 @@
     <Project Path="src/Rune.Runtime/Rune.Runtime.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Rune.Runtime.Tests/Rune.Runtime.Tests.csproj" />
     <Project Path="tests/Rune.Runtime.Native.IntegrationTests/Rune.Runtime.Native.IntegrationTests.csproj" />
   </Folder>
 </Solution>

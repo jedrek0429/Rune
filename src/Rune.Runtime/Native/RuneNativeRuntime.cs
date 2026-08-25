@@ -1,6 +1,9 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
+using Rune.Core.Invocations;
+using Rune.Core.Runes;
+
 namespace Rune.Runtime.Native;
 
 public sealed class RuneNativeRuntime : IDisposable
@@ -18,7 +21,9 @@ public sealed class RuneNativeRuntime : IDisposable
 
     public static uint AbiVersion => NativeMethods.GetAbiVersion();
 
-    public unsafe void LoadComponent(ReadOnlySpan<byte> component)
+    public unsafe void LoadComponent(
+        RuneEventType eventType,
+        ReadOnlySpan<byte> component)
     {
         ObjectDisposedException.ThrowIf(handle == nint.Zero, this);
 
@@ -27,6 +32,7 @@ public sealed class RuneNativeRuntime : IDisposable
             ThrowIfFailed(
                 NativeMethods.LoadComponent(
                     handle,
+                    (uint)eventType,
                     componentData,
                     (nuint)component.Length),
                 "The component could not be loaded.",
@@ -34,22 +40,30 @@ public sealed class RuneNativeRuntime : IDisposable
         }
     }
 
-    public unsafe RuneInvocationResult InvokeMessageCreate(string authorUsername)
+    public RuneInvocationResult Invoke(
+        EventRuneInvocation invocation)
     {
-        ArgumentNullException.ThrowIfNull(authorUsername);
+        ArgumentNullException.ThrowIfNull(invocation);
         ObjectDisposedException.ThrowIf(handle == nint.Zero, this);
 
-        var author = Encoding.UTF8.GetBytes(authorUsername);
+        var payload = RuneEventDispatcher.Serialize(invocation);
+
+        return InvokePayload(payload);
+    }
+
+    private unsafe RuneInvocationResult InvokePayload(
+        byte[] payload)
+    {
         NativeActionList nativeActions;
         NativeBuffer nativeError;
         int status;
 
-        fixed (byte* authorData = author)
+        fixed (byte* payloadData = payload)
         {
-            status = NativeMethods.InvokeMessageCreate(
+            status = NativeMethods.Invoke(
                 handle,
-                authorData,
-                (nuint)author.Length,
+                payloadData,
+                (nuint)payload.Length,
                 out nativeActions,
                 out nativeError);
         }

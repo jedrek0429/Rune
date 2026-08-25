@@ -13,6 +13,7 @@ public sealed class JavaScriptRuneCompiler(
     public RuneLanguage Language => RuneLanguage.JavaScript;
 
     public async ValueTask<CompiledRune> CompileAsync(
+        RuneEventType eventType,
         string source,
         CancellationToken cancellationToken = default)
     {
@@ -30,7 +31,7 @@ public sealed class JavaScriptRuneCompiler(
 
             await File.WriteAllTextAsync(
                 input,
-                BuildWrapper(source),
+                BuildWrapper(eventType, source),
                 Encoding.UTF8,
                 cancellationToken);
 
@@ -72,37 +73,91 @@ public sealed class JavaScriptRuneCompiler(
         }
     }
 
-    private static string BuildWrapper(string source)
+    private static string BuildWrapper(
+        RuneEventType eventType,
+        string source)
     {
         var quotedSource = JsonSerializer.Serialize(source);
+        var parameter = eventType == RuneEventType.MessageCreate
+            ? "message"
+            : "args";
+        var input = eventType switch
+        {
+            RuneEventType.MessageCreate =>
+                "createMessage(invocation)",
+            RuneEventType.MessageDelete =>
+                "createMessageDeleteEventArgs(invocation)",
+            RuneEventType.MessageReactionAdd =>
+                "createMessageReactionAddEventArgs(invocation)",
+            RuneEventType.MessageReactionRemove =>
+                "createMessageReactionRemoveEventArgs(invocation)",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(eventType),
+                eventType,
+                "The gateway event is not supported.")
+        };
 
         return $$"""
 const AsyncFunction =
     Object.getPrototypeOf(async function () {}).constructor;
 
 const __rune =
-    new AsyncFunction("message", {{quotedSource}});
+    new AsyncFunction("{{parameter}}", {{quotedSource}});
+
+function createUser(data) {
+    return {
+        id: data.id,
+        username: data.username
+    };
+}
 
 function createMessage(data) {
     return {
         id: data.id,
         channelId: data.channelId,
         content: data.content,
+        author: createUser(data.author)
+    };
+}
 
-        author: {
-            id: data.author.id,
-            username: data.author.username
-        },
+function createMessageDeleteEventArgs(data) {
+    return {
+        channelId: data.channelId,
+        guildId: data.guildId,
+        messageId: data.messageId
+    };
+}
 
-        async reply(content) {
-            const { rune_message_reply } =
-                Host.getFunctions();
+function createMessageReactionEmoji(data) {
+    return {
+        animated: data.animated,
+        id: data.id,
+        name: data.name
+    };
+}
 
-            const memory =
-                Memory.fromString(String(content));
+function createMessageReactionAddEventArgs(data) {
+    return {
+        burst: data.burst,
+        channelId: data.channelId,
+        emoji: createMessageReactionEmoji(data.emoji),
+        guildId: data.guildId,
+        messageAuthorId: data.messageAuthorId,
+        messageId: data.messageId,
+        type: data.type,
+        userId: data.userId
+    };
+}
 
-            rune_message_reply(memory.offset);
-        }
+function createMessageReactionRemoveEventArgs(data) {
+    return {
+        burst: data.burst,
+        channelId: data.channelId,
+        emoji: createMessageReactionEmoji(data.emoji),
+        guildId: data.guildId,
+        messageId: data.messageId,
+        type: data.type,
+        userId: data.userId
     };
 }
 
@@ -110,8 +165,7 @@ async function handle() {
     const invocation =
         JSON.parse(Host.inputString());
 
-    await __rune(
-        createMessage(invocation.message));
+    await __rune({{input}});
 }
 
 module.exports = {
@@ -123,12 +177,6 @@ module.exports = {
     private const string Declarations = """
 declare module "main" {
     export function handle(): I32;
-}
-
-declare module "extism:host" {
-    interface user {
-        rune_message_reply(ptr: I64): void;
-    }
 }
 """;
 }

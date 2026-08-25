@@ -14,22 +14,22 @@ Runes are written in languages such as JavaScript and Python, while Rune provide
 
 The goal is to support as many languages as possible.
 
-```javascript
-if (message.content === "hello") {
-    await message.reply("Hello!");
-}
-````
-
-```python
-if message.content == "hello":
-    await message.reply("Hello!")
-```
-
 ## Discord API
 
-Rune subsets [NetCord](https://github.com/NetCordDev/NetCord) and ports it for each language. Currently all runes are registered as `MessageCreate` events.
+Rune.API is a strict subset of
+[NetCord](https://github.com/NetCordDev/NetCord), projected into each supported
+language. It can omit NetCord members but does not define a separate Discord
+object model.
 
-For a `MessageCreate` rune, the only object passed is `message`, which exposes the following properties and methods.
+An event rune is registered for one of these NetCord gateway events:
+
+- `MessageCreate`;
+- `MessageDelete`;
+- `MessageReactionAdd`; or
+- `MessageReactionRemove`.
+
+For example, a `MessageCreate` rune receives a selected subset of NetCord's
+`Message` and `User` types.
 
 JavaScript:
 
@@ -40,8 +40,6 @@ message.content
 
 message.author.id
 message.author.username
-
-await message.reply("Hello!")
 ```
 
 Python:
@@ -53,14 +51,12 @@ message.content
 
 message.author.id
 message.author.username
-
-await message.reply("Hello!")
 ```
 
 Rust:
 
 ```rust
-fn rune(message: RuneMessage) -> FnResult<()> {
+fn rune(message: Message) -> FnResult<()> {
     message.id;
     message.channel_id;
     message.content;
@@ -68,11 +64,12 @@ fn rune(message: RuneMessage) -> FnResult<()> {
     message.author.id;
     message.author.username;
 
-    message.reply("Hello!")?;
-
     Ok(())
 }
 ```
+
+Delete and reaction runes receive `MessageDeleteEventArgs`,
+`MessageReactionAddEventArgs` or `MessageReactionRemoveEventArgs` respectively.
 
 ## Running locally
 

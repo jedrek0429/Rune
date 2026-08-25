@@ -11,8 +11,14 @@
     <NativeRuntimeLibrary Condition="$([MSBuild]::IsOSPlatform('Linux'))">librune_runtime.so</NativeRuntimeLibrary>
     <NativeRuntimeLibrary Condition="$([MSBuild]::IsOSPlatform('OSX'))">librune_runtime.dylib</NativeRuntimeLibrary>
     <NativeRuntimeLibrary Condition="$([MSBuild]::IsOSPlatform('Windows'))">rune_runtime.dll</NativeRuntimeLibrary>
-    <FixtureManifest>$(MSBuildThisFileDirectory)../fixtures/message-create-component/Cargo.toml</FixtureManifest>
-    <FixtureOutput>$(MSBuildThisFileDirectory)../fixtures/message-create-component/target/wasm32-wasip2/release/message_create_component.wasm</FixtureOutput>
+    <MessageCreateFixtureManifest>$(MSBuildThisFileDirectory)../fixtures/message-create-component/Cargo.toml</MessageCreateFixtureManifest>
+    <MessageCreateFixtureOutput>$(MSBuildThisFileDirectory)../fixtures/message-create-component/target/wasm32-wasip2/release/message_create_component.wasm</MessageCreateFixtureOutput>
+    <MessageDeleteFixtureManifest>$(MSBuildThisFileDirectory)../fixtures/message-delete-component/Cargo.toml</MessageDeleteFixtureManifest>
+    <MessageDeleteFixtureOutput>$(MSBuildThisFileDirectory)../fixtures/message-delete-component/target/wasm32-wasip2/release/message_delete_component.wasm</MessageDeleteFixtureOutput>
+    <MessageReactionAddFixtureManifest>$(MSBuildThisFileDirectory)../fixtures/message-reaction-add-component/Cargo.toml</MessageReactionAddFixtureManifest>
+    <MessageReactionAddFixtureOutput>$(MSBuildThisFileDirectory)../fixtures/message-reaction-add-component/target/wasm32-wasip2/release/message_reaction_add_component.wasm</MessageReactionAddFixtureOutput>
+    <MessageReactionRemoveFixtureManifest>$(MSBuildThisFileDirectory)../fixtures/message-reaction-remove-component/Cargo.toml</MessageReactionRemoveFixtureManifest>
+    <MessageReactionRemoveFixtureOutput>$(MSBuildThisFileDirectory)../fixtures/message-reaction-remove-component/target/wasm32-wasip2/release/message_reaction_remove_component.wasm</MessageReactionRemoveFixtureOutput>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,9 +36,15 @@
 
   <Target Name="BuildNativeRuntimeAndFixture" AfterTargets="Build">
     <Exec Command="cargo build --manifest-path &quot;$(NativeRuntimeManifest)&quot; --release" />
-    <Exec Command="cargo build --manifest-path &quot;$(FixtureManifest)&quot; --target wasm32-wasip2 --release" />
+    <Exec Command="cargo build --manifest-path &quot;$(MessageCreateFixtureManifest)&quot; --target wasm32-wasip2 --release" />
+    <Exec Command="cargo build --manifest-path &quot;$(MessageDeleteFixtureManifest)&quot; --target wasm32-wasip2 --release" />
+    <Exec Command="cargo build --manifest-path &quot;$(MessageReactionAddFixtureManifest)&quot; --target wasm32-wasip2 --release" />
+    <Exec Command="cargo build --manifest-path &quot;$(MessageReactionRemoveFixtureManifest)&quot; --target wasm32-wasip2 --release" />
     <Copy SourceFiles="$(NativeRuntimeOutput)/$(NativeRuntimeLibrary)" DestinationFolder="$(OutDir)" />
-    <Copy SourceFiles="$(FixtureOutput)" DestinationFiles="$(OutDir)/message_create_component.wasm" />
+    <Copy SourceFiles="$(MessageCreateFixtureOutput)" DestinationFiles="$(OutDir)/message_create_component.wasm" />
+    <Copy SourceFiles="$(MessageDeleteFixtureOutput)" DestinationFiles="$(OutDir)/message_delete_component.wasm" />
+    <Copy SourceFiles="$(MessageReactionAddFixtureOutput)" DestinationFiles="$(OutDir)/message_reaction_add_component.wasm" />
+    <Copy SourceFiles="$(MessageReactionRemoveFixtureOutput)" DestinationFiles="$(OutDir)/message_reaction_remove_component.wasm" />
   </Target>
 
 </Project>

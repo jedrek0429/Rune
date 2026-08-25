@@ -72,9 +72,10 @@ jobs:
       - name: Check Rust formatting
         run: |
           cargo fmt --all --check
-          cargo fmt \
-            --manifest-path tests/fixtures/message-create-component/Cargo.toml \
-            -- --check
+          find tests/fixtures -name Cargo.toml -print0 \
+            | while IFS= read -r -d '' manifest; do
+                cargo fmt --manifest-path "$manifest" -- --check
+              done
 
       - name: Check Rust workspace
         run: cargo check --workspace

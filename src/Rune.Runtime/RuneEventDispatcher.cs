@@ -24,38 +24,10 @@ public sealed class RuneEventDispatcher(
             registry.GetEventRunes(
                 invocation.GuildId,
                 invocation.EventType);
+        var input = Serialize(invocation);
 
         foreach (var rune in runes)
         {
-            if (invocation is not
-                MessageCreateEventRuneInvocation message)
-            {
-                continue;
-            }
-
-            var input =
-                JsonSerializer.SerializeToUtf8Bytes(
-                    new
-                    {
-                        message = new
-                        {
-                            id = message.MessageId,
-                            channelId =
-                                message.ChannelId,
-                            content =
-                                message.Content,
-
-                            author = new
-                            {
-                                id =
-                                    message.AuthorId,
-
-                                username =
-                                    message.AuthorUsername
-                            }
-                        }
-                    });
-
             try
             {
                 var result =
@@ -98,6 +70,76 @@ public sealed class RuneEventDispatcher(
         }
 
         return failures;
+    }
+
+    internal static byte[] Serialize(
+        EventRuneInvocation invocation)
+    {
+        object payload = invocation switch
+        {
+            MessageCreateEventRuneInvocation message =>
+                new
+                {
+                    id = message.MessageId,
+                    channelId = message.ChannelId,
+                    content = message.Content,
+                    author = new
+                    {
+                        id = message.AuthorId,
+                        username = message.AuthorUsername
+                    }
+                },
+
+            MessageDeleteEventRuneInvocation message =>
+                new
+                {
+                    channelId = message.ChannelId,
+                    guildId = (ulong?)message.GuildId,
+                    messageId = message.MessageId
+                },
+
+            MessageReactionAddEventRuneInvocation reaction =>
+                new
+                {
+                    burst = reaction.Burst,
+                    channelId = reaction.ChannelId,
+                    emoji = new
+                    {
+                        animated = reaction.Emoji.Animated,
+                        id = reaction.Emoji.Id,
+                        name = reaction.Emoji.Name
+                    },
+                    guildId = (ulong?)reaction.GuildId,
+                    messageAuthorId = reaction.MessageAuthorId,
+                    messageId = reaction.MessageId,
+                    type = reaction.Type,
+                    userId = reaction.UserId
+                },
+
+            MessageReactionRemoveEventRuneInvocation reaction =>
+                new
+                {
+                    burst = reaction.Burst,
+                    channelId = reaction.ChannelId,
+                    emoji = new
+                    {
+                        animated = reaction.Emoji.Animated,
+                        id = reaction.Emoji.Id,
+                        name = reaction.Emoji.Name
+                    },
+                    guildId = (ulong?)reaction.GuildId,
+                    messageId = reaction.MessageId,
+                    type = reaction.Type,
+                    userId = reaction.UserId
+                },
+
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(invocation),
+                invocation.EventType,
+                "The gateway event is not supported.")
+        };
+
+        return JsonSerializer.SerializeToUtf8Bytes(payload);
     }
 }
 

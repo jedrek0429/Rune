@@ -8,7 +8,9 @@ mod bindings {
 struct Component;
 
 impl bindings::Guest for Component {
-    fn handle_message_create(author_username: String) {
+    fn handle(message: bindings::rune::api::types::Message) {
+        let author_username = message.author.username;
+
         if author_username == "trap" {
             bindings::reply("discard me");
             panic!("intentional integration-test trap");
@@ -62,7 +64,14 @@ impl bindings::Guest for Component {
             return;
         }
 
-        bindings::reply(&format!("Hello, {author_username}!"));
+        bindings::reply(&format!(
+            "{}|{}|{}|{}|{}",
+            message.id,
+            message.channel_id,
+            message.content,
+            message.author.id,
+            author_username
+        ));
         bindings::reply("Welcome to Rune.");
     }
 }

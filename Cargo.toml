@@ -1,4 +1,9 @@
 [workspace]
 members = ["native/Rune.Runtime.Native"]
-exclude = ["tests/fixtures/message-create-component"]
+exclude = [
+    "tests/fixtures/message-create-component",
+    "tests/fixtures/message-delete-component",
+    "tests/fixtures/message-reaction-add-component",
+    "tests/fixtures/message-reaction-remove-component",
+]
 resolver = "2"

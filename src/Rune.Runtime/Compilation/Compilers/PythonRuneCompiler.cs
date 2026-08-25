@@ -12,6 +12,7 @@ public sealed class PythonRuneCompiler(
     public RuneLanguage Language => RuneLanguage.Python;
 
     public async ValueTask<CompiledRune> CompileAsync(
+        RuneEventType eventType,
         string source,
         CancellationToken cancellationToken = default)
     {
@@ -28,7 +29,7 @@ public sealed class PythonRuneCompiler(
 
             await File.WriteAllTextAsync(
                 input,
-                BuildWrapper(source),
+                BuildWrapper(eventType, source),
                 Encoding.UTF8,
                 cancellationToken);
 
@@ -64,7 +65,9 @@ public sealed class PythonRuneCompiler(
         }
     }
 
-    private static string BuildWrapper(string source)
+    private static string BuildWrapper(
+        RuneEventType eventType,
+        string source)
     {
         var body = string.Join(
             '\n',
@@ -76,36 +79,81 @@ public sealed class PythonRuneCompiler(
         if (string.IsNullOrWhiteSpace(source))
             body = "    pass";
 
+        var parameter = eventType == RuneEventType.MessageCreate
+            ? "message"
+            : "args";
+        var input = eventType switch
+        {
+            RuneEventType.MessageCreate =>
+                "Message(invocation)",
+            RuneEventType.MessageDelete =>
+                "MessageDeleteEventArgs(invocation)",
+            RuneEventType.MessageReactionAdd =>
+                "MessageReactionAddEventArgs(invocation)",
+            RuneEventType.MessageReactionRemove =>
+                "MessageReactionRemoveEventArgs(invocation)",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(eventType),
+                eventType,
+                "The gateway event is not supported.")
+        };
+
         return $$"""
 import extism
 
 
-@extism.import_fn(
-    "extism:host/user",
-    "rune_message_reply"
-)
-def _rune_message_reply(content: str):
-    ...
-
-
-class RuneUser:
+class User:
     def __init__(self, data):
         self.id = data["id"]
         self.username = data["username"]
 
 
-class RuneMessage:
+class Message:
     def __init__(self, data):
         self.id = data["id"]
         self.channel_id = data["channelId"]
         self.content = data["content"]
-        self.author = RuneUser(data["author"])
-
-    async def reply(self, content):
-        _rune_message_reply(str(content))
+        self.author = User(data["author"])
 
 
-async def __rune__(message):
+class MessageDeleteEventArgs:
+    def __init__(self, data):
+        self.channel_id = data["channelId"]
+        self.guild_id = data["guildId"]
+        self.message_id = data["messageId"]
+
+
+class MessageReactionEmoji:
+    def __init__(self, data):
+        self.animated = data["animated"]
+        self.id = data["id"]
+        self.name = data["name"]
+
+
+class MessageReactionAddEventArgs:
+    def __init__(self, data):
+        self.burst = data["burst"]
+        self.channel_id = data["channelId"]
+        self.emoji = MessageReactionEmoji(data["emoji"])
+        self.guild_id = data["guildId"]
+        self.message_author_id = data["messageAuthorId"]
+        self.message_id = data["messageId"]
+        self.type = data["type"]
+        self.user_id = data["userId"]
+
+
+class MessageReactionRemoveEventArgs:
+    def __init__(self, data):
+        self.burst = data["burst"]
+        self.channel_id = data["channelId"]
+        self.emoji = MessageReactionEmoji(data["emoji"])
+        self.guild_id = data["guildId"]
+        self.message_id = data["messageId"]
+        self.type = data["type"]
+        self.user_id = data["userId"]
+
+
+async def __rune__({{parameter}}):
 {{body}}
 
 
@@ -128,7 +176,7 @@ def handle():
 
     _run(
         __rune__(
-            RuneMessage(invocation["message"])
+            {{input}}
         )
     )
 """;

@@ -19,6 +19,7 @@ builder.Services
         options.Intents =
             GatewayIntents.Guilds |
             GatewayIntents.GuildMessages |
+            GatewayIntents.GuildMessageReactions |
             GatewayIntents.MessageContent;
     })
     .AddHttpClient()

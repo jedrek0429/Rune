@@ -13,6 +13,7 @@ public sealed class RuneService(
         ulong guildId,
         string name,
         RuneLanguage language,
+        RuneEventType eventType,
         string source,
         CancellationToken cancellationToken = default)
     {
@@ -23,6 +24,7 @@ public sealed class RuneService(
         var compiler = compilerRegistry.Get(language);
 
         var compiled = await compiler.CompileAsync(
+            eventType,
             source,
             cancellationToken);
 
@@ -31,7 +33,7 @@ public sealed class RuneService(
             guildId,
             name,
             language,
-            RuneEventType.MessageCreate,
+            eventType,
             source,
             compiled.Wasm,
             true);
@@ -52,6 +54,7 @@ public sealed class RuneService(
         var compiler = compilerRegistry.Get(language);
 
         var compiled = await compiler.CompileAsync(
+            current.EventType,
             source,
             cancellationToken);
 

@@ -27,6 +27,7 @@ public sealed class RuneCommand(
         "Register a rune")]
     public async Task RegisterAsync(
         string name,
+        RuneEventType @event,
         Attachment file)
     {
         await DeferAsync();
@@ -76,6 +77,7 @@ public sealed class RuneCommand(
                     guildId,
                     name,
                     upload.Language!.Value,
+                    @event,
                     upload.Source!);
 
             await FinishAsync(

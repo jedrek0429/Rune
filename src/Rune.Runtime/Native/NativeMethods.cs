@@ -42,16 +42,17 @@ internal static partial class NativeMethods
         EntryPoint = "rune_runtime_load_component")]
     internal static unsafe partial int LoadComponent(
         nint runtime,
+        uint eventType,
         byte* componentData,
         nuint componentLength);
 
     [LibraryImport(
         LibraryName,
-        EntryPoint = "rune_runtime_invoke_message_create")]
-    internal static unsafe partial int InvokeMessageCreate(
+        EntryPoint = "rune_runtime_invoke")]
+    internal static unsafe partial int Invoke(
         nint runtime,
-        byte* authorData,
-        nuint authorLength,
+        byte* invocationData,
+        nuint invocationLength,
         out NativeActionList actions,
         out NativeBuffer error);
 
