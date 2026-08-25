@@ -21,6 +21,18 @@ const INVOCATION_MEMORY_BYTES: usize = 16 * 1024 * 1024;
 const INVOCATION_MAX_ACTIONS: usize = 16;
 const INVOCATION_MAX_REPLY_BYTES: usize = 8 * 1024;
 const INVOCATION_MAX_OUTPUT_BYTES: usize = 64 * 1024;
+const APPROVED_WASI_IMPORTS: &[&str] = &[
+    "wasi:cli/environment",
+    "wasi:cli/exit",
+    "wasi:cli/stderr",
+    "wasi:cli/stdin",
+    "wasi:cli/stdout",
+    "wasi:filesystem/preopens",
+    "wasi:filesystem/types",
+    "wasi:io/error",
+    "wasi:io/poll",
+    "wasi:io/streams",
+];
 
 mod bindings {
     wasmtime::component::bindgen!({
@@ -235,6 +247,7 @@ pub unsafe extern "C" fn rune_runtime_load_component(
         let bytes = unsafe { bytes_from_raw(component_data, component_len) }
             .ok_or(STATUS_INVALID_ARGUMENT)?;
         let component = Component::new(&runtime.engine, bytes).map_err(|_| STATUS_RUNTIME_ERROR)?;
+        validate_component(&runtime.engine, &component).map_err(|_| STATUS_RUNTIME_ERROR)?;
         let mut loaded = runtime.component.lock().map_err(|_| STATUS_RUNTIME_ERROR)?;
         *loaded = Some(component);
         Ok(())
@@ -357,10 +370,7 @@ unsafe fn invoke_message_create(
         .clone()
         .ok_or_else(|| NativeFailure::runtime("no component is loaded"))?;
 
-    let mut linker = Linker::new(&runtime.engine);
-    bindings::MessageCreateRune::add_to_linker::<_, HasSelf<_>>(&mut linker, |state| state)
-        .map_err(NativeFailure::runtime)?;
-    wasmtime_wasi::p2::add_to_linker_sync(&mut linker).map_err(NativeFailure::runtime)?;
+    let linker = component_linker(&runtime.engine).map_err(NativeFailure::runtime)?;
 
     let mut store = Store::new(&runtime.engine, InvocationState::new());
     store.limiter(|state| &mut state.limits);
@@ -379,6 +389,58 @@ unsafe fn invoke_message_create(
 
     let replies = mem::take(&mut store.data_mut().replies);
     Ok(RuneActionList::from_replies(replies))
+}
+
+fn validate_component(engine: &Engine, component: &Component) -> Result<(), wasmtime::Error> {
+    if !component
+        .component_type()
+        .imports(engine)
+        .all(|(name, _)| is_approved_import(name))
+    {
+        return Err(wasmtime::Error::msg(
+            "the component declares an unapproved import",
+        ));
+    }
+
+    component_linker(engine)?.instantiate_pre(component)?;
+    Ok(())
+}
+
+fn is_approved_import(name: &str) -> bool {
+    if name == "reply" {
+        return true;
+    }
+
+    let Some((interface, version)) = name.rsplit_once('@') else {
+        return false;
+    };
+
+    APPROVED_WASI_IMPORTS.contains(&interface) && is_wasi_preview_two_version(version)
+}
+
+fn is_wasi_preview_two_version(version: &str) -> bool {
+    let mut parts = version.split('.');
+    if parts.next() != Some("0") || parts.next() != Some("2") {
+        return false;
+    }
+
+    let Some(patch) = parts.next() else {
+        return false;
+    };
+
+    parts.next().is_none()
+        && patch
+            .split_once('-')
+            .map_or(patch, |(number, _)| number)
+            .parse::<u64>()
+            .is_ok()
+}
+
+fn component_linker(engine: &Engine) -> Result<Linker<InvocationState>, wasmtime::Error> {
+    let mut linker = Linker::new(engine);
+    bindings::MessageCreateRune::add_to_linker::<_, HasSelf<_>>(&mut linker, |state| state)?;
+    wasmtime_wasi::p2::add_to_linker_sync(&mut linker)?;
+    Ok(linker)
 }
 
 fn ffi_status(operation: impl FnOnce() -> Result<(), i32>) -> i32 {
