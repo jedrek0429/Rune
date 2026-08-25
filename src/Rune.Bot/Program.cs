@@ -57,10 +57,10 @@ builder.Services
                 "generated");
 
         options.JavaScriptTimeout =
-            TimeSpan.FromSeconds(30);
+            TimeSpan.FromMinutes(2);
 
         options.PythonTimeout =
-            TimeSpan.FromSeconds(30);
+            TimeSpan.FromMinutes(2);
 
         options.RustTimeout =
             TimeSpan.FromMinutes(2);
