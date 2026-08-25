@@ -3,10 +3,10 @@ namespace Rune.Runtime.Compilation;
 public sealed class RuneCompilationOptions
 {
     public string JavaScriptCompiler { get; set; } =
-        "extism-js";
+        "jco";
 
     public string PythonCompiler { get; set; } =
-        "extism-py";
+        "componentize-py";
 
     public string RustCompiler { get; set; } =
         "cargo";

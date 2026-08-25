@@ -247,6 +247,14 @@ public static class RuneApiEmitter
     private static string EmitRust(RuneApiModel model)
     {
         var text = new StringBuilder(Header);
+        text.Append("\n// Canonical NetCord member projections provided by wit-bindgen:\n");
+        foreach (var type in model.Types)
+        {
+            foreach (var member in type.Members)
+            {
+                text.Append($"// {type.Name}.{RustMember(member.Name)} => {member.CanonicalId}\n");
+            }
+        }
         text.Append("\n#[allow(unused_imports)]\n");
         text.Append("pub use crate::bindings::rune::api::types::{\n");
         foreach (var type in model.Types)

@@ -1,7 +1,7 @@
+using Rune.Core.Invocations;
 using Rune.Core.Runes;
 using Rune.Runtime.Compilation;
-using Rune.Runtime.Exceptions;
-using Rune.Runtime.Wasm;
+using Rune.Runtime.Native;
 using Xunit;
 
 namespace Rune.Runtime.Tests;
@@ -13,13 +13,13 @@ public sealed class EventRuneRegistrationTests
     [InlineData(RuneEventType.MessageDelete)]
     [InlineData(RuneEventType.MessageReactionAdd)]
     [InlineData(RuneEventType.MessageReactionRemove)]
-    public async Task Registration_compiles_and_stores_selected_event(
+    public async Task Registration_compiles_loads_and_stores_selected_event(
         RuneEventType eventType)
     {
         var registry = new RuneRegistry();
         var compiler = new RecordingCompiler();
-        await using var executor = CreateExecutor();
-        var service = CreateService(registry, compiler, executor);
+        var runtime = new RecordingRuntime();
+        var service = CreateService(registry, compiler, runtime);
 
         var rune = await service.RegisterAsync(
             42,
@@ -30,141 +30,101 @@ public sealed class EventRuneRegistrationTests
 
         Assert.Equal(eventType, rune.EventType);
         Assert.Equal(eventType, compiler.LastEventType);
+        var load = Assert.Single(runtime.Loads);
+        Assert.Equal(rune.Id, load.Id);
+        Assert.Equal(eventType, load.Event);
+        Assert.Equal("compiled"u8.ToArray(), load.Component);
         Assert.Same(rune, registry.Get(42, "events"));
     }
 
     [Fact]
-    public async Task Update_compiles_for_and_preserves_registered_event()
+    public async Task Failed_native_validation_does_not_register_rune()
     {
         var registry = new RuneRegistry();
-        var compiler = new RecordingCompiler();
-        await using var executor = CreateExecutor();
-        var service = CreateService(registry, compiler, executor);
+        var runtime = new RecordingRuntime
+        {
+            LoadFailure = new RuneNativeException("invalid component")
+        };
+        var service = CreateService(registry, new RecordingCompiler(), runtime);
+
+        await Assert.ThrowsAsync<RuneNativeException>(
+            async () => await service.RegisterAsync(
+                42,
+                "broken",
+                RuneLanguage.JavaScript,
+                RuneEventType.MessageCreate,
+                "source"));
+
+        Assert.Null(registry.Get(42, "broken"));
+    }
+
+    [Fact]
+    public async Task Failed_update_preserves_registered_rune_and_loaded_component()
+    {
+        var registry = new RuneRegistry();
+        var runtime = new RecordingRuntime();
+        var service = CreateService(registry, new RecordingCompiler(), runtime);
         var current = await service.RegisterAsync(
             42,
             "reactions",
             RuneLanguage.JavaScript,
             RuneEventType.MessageReactionAdd,
             "old source");
+        runtime.LoadFailure = new RuneNativeException("invalid replacement");
 
-        var updated = await service.UpdateAsync(
-            current,
-            RuneLanguage.JavaScript,
-            "new source");
+        await Assert.ThrowsAsync<RuneNativeException>(
+            async () => await service.UpdateAsync(
+                current,
+                RuneLanguage.JavaScript,
+                "new source"));
 
-        Assert.Equal(
-            RuneEventType.MessageReactionAdd,
-            compiler.LastEventType);
-        Assert.Equal(current.EventType, updated.EventType);
-        Assert.Equal("new source", updated.Source);
+        Assert.Same(current, registry.Get(42, "reactions"));
+        Assert.Single(runtime.Loaded);
+        Assert.Equal(current.Wasm, runtime.Loaded[current.Id]);
     }
 
     [Fact]
-    public async Task Failed_update_leaves_registered_rune_unchanged()
+    public async Task Disable_remove_and_enable_drive_only_selected_native_component()
     {
         var registry = new RuneRegistry();
-        var compiler = new RecordingCompiler();
-        await using var executor = CreateExecutor();
-        var service = CreateService(registry, compiler, executor);
-        var current = await service.RegisterAsync(
+        var runtime = new RecordingRuntime();
+        var service = CreateService(registry, new RecordingCompiler(), runtime);
+        var first = await service.RegisterAsync(
             42,
-            "deletions",
+            "first",
+            RuneLanguage.JavaScript,
+            RuneEventType.MessageCreate,
+            "source");
+        var second = await service.RegisterAsync(
+            42,
+            "second",
             RuneLanguage.JavaScript,
             RuneEventType.MessageDelete,
-            "working source");
-        compiler.Failure = new RuneCompilationException("rejected");
+            "source");
 
-        await Assert.ThrowsAsync<RuneCompilationException>(
-            async () =>
-            {
-                _ = await service.UpdateAsync(
-                    current,
-                    RuneLanguage.JavaScript,
-                    "broken source");
-            });
+        await service.SetEnabledAsync(42, "first", false);
+        Assert.DoesNotContain(first.Id, runtime.Loaded.Keys);
+        Assert.Contains(second.Id, runtime.Loaded.Keys);
 
-        Assert.Same(current, registry.Get(42, "deletions"));
-    }
+        await service.SetEnabledAsync(42, "first", true);
+        Assert.Contains(first.Id, runtime.Loaded.Keys);
 
-    [Fact]
-    public void Registry_selects_only_enabled_runes_for_guild_and_event()
-    {
-        var registry = new RuneRegistry();
-        var selected = Rune(
-            42,
-            "selected",
-            RuneEventType.MessageReactionRemove,
-            enabled: true);
-
-        registry.Add(selected);
-        registry.Add(Rune(
-            42,
-            "wrong-event",
-            RuneEventType.MessageCreate,
-            enabled: true));
-        registry.Add(Rune(
-            7,
-            "wrong-guild",
-            RuneEventType.MessageReactionRemove,
-            enabled: true));
-        registry.Add(Rune(
-            42,
-            "disabled",
-            RuneEventType.MessageReactionRemove,
-            enabled: false));
-
-        var runes = registry.GetEventRunes(
-            42,
-            RuneEventType.MessageReactionRemove);
-
-        Assert.Collection(
-            runes,
-            rune => Assert.Same(selected, rune));
+        await service.RemoveAsync(42, "second");
+        Assert.Contains(first.Id, runtime.Loaded.Keys);
+        Assert.DoesNotContain(second.Id, runtime.Loaded.Keys);
+        Assert.Null(registry.Get(42, "second"));
     }
 
     private static RuneService CreateService(
         RuneRegistry registry,
         ILanguageCompiler compiler,
-        RuneExecutor executor)
-    {
-        return new RuneService(
-            registry,
-            new CompilerRegistry([compiler]),
-            executor);
-    }
-
-    private static RuneExecutor CreateExecutor()
-    {
-        var options = new RuneRuntimeOptions();
-        return new RuneExecutor(
-            new RuneWasmCache(options),
-            options);
-    }
-
-    private static RegisteredRune Rune(
-        ulong guildId,
-        string name,
-        RuneEventType eventType,
-        bool enabled)
-    {
-        return new RegisteredRune(
-            Guid.NewGuid(),
-            guildId,
-            name,
-            RuneLanguage.JavaScript,
-            eventType,
-            "source",
-            [0],
-            enabled);
-    }
+        IRuneComponentRuntime runtime) =>
+        new(registry, new CompilerRegistry([compiler]), runtime);
 
     private sealed class RecordingCompiler : ILanguageCompiler
     {
         public RuneLanguage Language => RuneLanguage.JavaScript;
-
         public RuneEventType? LastEventType { get; private set; }
-
-        public Exception? Failure { get; set; }
 
         public ValueTask<CompiledRune> CompileAsync(
             RuneEventType eventType,
@@ -172,12 +132,33 @@ public sealed class EventRuneRegistrationTests
             CancellationToken cancellationToken = default)
         {
             LastEventType = eventType;
-
-            if (Failure is not null)
-                return ValueTask.FromException<CompiledRune>(Failure);
-
             return ValueTask.FromResult(
-                new CompiledRune([1, 2, 3], []));
+                new CompiledRune("compiled"u8.ToArray(), [], eventType, "test"));
         }
+    }
+
+    private sealed class RecordingRuntime : IRuneComponentRuntime
+    {
+        public List<(Guid Id, RuneEventType Event, byte[] Component)> Loads { get; } = [];
+        public Dictionary<Guid, byte[]> Loaded { get; } = [];
+        public Exception? LoadFailure { get; set; }
+
+        public void LoadComponent(
+            Guid runeId,
+            RuneEventType eventType,
+            ReadOnlySpan<byte> component)
+        {
+            Loads.Add((runeId, eventType, component.ToArray()));
+            if (LoadFailure is not null)
+                throw LoadFailure;
+            Loaded[runeId] = component.ToArray();
+        }
+
+        public bool RemoveComponent(Guid runeId) => Loaded.Remove(runeId);
+
+        public RuneInvocationResult Invoke(
+            Guid runeId,
+            EventRuneInvocation invocation) =>
+            throw new NotSupportedException();
     }
 }

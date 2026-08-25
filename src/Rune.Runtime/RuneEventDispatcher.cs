@@ -1,76 +1,65 @@
 using System.Text.Json;
-
 using Rune.Core.Invocations;
 using Rune.Core.Runes;
-using Rune.Runtime.Exceptions;
-using Rune.Runtime.Wasm;
+using Rune.Runtime.Native;
 
 namespace Rune.Runtime;
 
 public sealed class RuneEventDispatcher(
     RuneRegistry registry,
-    RuneExecutor executor,
+    IRuneComponentRuntime runtime,
     IRuneHostRequestHandler hostRequestHandler)
 {
-    public async ValueTask<IReadOnlyList<RuneFailure>>
-        DispatchAsync(
-            EventRuneInvocation invocation,
-            CancellationToken cancellationToken = default)
+    public async ValueTask<IReadOnlyList<RuneFailure>> DispatchAsync(
+        EventRuneInvocation invocation,
+        CancellationToken cancellationToken = default)
     {
-        var failures =
-            new List<RuneFailure>();
-
-        var runes =
-            registry.GetEventRunes(
-                invocation.GuildId,
-                invocation.EventType);
-        var input = Serialize(invocation);
+        var failures = new List<RuneFailure>();
+        var runes = registry.GetEventRunes(
+            invocation.GuildId,
+            invocation.EventType);
 
         foreach (var rune in runes)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             try
             {
-                var result =
-                    await executor.ExecuteAsync(
-                        rune,
-                        invocation.InvocationId,
-                        input,
-                        cancellationToken);
+                var result = runtime.Invoke(rune.Id, invocation);
 
-                // Commit host operations only after the
-                // WASM invocation completed successfully.
-                foreach (var request in result.Requests)
+                foreach (var action in result.Actions)
                 {
+                    var request = ToHostRequest(action, invocation.InvocationId);
                     await hostRequestHandler.HandleAsync(
                         invocation,
                         request,
                         cancellationToken);
                 }
             }
-            catch (RuneTimeoutException exception)
+            catch (RuneNativeException exception)
             {
-                failures.Add(
-                    new RuneFailure(
-                        rune.Name,
-                        exception.Message));
-            }
-            catch (RuneExecutionException exception)
-            {
-                failures.Add(
-                    new RuneFailure(
-                        rune.Name,
-                        exception.Message));
-            }
-            catch (OperationCanceledException)
-                when (!cancellationToken.IsCancellationRequested)
-            {
-                // Rune was disabled/removed/updated while
-                // this event was being dispatched.
+                failures.Add(new RuneFailure(rune.Name, exception.Message));
             }
         }
 
         return failures;
     }
+
+    private static RuneHostRequest ToHostRequest(
+        RuneAction action,
+        Guid invocationId) =>
+        action.Kind switch
+        {
+            RuneActionKind.Reply => new RuneHostRequest(
+                "host_request",
+                invocationId,
+                "message.reply",
+                JsonSerializer.SerializeToElement(
+                    new { content = action.Content })),
+
+            _ => throw new InvalidOperationException(
+                $"The native runtime returned unsupported action kind '{action.Kind}'.")
+        };
 
     internal static byte[] Serialize(
         EventRuneInvocation invocation)

@@ -1,22 +1,16 @@
 using Microsoft.Extensions.DependencyInjection;
-using Rune.Runtime.Wasm;
+using Rune.Runtime.Native;
 
 namespace Rune.Runtime;
 
 public static class DependencyInjection
 {
     public static IServiceCollection AddRuneRuntime(
-        this IServiceCollection services,
-        Action<RuneRuntimeOptions>? configure = null)
+        this IServiceCollection services)
     {
-        var options = new RuneRuntimeOptions();
-
-        configure?.Invoke(options);
-
-        services
-            .AddSingleton(options)
-            .AddSingleton<RuneWasmCache>()
-            .AddSingleton<RuneExecutor>();
+        services.AddSingleton<RuneNativeRuntime>();
+        services.AddSingleton<IRuneComponentRuntime>(provider =>
+            provider.GetRequiredService<RuneNativeRuntime>());
 
         return services;
     }

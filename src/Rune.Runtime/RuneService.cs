@@ -1,13 +1,13 @@
 using Rune.Core.Runes;
 using Rune.Runtime.Compilation;
-using Rune.Runtime.Wasm;
+using Rune.Runtime.Native;
 
 namespace Rune.Runtime;
 
 public sealed class RuneService(
     RuneRegistry runeRegistry,
     CompilerRegistry compilerRegistry,
-    RuneExecutor executor)
+    IRuneComponentRuntime runtime)
 {
     public async ValueTask<RegisteredRune> RegisterAsync(
         ulong guildId,
@@ -21,12 +21,15 @@ public sealed class RuneService(
             throw new InvalidOperationException(
                 $"A rune named '{name}' already exists.");
 
-        var compiler = compilerRegistry.Get(language);
+        var compiled = await compilerRegistry
+            .Get(language)
+            .CompileAsync(eventType, source, cancellationToken);
 
-        var compiled = await compiler.CompileAsync(
-            eventType,
-            source,
-            cancellationToken);
+        if (compiled.EventType != eventType)
+        {
+            throw new InvalidOperationException(
+                "The compiled Component world does not match the registered event.");
+        }
 
         var rune = new RegisteredRune(
             Guid.NewGuid(),
@@ -38,11 +41,14 @@ public sealed class RuneService(
             compiled.Wasm,
             true);
 
-        if (!runeRegistry.Add(rune))
-            throw new InvalidOperationException(
-                $"A rune named '{name}' already exists.");
+        runtime.LoadComponent(rune.Id, eventType, compiled.Wasm);
 
-        return rune;
+        if (runeRegistry.Add(rune))
+            return rune;
+
+        runtime.RemoveComponent(rune.Id);
+        throw new InvalidOperationException(
+            $"A rune named '{name}' already exists.");
     }
 
     public async ValueTask<RegisteredRune> UpdateAsync(
@@ -51,12 +57,15 @@ public sealed class RuneService(
         string source,
         CancellationToken cancellationToken = default)
     {
-        var compiler = compilerRegistry.Get(language);
+        var compiled = await compilerRegistry
+            .Get(language)
+            .CompileAsync(current.EventType, source, cancellationToken);
 
-        var compiled = await compiler.CompileAsync(
-            current.EventType,
-            source,
-            cancellationToken);
+        if (compiled.EventType != current.EventType)
+        {
+            throw new InvalidOperationException(
+                "The compiled Component world does not match the registered event.");
+        }
 
         var updated = current with
         {
@@ -65,52 +74,71 @@ public sealed class RuneService(
             Wasm = compiled.Wasm
         };
 
-        await executor.StopAsync(current.Id);
+        if (updated.Enabled)
+        {
+            // Native replacement validates before atomically swapping the Component.
+            runtime.LoadComponent(updated.Id, updated.EventType, updated.Wasm);
+        }
 
         runeRegistry.Replace(updated);
-
-        if (updated.Enabled)
-            executor.Resume(updated.Id);
-
         return updated;
     }
 
-    public async ValueTask<RegisteredRune?> RemoveAsync(
+    public ValueTask<RegisteredRune?> RemoveAsync(
         ulong guildId,
         string name)
     {
-        if (!runeRegistry.Remove(
-                guildId,
-                name,
-                out var rune))
+        var current = runeRegistry.Get(guildId, name);
+        if (current is null)
+            return ValueTask.FromResult<RegisteredRune?>(null);
+
+        if (current.Enabled && !runtime.RemoveComponent(current.Id))
         {
-            return null;
+            throw new InvalidOperationException(
+                $"Rune '{current.Name}' is not loaded in the native runtime.");
         }
 
-        await executor.StopAsync(rune!.Id);
+        if (!runeRegistry.Remove(guildId, name, out var removed))
+        {
+            throw new InvalidOperationException(
+                $"Rune '{current.Name}' changed while it was being removed.");
+        }
 
-        return rune;
+        return ValueTask.FromResult(removed);
     }
 
-    public async ValueTask<RegisteredRune?> SetEnabledAsync(
+    public ValueTask<RegisteredRune?> SetEnabledAsync(
         ulong guildId,
         string name,
         bool enabled)
     {
-        if (!runeRegistry.SetEnabled(
-                guildId,
-                name,
-                enabled,
-                out var rune))
-        {
-            return null;
-        }
+        var current = runeRegistry.Get(guildId, name);
+        if (current is null)
+            return ValueTask.FromResult<RegisteredRune?>(null);
+        if (current.Enabled == enabled)
+            return ValueTask.FromResult<RegisteredRune?>(current);
 
         if (enabled)
-            executor.Resume(rune!.Id);
-        else
-            await executor.StopAsync(rune!.Id);
+        {
+            runtime.LoadComponent(current.Id, current.EventType, current.Wasm);
+        }
+        else if (!runtime.RemoveComponent(current.Id))
+        {
+            throw new InvalidOperationException(
+                $"Rune '{current.Name}' is not loaded in the native runtime.");
+        }
 
-        return rune;
+        if (!runeRegistry.SetEnabled(guildId, name, enabled, out var updated))
+        {
+            if (enabled)
+                runtime.RemoveComponent(current.Id);
+            else
+                runtime.LoadComponent(current.Id, current.EventType, current.Wasm);
+
+            throw new InvalidOperationException(
+                $"Rune '{current.Name}' changed while its state was being updated.");
+        }
+
+        return ValueTask.FromResult(updated);
     }
 }

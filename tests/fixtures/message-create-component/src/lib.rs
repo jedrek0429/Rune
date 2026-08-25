@@ -66,11 +66,7 @@ impl bindings::Guest for Component {
 
         bindings::reply(&format!(
             "{}|{}|{}|{}|{}",
-            message.id,
-            message.channel_id,
-            message.content,
-            message.author.id,
-            author_username
+            message.id, message.channel_id, message.content, message.author.id, author_username
         ));
         bindings::reply("Welcome to Rune.");
     }

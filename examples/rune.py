@@ -1,4 +1,5 @@
-def shout(value):
-    return value + "!"
-if message.author.id == 593387576317050890:
-    await message.reply(shout("you are my author"))
+if message.content == "!native-test":
+    if not isinstance(message.id, int):
+        raise RuntimeError("message.id was not projected as an integer")
+    if not isinstance(message.author.username, str):
+        raise RuntimeError("message.author.username was not projected as text")

@@ -2,6 +2,7 @@ using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
 using Microsoft.Extensions.Logging;
 
+using Rune.Bot.Api.Generated;
 using Rune.Core.Invocations;
 using Rune.Runtime;
 
@@ -18,12 +19,13 @@ public sealed class MessageDeleteHandler(
         if (args.GuildId is not ulong guildId)
             return;
 
+        var payload = NetCordRuneApi.Project(args);
         var failures = await dispatcher.DispatchAsync(
             new MessageDeleteEventRuneInvocation(
                 Guid.NewGuid(),
                 guildId,
-                args.ChannelId,
-                args.MessageId));
+                payload.ChannelId,
+                payload.MessageId));
 
         LogFailures(failures);
     }

@@ -2,6 +2,7 @@ using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
 using Microsoft.Extensions.Logging;
 
+using Rune.Bot.Api.Generated;
 using Rune.Core.Invocations;
 using Rune.Runtime;
 
@@ -18,20 +19,21 @@ public sealed class MessageReactionAddHandler(
         if (args.GuildId is not ulong guildId)
             return;
 
+        var payload = NetCordRuneApi.Project(args);
         var failures = await dispatcher.DispatchAsync(
             new MessageReactionAddEventRuneInvocation(
                 Guid.NewGuid(),
                 guildId,
-                args.ChannelId,
-                args.MessageId,
-                args.UserId,
-                args.MessageAuthorId,
+                payload.ChannelId,
+                payload.MessageId,
+                payload.UserId,
+                payload.MessageAuthorId,
                 new MessageReactionEmojiInvocation(
-                    args.Emoji.Animated,
-                    args.Emoji.Id,
-                    args.Emoji.Name),
-                args.Burst,
-                (byte)args.Type));
+                    payload.Emoji.Animated,
+                    payload.Emoji.Id,
+                    payload.Emoji.Name),
+                payload.Burst,
+                (byte)payload.Type));
 
         foreach (var failure in failures)
         {

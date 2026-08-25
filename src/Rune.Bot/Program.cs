@@ -33,21 +33,28 @@ builder.Services
     .AddSingleton<RuneUploadReader>()
     .AddRuneCompilation(options =>
     {
-        var home =
-            Environment.GetFolderPath(
-                Environment.SpecialFolder.UserProfile);
-
         options.JavaScriptCompiler =
-            Path.Combine(
-                home,
-                ".local/bin/extism-js");
+            Environment.GetEnvironmentVariable("RUNE_JCO") ??
+            "jco";
 
         options.PythonCompiler =
-            Path.Combine(
-                home,
-                ".local/bin/extism-py");
+            Environment.GetEnvironmentVariable("RUNE_COMPONENTIZE_PY") ??
+            "componentize-py";
 
-        options.RustCompiler = "cargo";
+        options.RustCompiler =
+            Environment.GetEnvironmentVariable("RUNE_CARGO") ??
+            "cargo";
+
+        options.RuneApiWitPath =
+            Path.Combine(
+                builder.Environment.ContentRootPath,
+                "wit",
+                "rune-api.wit");
+
+        options.GeneratedApiRoot =
+            Path.Combine(
+                builder.Environment.ContentRootPath,
+                "generated");
 
         options.JavaScriptTimeout =
             TimeSpan.FromSeconds(30);
@@ -63,16 +70,7 @@ builder.Services
                 Path.GetTempPath(),
                 "rune-rust-target");
     })
-    .AddRuneRuntime(options =>
-    {
-        options.ExecutionTimeout =
-            TimeSpan.FromSeconds(2);
-
-        options.MaxMemoryPages = 4096;
-        options.MaxConcurrentExecutions = 16;
-        options.MaxHostRequestsPerInvocation = 32;
-        options.MaxReplyLength = 2000;
-    })
+    .AddRuneRuntime()
     .AddSingleton<RuneEventDispatcher>()
     .AddSingleton<
         IRuneHostRequestHandler,

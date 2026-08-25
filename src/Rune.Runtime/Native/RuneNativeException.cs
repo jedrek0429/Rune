@@ -2,7 +2,7 @@ namespace Rune.Runtime.Native;
 
 public sealed class RuneNativeException : Exception
 {
-    internal RuneNativeException(string message)
+    public RuneNativeException(string message)
         : base(message)
     {
         NativeDetail = string.Empty;

@@ -68,6 +68,26 @@ public sealed class LanguageComponentCompilationTests
         Assert.DoesNotContain("rune-", exception.Message);
     }
 
+    [Theory]
+    [InlineData(RuneLanguage.JavaScript, "rune.mjs")]
+    [InlineData(RuneLanguage.Python, "rune.py")]
+    [InlineData(RuneLanguage.Rust, "showcase.rs")]
+    public async Task Message_create_example_compiles_to_a_component(
+        RuneLanguage language,
+        string fileName)
+    {
+        var compiler = CreateCompiler(language);
+        var source = await File.ReadAllTextAsync(
+            Path.Combine(Root, "examples", fileName));
+
+        var compiled = await compiler.CompileAsync(
+            RuneEventType.MessageCreate,
+            source);
+
+        Assert.NotEmpty(compiled.Wasm);
+        Assert.Equal(RuneEventType.MessageCreate, compiled.EventType);
+    }
+
     private static ILanguageCompiler CreateCompiler(RuneLanguage language)
     {
         var options = new RuneCompilationOptions

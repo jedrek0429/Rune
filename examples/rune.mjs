@@ -1,6 +1,8 @@
-if (message.content === "!ping") {
-    await message.reply("one");
-    await message.reply("two");
-    await message.reply("three");
-    await message.reply(`Hi, ${message.author.username}!`);
+if (message.content === "!native-test") {
+    if (typeof message.id !== "bigint" ||
+        typeof message.channelId !== "bigint" ||
+        typeof message.author.id !== "bigint" ||
+        typeof message.author.username !== "string") {
+        throw new Error("Rune.API projection failed");
+    }
 }

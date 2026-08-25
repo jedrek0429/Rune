@@ -6,7 +6,7 @@ using Rune.Core.Runes;
 
 namespace Rune.Runtime.Native;
 
-public sealed class RuneNativeRuntime : IDisposable
+public sealed class RuneNativeRuntime : IRuneComponentRuntime, IDisposable
 {
     private static readonly Guid LegacyRuneId =
         new("9857d586-d123-49a3-98a2-1fc65fb3c0d4");

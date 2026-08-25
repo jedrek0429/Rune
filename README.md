@@ -8,7 +8,7 @@
   A small, sandboxed scripting platform for Discord.
 </p>
 
-Rune lets you upload scripts directly through Discord and run them as isolated WebAssembly modules.
+Rune lets you upload scripts directly through Discord and run them as isolated WebAssembly Components.
 
 Runes are written in languages such as JavaScript and Python, while Rune provides a common Discord-facing API.
 
@@ -73,14 +73,15 @@ Delete and reaction runes receive `MessageDeleteEventArgs`,
 
 ## Running locally
 
-Rune currently requires the Extism JavaScript and Python compilers:
+Install the Component toolchains:
 
 ```sh
-extism-js
-extism-py
+npm install --global @bytecodealliance/jco@1.32.1
+python3 -m pip install componentize-py==0.25.0
+rustup target add wasm32-wasip2
 ```
 
-Once they are installed, start Rune with:
+Rune also requires .NET 10 and Cargo. Start it from the repository root:
 
 ```sh
 dotnet run --project src/Rune.Bot
@@ -88,4 +89,9 @@ dotnet run --project src/Rune.Bot
 
 ## Status
 
-Rune is under active development. The current implementation supports JavaScript and Python event runes compiled to WebAssembly.
+Rune is under active development. JavaScript, Python and Rust event runes compile to Components and execute through the embedded Rust/Wasmtime runtime.
+
+The files in `examples/` are native-runtime smoke tests. Register one for
+`MessageCreate`, then send `!native-test`; a successful invocation is silent,
+while a failed projection is reported by the bot. Host-backed NetCord methods
+such as `message.reply(...)` are the next implementation slice.
