@@ -278,11 +278,9 @@ public sealed class NativeRuntimeContractTests
     private static byte[] ComponentImporting(string importName)
     {
         return Encoding.UTF8.GetBytes(
-            $"""
-            (component
-                (import "{{importName}}" (type (sub resource)))
-            )
-            """);
+            "(component\n"
+            + $"    (import \"{importName}\" (type (sub resource)))\n"
+            + ")");
     }
 
     private static void AssertCleanRecovery(RuneNativeRuntime runtime)
