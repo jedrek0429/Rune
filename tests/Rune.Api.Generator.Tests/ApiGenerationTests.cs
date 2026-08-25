@@ -113,6 +113,36 @@ public sealed class ApiGenerationTests
         }
     }
 
+    [Fact]
+    public void Selected_object_properties_resolve_to_selected_Rune_API_types()
+    {
+        var model = RuneApiLoader.Load(
+            Path.Combine(Root, "api", "rune-api.yaml"));
+
+        var message = Assert.Single(
+            model.Types,
+            value => value.Name == "Message");
+
+        var author = Assert.Single(
+            message.Members,
+            value => value.Name == "Author");
+
+        Assert.Equal("User", author.Type.Name);
+        Assert.True(author.Type.IsSelectedType);
+
+        var reaction = Assert.Single(
+        model.Types,
+        value => value.Name == "MessageReactionAddEventArgs");
+
+        Assert.Equal(
+            "MessageReactionEmoji",
+            reaction.Members.Single(value => value.Name == "Emoji").Type.Name);
+
+        Assert.Equal(
+            "ReactionType",
+            reaction.Members.Single(value => value.Name == "Type").Type.Name);
+    }
+
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
