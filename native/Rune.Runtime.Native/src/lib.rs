@@ -7,7 +7,7 @@ use std::slice;
 use std::sync::Mutex;
 
 use wasmtime::component::{Component, HasSelf, Linker, ResourceTable};
-use wasmtime::{Config, Engine, Store};
+use wasmtime::{Config, Engine, Store, StoreLimits, StoreLimitsBuilder};
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
 const ABI_VERSION: u32 = 3;
@@ -17,6 +17,7 @@ const STATUS_RUNTIME_ERROR: i32 = 2;
 const STATUS_PANIC: i32 = 3;
 const ACTION_REPLY: u32 = 1;
 const INVOCATION_FUEL: u64 = 1_000_000;
+const INVOCATION_MEMORY_BYTES: usize = 16 * 1024 * 1024;
 
 mod bindings {
     wasmtime::component::bindgen!({
@@ -32,6 +33,7 @@ struct RuneRuntime {
 
 struct InvocationState {
     replies: Vec<String>,
+    limits: StoreLimits,
     wasi: WasiCtx,
     resources: ResourceTable,
 }
@@ -40,6 +42,10 @@ impl InvocationState {
     fn new() -> Self {
         Self {
             replies: Vec::new(),
+            limits: StoreLimitsBuilder::new()
+                .memory_size(INVOCATION_MEMORY_BYTES)
+                .trap_on_grow_failure(true)
+                .build(),
             wasi: WasiCtx::builder().build(),
             resources: ResourceTable::new(),
         }
@@ -315,6 +321,7 @@ unsafe fn invoke_message_create(
     wasmtime_wasi::p2::add_to_linker_sync(&mut linker).map_err(NativeFailure::runtime)?;
 
     let mut store = Store::new(&runtime.engine, InvocationState::new());
+    store.limiter(|state| &mut state.limits);
     store
         .set_fuel(INVOCATION_FUEL)
         .map_err(NativeFailure::runtime)?;
