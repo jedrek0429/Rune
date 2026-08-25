@@ -21,10 +21,10 @@ public sealed class EventInvocationSerializationTests
                 "hello from Rune"));
 
         Assert.Equal(
-            111111111111111111,
+            111111111111111111UL,
             payload.GetProperty("id").GetUInt64());
         Assert.Equal(
-            222222222222222222,
+            222222222222222222UL,
             payload.GetProperty("channelId").GetUInt64());
         Assert.Equal(
             "hello from Rune",
@@ -32,7 +32,7 @@ public sealed class EventInvocationSerializationTests
 
         var author = payload.GetProperty("author");
         Assert.Equal(
-            333333333333333333,
+            333333333333333333UL,
             author.GetProperty("id").GetUInt64());
         Assert.Equal(
             "Ada",
@@ -50,13 +50,13 @@ public sealed class EventInvocationSerializationTests
                 666666666666666666));
 
         Assert.Equal(
-            555555555555555555,
+            555555555555555555UL,
             payload.GetProperty("channelId").GetUInt64());
         Assert.Equal(
-            444444444444444444,
+            444444444444444444UL,
             payload.GetProperty("guildId").GetUInt64());
         Assert.Equal(
-            666666666666666666,
+            666666666666666666UL,
             payload.GetProperty("messageId").GetUInt64());
     }
 
@@ -80,9 +80,9 @@ public sealed class EventInvocationSerializationTests
 
         Assert.True(payload.GetProperty("burst").GetBoolean());
         Assert.Equal(
-            222222222222222223,
+            222222222222222223UL,
             payload.GetProperty("messageAuthorId").GetUInt64());
-        Assert.Equal(1, payload.GetProperty("type").GetByte());
+        Assert.Equal((byte)1, payload.GetProperty("type").GetByte());
         AssertEmoji(
             payload.GetProperty("emoji"),
             animated: true,
@@ -108,7 +108,7 @@ public sealed class EventInvocationSerializationTests
                 0));
 
         Assert.False(payload.GetProperty("burst").GetBoolean());
-        Assert.Equal(0, payload.GetProperty("type").GetByte());
+        Assert.Equal((byte)0, payload.GetProperty("type").GetByte());
         AssertEmoji(
             payload.GetProperty("emoji"),
             animated: false,

@@ -23,11 +23,17 @@ const INVOCATION_MAX_ACTIONS: usize = 16;
 const INVOCATION_MAX_REPLY_BYTES: usize = 8 * 1024;
 const INVOCATION_MAX_OUTPUT_BYTES: usize = 64 * 1024;
 const APPROVED_WASI_IMPORTS: &[&str] = &[
+    "wasi:clocks/monotonic-clock",
     "wasi:cli/environment",
     "wasi:cli/exit",
     "wasi:cli/stderr",
     "wasi:cli/stdin",
     "wasi:cli/stdout",
+    "wasi:cli/terminal-input",
+    "wasi:cli/terminal-output",
+    "wasi:cli/terminal-stderr",
+    "wasi:cli/terminal-stdin",
+    "wasi:cli/terminal-stdout",
     "wasi:filesystem/preopens",
     "wasi:filesystem/types",
     "wasi:io/error",
@@ -65,6 +71,7 @@ mod message_reaction_remove_bindings {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u32)]
+#[allow(clippy::enum_variant_names)]
 enum RuneEventType {
     MessageCreate = 0,
     MessageDelete = 1,
@@ -163,11 +170,15 @@ impl message_create_bindings::MessageCreateRuneImports for InvocationState {
     }
 }
 
+impl message_create_bindings::rune::api::types::Host for InvocationState {}
+
 impl message_delete_bindings::MessageDeleteRuneImports for InvocationState {
     fn reply(&mut self, content: String) {
         self.record_reply(content);
     }
 }
+
+impl message_delete_bindings::rune::api::types::Host for InvocationState {}
 
 impl message_reaction_add_bindings::MessageReactionAddRuneImports for InvocationState {
     fn reply(&mut self, content: String) {
@@ -175,11 +186,15 @@ impl message_reaction_add_bindings::MessageReactionAddRuneImports for Invocation
     }
 }
 
+impl message_reaction_add_bindings::rune::api::types::Host for InvocationState {}
+
 impl message_reaction_remove_bindings::MessageReactionRemoveRuneImports for InvocationState {
     fn reply(&mut self, content: String) {
         self.record_reply(content);
     }
 }
+
+impl message_reaction_remove_bindings::rune::api::types::Host for InvocationState {}
 
 impl WasiView for InvocationState {
     fn ctx(&mut self) -> WasiCtxView<'_> {
@@ -314,7 +329,8 @@ pub unsafe extern "C" fn rune_runtime_load_component(
 ) -> i32 {
     ffi_status(|| {
         let runtime = unsafe { runtime_ref(runtime) }.ok_or(STATUS_INVALID_ARGUMENT)?;
-        let event_type = RuneEventType::try_from(event_type).map_err(|()| STATUS_INVALID_ARGUMENT)?;
+        let event_type =
+            RuneEventType::try_from(event_type).map_err(|()| STATUS_INVALID_ARGUMENT)?;
         let bytes = unsafe { bytes_from_raw(component_data, component_len) }
             .ok_or(STATUS_INVALID_ARGUMENT)?;
         let component = Component::new(&runtime.engine, bytes).map_err(|_| STATUS_RUNTIME_ERROR)?;
@@ -445,6 +461,7 @@ struct MessageInput {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(clippy::struct_field_names)]
 struct MessageDeleteInput {
     channel_id: u64,
     guild_id: Option<u64>,
@@ -501,8 +518,8 @@ unsafe fn invoke(
         .map_err(|_| NativeFailure::runtime("the component lock is poisoned"))?
         .clone()
         .ok_or_else(|| NativeFailure::runtime("no component is loaded"))?;
-    let linker = component_linker(&runtime.engine, loaded.event_type)
-        .map_err(NativeFailure::runtime)?;
+    let linker =
+        component_linker(&runtime.engine, loaded.event_type).map_err(NativeFailure::runtime)?;
     let mut store = Store::new(&runtime.engine, InvocationState::new());
     store.limiter(|state| &mut state.limits);
     store
@@ -538,8 +555,7 @@ fn invoke_message_create(
     linker: &Linker<InvocationState>,
     invocation: &[u8],
 ) -> Result<(), NativeFailure> {
-    let input: MessageInput =
-        serde_json::from_slice(invocation).map_err(NativeFailure::runtime)?;
+    let input: MessageInput = serde_json::from_slice(invocation).map_err(NativeFailure::runtime)?;
     let message = message_create_bindings::rune::api::types::Message {
         id: input.id,
         channel_id: input.channel_id,
@@ -549,12 +565,9 @@ fn invoke_message_create(
             username: input.author.username,
         },
     };
-    let bindings = message_create_bindings::MessageCreateRune::instantiate(
-        &mut *store,
-        component,
-        linker,
-    )
-    .map_err(NativeFailure::runtime)?;
+    let bindings =
+        message_create_bindings::MessageCreateRune::instantiate(&mut *store, component, linker)
+            .map_err(NativeFailure::runtime)?;
     bindings
         .call_handle(&mut *store, &message)
         .map_err(NativeFailure::runtime)
@@ -573,14 +586,11 @@ fn invoke_message_delete(
         guild_id: input.guild_id,
         message_id: input.message_id,
     };
-    let bindings = message_delete_bindings::MessageDeleteRune::instantiate(
-        &mut *store,
-        component,
-        linker,
-    )
-    .map_err(NativeFailure::runtime)?;
+    let bindings =
+        message_delete_bindings::MessageDeleteRune::instantiate(&mut *store, component, linker)
+            .map_err(NativeFailure::runtime)?;
     bindings
-        .call_handle(&mut *store, &args)
+        .call_handle(&mut *store, args)
         .map_err(NativeFailure::runtime)
 }
 
@@ -643,20 +653,19 @@ fn invoke_message_reaction_remove(
             )))
         }
     };
-    let args =
-        message_reaction_remove_bindings::rune::api::types::MessageReactionRemoveEventArgs {
-            burst: input.burst,
-            channel_id: input.channel_id,
-            emoji: message_reaction_remove_bindings::rune::api::types::MessageReactionEmoji {
-                animated: input.emoji.animated,
-                id: input.emoji.id,
-                name: input.emoji.name,
-            },
-            guild_id: input.guild_id,
-            message_id: input.message_id,
-            type_: reaction_type,
-            user_id: input.user_id,
-        };
+    let args = message_reaction_remove_bindings::rune::api::types::MessageReactionRemoveEventArgs {
+        burst: input.burst,
+        channel_id: input.channel_id,
+        emoji: message_reaction_remove_bindings::rune::api::types::MessageReactionEmoji {
+            animated: input.emoji.animated,
+            id: input.emoji.id,
+            name: input.emoji.name,
+        },
+        guild_id: input.guild_id,
+        message_id: input.message_id,
+        type_: reaction_type,
+        user_id: input.user_id,
+    };
     let bindings = message_reaction_remove_bindings::MessageReactionRemoveRune::instantiate(
         &mut *store,
         component,
@@ -684,12 +693,27 @@ fn validate_component(
         ));
     }
 
-    component_linker(engine, event_type)?.instantiate_pre(component)?;
+    let linker = component_linker(engine, event_type)?;
+    let instance = linker.instantiate_pre(component)?;
+    match event_type {
+        RuneEventType::MessageCreate => {
+            message_create_bindings::MessageCreateRunePre::new(instance)?;
+        }
+        RuneEventType::MessageDelete => {
+            message_delete_bindings::MessageDeleteRunePre::new(instance)?;
+        }
+        RuneEventType::MessageReactionAdd => {
+            message_reaction_add_bindings::MessageReactionAddRunePre::new(instance)?;
+        }
+        RuneEventType::MessageReactionRemove => {
+            message_reaction_remove_bindings::MessageReactionRemoveRunePre::new(instance)?;
+        }
+    }
     Ok(())
 }
 
 fn is_approved_import(name: &str) -> bool {
-    if name == "reply" {
+    if matches!(name, "reply" | "rune:api/types@0.1.0") {
         return true;
     }
 
