@@ -31,6 +31,37 @@ impl bindings::Guest for Component {
             return;
         }
 
+        if author_username == "output-boundary" {
+            bindings::reply(&"x".repeat(8 * 1024));
+            for _ in 0..14 {
+                bindings::reply(&"x".repeat(4 * 1024));
+            }
+            bindings::reply("");
+            return;
+        }
+
+        if author_username == "action-limit" {
+            bindings::reply("discard me");
+            for _ in 0..16 {
+                bindings::reply("");
+            }
+            return;
+        }
+
+        if author_username == "reply-size-limit" {
+            bindings::reply("discard me");
+            bindings::reply(&"x".repeat(8 * 1024 + 1));
+            return;
+        }
+
+        if author_username == "total-output-limit" {
+            bindings::reply("discard me");
+            for _ in 0..8 {
+                bindings::reply(&"x".repeat(8 * 1024));
+            }
+            return;
+        }
+
         bindings::reply(&format!("Hello, {author_username}!"));
         bindings::reply("Welcome to Rune.");
     }
