@@ -1,5 +1,8 @@
 [workspace]
-members = ["native/Rune.Runtime.Native"]
+members = [
+    "native/Rune.Runtime.JavaScript",
+    "native/Rune.Runtime.Native",
+]
 exclude = [
     "tests/fixtures/message-create-component",
     "tests/fixtures/message-delete-component",
