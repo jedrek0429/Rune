@@ -202,6 +202,89 @@ public sealed class NativeRuntimeContractTests
         AssertCleanRecovery(runtime);
     }
 
+    [Fact]
+    public void Supported_component_imports_are_accepted()
+    {
+        var componentPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "message_create_component.wasm");
+
+        using var runtime = new RuneNativeRuntime();
+
+        runtime.LoadComponent(File.ReadAllBytes(componentPath));
+        var result = runtime.InvokeMessageCreate("Ada");
+
+        Assert.Equal(2, result.Actions.Count);
+    }
+
+    [Fact]
+    public void Unknown_host_import_is_rejected_during_load()
+    {
+        using var runtime = new RuneNativeRuntime();
+
+        var exception = Assert.Throws<RuneNativeException>(
+            () => runtime.LoadComponent(
+                ComponentImporting("example:forbidden/host@1.0.0")));
+
+        Assert.Equal(2, exception.NativeStatus);
+    }
+
+    [Fact]
+    public void Unapproved_rune_import_is_rejected_during_load()
+    {
+        using var runtime = new RuneNativeRuntime();
+
+        var exception = Assert.Throws<RuneNativeException>(
+            () => runtime.LoadComponent(
+                ComponentImporting("rune:spike/administration@0.1.0")));
+
+        Assert.Equal(2, exception.NativeStatus);
+    }
+
+    [Fact]
+    public void Socket_import_is_rejected_during_load()
+    {
+        using var runtime = new RuneNativeRuntime();
+
+        var exception = Assert.Throws<RuneNativeException>(
+            () => runtime.LoadComponent(
+                ComponentImporting("wasi:sockets/tcp@0.2.6")));
+
+        Assert.Equal(2, exception.NativeStatus);
+    }
+
+    [Fact]
+    public void Rejected_component_does_not_replace_loaded_component()
+    {
+        var componentPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "message_create_component.wasm");
+
+        using var runtime = new RuneNativeRuntime();
+        runtime.LoadComponent(File.ReadAllBytes(componentPath));
+
+        Assert.Throws<RuneNativeException>(
+            () => runtime.LoadComponent(
+                ComponentImporting("example:forbidden/host@1.0.0")));
+
+        var result = runtime.InvokeMessageCreate("Ada");
+
+        Assert.Collection(
+            result.Actions,
+            action => Assert.Equal("Hello, Ada!", action.Content),
+            action => Assert.Equal("Welcome to Rune.", action.Content));
+    }
+
+    private static byte[] ComponentImporting(string importName)
+    {
+        return Encoding.UTF8.GetBytes(
+            $"""
+            (component
+                (import "{{importName}}" (type (sub resource)))
+            )
+            """);
+    }
+
     private static void AssertCleanRecovery(RuneNativeRuntime runtime)
     {
         var recovered = runtime.InvokeMessageCreate("Ada");
