@@ -5,7 +5,11 @@
     <Project Path="src/Rune.Runtime/Rune.Runtime.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Rune.Api.Generator.Tests/Rune.Api.Generator.Tests.csproj" />
     <Project Path="tests/Rune.Runtime.Tests/Rune.Runtime.Tests.csproj" />
     <Project Path="tests/Rune.Runtime.Native.IntegrationTests/Rune.Runtime.Native.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Rune.Api.Generator/Rune.Api.Generator.csproj" />
   </Folder>
 </Solution>

@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.Json;
 using Rune.Core.Runes;
 
 namespace Rune.Runtime.Compilation.Compilers;
@@ -26,25 +25,32 @@ public sealed class JavaScriptRuneCompiler(
         try
         {
             var input = Path.Combine(directory, "rune.js");
-            var declarations = Path.Combine(directory, "rune.d.ts");
             var output = Path.Combine(directory, "rune.wasm");
 
             await File.WriteAllTextAsync(
                 input,
-                BuildWrapper(eventType, source),
-                Encoding.UTF8,
-                cancellationToken);
-
-            await File.WriteAllTextAsync(
-                declarations,
-                Declarations,
+                await BuildWrapperAsync(
+                    options.GeneratedApiRoot,
+                    eventType,
+                    source,
+                    cancellationToken),
                 Encoding.UTF8,
                 cancellationToken);
 
             var result = await processRunner.RunAsync(
                 options.JavaScriptCompiler,
                 directory,
-                [input, "-i", declarations, "-o", output],
+                [
+                    "componentize",
+                    input,
+                    "--wit",
+                    options.RuneApiWitPath,
+                    "--world-name",
+                    World(eventType),
+                    "--out",
+                    output,
+                    "--disable=all"
+                ],
                 options.JavaScriptTimeout,
                 cancellationToken);
 
@@ -58,6 +64,7 @@ public sealed class JavaScriptRuneCompiler(
 
             return await wasmPipeline.ProcessAsync(
                 output,
+                eventType,
                 diagnostics,
                 cancellationToken);
         }
@@ -73,110 +80,59 @@ public sealed class JavaScriptRuneCompiler(
         }
     }
 
-    private static string BuildWrapper(
+    private static async ValueTask<string> BuildWrapperAsync(
+        string generatedApiRoot,
         RuneEventType eventType,
-        string source)
+        string source,
+        CancellationToken cancellationToken)
     {
-        var quotedSource = JsonSerializer.Serialize(source);
         var parameter = eventType == RuneEventType.MessageCreate
             ? "message"
             : "args";
-        var input = eventType switch
+        var payload = eventType switch
         {
-            RuneEventType.MessageCreate =>
-                "createMessage(invocation)",
-            RuneEventType.MessageDelete =>
-                "createMessageDeleteEventArgs(invocation)",
-            RuneEventType.MessageReactionAdd =>
-                "createMessageReactionAddEventArgs(invocation)",
-            RuneEventType.MessageReactionRemove =>
-                "createMessageReactionRemoveEventArgs(invocation)",
+            RuneEventType.MessageCreate => "Message",
+            RuneEventType.MessageDelete => "MessageDeleteEventArgs",
+            RuneEventType.MessageReactionAdd => "MessageReactionAddEventArgs",
+            RuneEventType.MessageReactionRemove => "MessageReactionRemoveEventArgs",
             _ => throw new ArgumentOutOfRangeException(
                 nameof(eventType),
                 eventType,
                 "The gateway event is not supported.")
         };
+        var facade = await File.ReadAllTextAsync(
+            Path.Combine(
+                generatedApiRoot,
+                "javascript",
+                "rune-api.js"),
+            cancellationToken);
 
         return $$"""
-const AsyncFunction =
-    Object.getPrototypeOf(async function () {}).constructor;
+{{facade}}
 
-const __rune =
-    new AsyncFunction("{{parameter}}", {{quotedSource}});
-
-function createUser(data) {
-    return {
-        id: data.id,
-        username: data.username
-    };
+export function handle(value) {
+    const {{parameter}} = new {{payload}}(value);
+{{Indent(source, 4)}}
 }
-
-function createMessage(data) {
-    return {
-        id: data.id,
-        channelId: data.channelId,
-        content: data.content,
-        author: createUser(data.author)
-    };
-}
-
-function createMessageDeleteEventArgs(data) {
-    return {
-        channelId: data.channelId,
-        guildId: data.guildId,
-        messageId: data.messageId
-    };
-}
-
-function createMessageReactionEmoji(data) {
-    return {
-        animated: data.animated,
-        id: data.id,
-        name: data.name
-    };
-}
-
-function createMessageReactionAddEventArgs(data) {
-    return {
-        burst: data.burst,
-        channelId: data.channelId,
-        emoji: createMessageReactionEmoji(data.emoji),
-        guildId: data.guildId,
-        messageAuthorId: data.messageAuthorId,
-        messageId: data.messageId,
-        type: data.type,
-        userId: data.userId
-    };
-}
-
-function createMessageReactionRemoveEventArgs(data) {
-    return {
-        burst: data.burst,
-        channelId: data.channelId,
-        emoji: createMessageReactionEmoji(data.emoji),
-        guildId: data.guildId,
-        messageId: data.messageId,
-        type: data.type,
-        userId: data.userId
-    };
-}
-
-async function handle() {
-    const invocation =
-        JSON.parse(Host.inputString());
-
-    await __rune({{input}});
-}
-
-module.exports = {
-    handle
-};
 """;
     }
 
-    private const string Declarations = """
-declare module "main" {
-    export function handle(): I32;
-}
-""";
+    private static string World(RuneEventType eventType) =>
+        eventType switch
+        {
+            RuneEventType.MessageCreate => "message-create-rune",
+            RuneEventType.MessageDelete => "message-delete-rune",
+            RuneEventType.MessageReactionAdd => "message-reaction-add-rune",
+            RuneEventType.MessageReactionRemove => "message-reaction-remove-rune",
+            _ => throw new ArgumentOutOfRangeException(nameof(eventType))
+        };
+
+    private static string Indent(string source, int spaces)
+    {
+        var prefix = new string(' ', spaces);
+        var body = string.IsNullOrWhiteSpace(source) ? "void 0;" : source;
+        return string.Join(
+            '\n',
+            body.Replace("\r\n", "\n").Split('\n').Select(line => prefix + line));
+    }
 }

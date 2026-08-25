@@ -1,21 +1,23 @@
+use std::collections::HashMap;
 use std::ffi::c_void;
 use std::fmt;
 use std::mem;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
 use std::slice;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use serde::Deserialize;
 use wasmtime::component::{Component, HasSelf, Linker, ResourceTable};
 use wasmtime::{Config, Engine, Store, StoreLimits, StoreLimitsBuilder};
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
-const ABI_VERSION: u32 = 4;
+const ABI_VERSION: u32 = 5;
 const STATUS_OK: i32 = 0;
 const STATUS_INVALID_ARGUMENT: i32 = 1;
 const STATUS_RUNTIME_ERROR: i32 = 2;
 const STATUS_PANIC: i32 = 3;
+const STATUS_NOT_FOUND: i32 = 4;
 const ACTION_REPLY: u32 = 1;
 const INVOCATION_FUEL: u64 = 1_000_000;
 const INVOCATION_MEMORY_BYTES: usize = 16 * 1024 * 1024;
@@ -101,7 +103,7 @@ struct LoadedComponent {
 
 struct RuneRuntime {
     engine: Engine,
-    component: Mutex<Option<LoadedComponent>>,
+    components: Mutex<HashMap<[u8; 16], Arc<LoadedComponent>>>,
 }
 
 struct InvocationState {
@@ -306,7 +308,7 @@ pub extern "C" fn rune_runtime_create() -> *mut c_void {
         let engine = Engine::new(&config)?;
         let runtime = Box::into_raw(Box::new(RuneRuntime {
             engine,
-            component: Mutex::new(None),
+            components: Mutex::new(HashMap::new()),
         }));
 
         Ok::<*mut c_void, wasmtime::Error>(runtime.cast())
@@ -319,16 +321,19 @@ pub extern "C" fn rune_runtime_create() -> *mut c_void {
 /// # Safety
 ///
 /// `runtime` must be a handle returned by `rune_runtime_create`, and
+/// `rune_id` must identify 16 readable bytes.
 /// `component_data` must identify `component_len` readable bytes.
 #[no_mangle]
 pub unsafe extern "C" fn rune_runtime_load_component(
     runtime: *mut c_void,
+    rune_id: *const u8,
     event_type: u32,
     component_data: *const u8,
     component_len: usize,
 ) -> i32 {
     ffi_status(|| {
         let runtime = unsafe { runtime_ref(runtime) }.ok_or(STATUS_INVALID_ARGUMENT)?;
+        let rune_id = unsafe { rune_id_from_raw(rune_id) }.ok_or(STATUS_INVALID_ARGUMENT)?;
         let event_type =
             RuneEventType::try_from(event_type).map_err(|()| STATUS_INVALID_ARGUMENT)?;
         let bytes = unsafe { bytes_from_raw(component_data, component_len) }
@@ -336,18 +341,51 @@ pub unsafe extern "C" fn rune_runtime_load_component(
         let component = Component::new(&runtime.engine, bytes).map_err(|_| STATUS_RUNTIME_ERROR)?;
         validate_component(&runtime.engine, event_type, &component)
             .map_err(|_| STATUS_RUNTIME_ERROR)?;
-        let mut loaded = runtime.component.lock().map_err(|_| STATUS_RUNTIME_ERROR)?;
-        *loaded = Some(LoadedComponent {
-            event_type,
-            component,
-        });
+        let mut loaded = runtime
+            .components
+            .lock()
+            .map_err(|_| STATUS_RUNTIME_ERROR)?;
+        loaded.insert(
+            rune_id,
+            Arc::new(LoadedComponent {
+                event_type,
+                component,
+            }),
+        );
         Ok(())
     })
 }
 
 /// # Safety
 ///
+/// `runtime` must be a handle returned by `rune_runtime_create`, and
+/// `rune_id` must identify 16 readable bytes.
+#[no_mangle]
+pub unsafe extern "C" fn rune_runtime_remove_component(
+    runtime: *mut c_void,
+    rune_id: *const u8,
+) -> i32 {
+    ffi_status(|| {
+        let runtime = unsafe { runtime_ref(runtime) }.ok_or(STATUS_INVALID_ARGUMENT)?;
+        let rune_id = unsafe { rune_id_from_raw(rune_id) }.ok_or(STATUS_INVALID_ARGUMENT)?;
+        let removed = runtime
+            .components
+            .lock()
+            .map_err(|_| STATUS_RUNTIME_ERROR)?
+            .remove(&rune_id);
+
+        if removed.is_some() {
+            Ok(())
+        } else {
+            Err(STATUS_NOT_FOUND)
+        }
+    })
+}
+
+/// # Safety
+///
 /// `runtime` must be a handle returned by `rune_runtime_create`,
+/// `rune_id` must identify 16 readable bytes,
 /// `invocation_data` must identify `invocation_len` readable bytes, and
 /// `actions` and `error` must be writable. A successful action list must
 /// be released with `rune_runtime_action_list_free`; an error buffer must
@@ -355,6 +393,8 @@ pub unsafe extern "C" fn rune_runtime_load_component(
 #[no_mangle]
 pub unsafe extern "C" fn rune_runtime_invoke(
     runtime: *mut c_void,
+    rune_id: *const u8,
+    event_type: u32,
     invocation_data: *const u8,
     invocation_len: usize,
     actions: *mut RuneActionList,
@@ -370,7 +410,13 @@ pub unsafe extern "C" fn rune_runtime_invoke(
     }
 
     let outcome = catch_unwind(AssertUnwindSafe(|| unsafe {
-        invoke(runtime, invocation_data, invocation_len)
+        invoke(
+            runtime,
+            rune_id,
+            event_type,
+            invocation_data,
+            invocation_len,
+        )
     }));
 
     match outcome {
@@ -505,19 +551,31 @@ struct MessageReactionRemoveInput {
 
 unsafe fn invoke(
     runtime: *mut c_void,
+    rune_id: *const u8,
+    event_type: u32,
     invocation_data: *const u8,
     invocation_len: usize,
 ) -> Result<RuneActionList, NativeFailure> {
     let runtime = unsafe { runtime_ref(runtime) }
         .ok_or_else(|| NativeFailure::invalid("the runtime handle is null"))?;
+    let rune_id = unsafe { rune_id_from_raw(rune_id) }
+        .ok_or_else(|| NativeFailure::invalid("the rune ID buffer is null"))?;
+    let event_type = RuneEventType::try_from(event_type)
+        .map_err(|()| NativeFailure::invalid("the event type is unsupported"))?;
     let invocation = unsafe { bytes_from_raw(invocation_data, invocation_len) }
         .ok_or_else(|| NativeFailure::invalid("the invocation buffer is null"))?;
     let loaded = runtime
-        .component
+        .components
         .lock()
         .map_err(|_| NativeFailure::runtime("the component lock is poisoned"))?
-        .clone()
-        .ok_or_else(|| NativeFailure::runtime("no component is loaded"))?;
+        .get(&rune_id)
+        .cloned()
+        .ok_or_else(|| NativeFailure::runtime("the rune component is not loaded"))?;
+    if loaded.event_type != event_type {
+        return Err(NativeFailure::invalid(
+            "the invocation event does not match the rune component world",
+        ));
+    }
     let linker =
         component_linker(&runtime.engine, loaded.event_type).map_err(NativeFailure::runtime)?;
     let mut store = Store::new(&runtime.engine, InvocationState::new());
@@ -797,6 +855,11 @@ unsafe fn bytes_from_raw<'a>(data: *const u8, len: usize) -> Option<&'a [u8]> {
     Some(unsafe { slice::from_raw_parts(data, len) })
 }
 
+unsafe fn rune_id_from_raw(data: *const u8) -> Option<[u8; 16]> {
+    let bytes = unsafe { bytes_from_raw(data, 16) }?;
+    bytes.try_into().ok()
+}
+
 unsafe fn free_buffer(buffer: &RuneBuffer) {
     if buffer.data.is_null() {
         return;
@@ -824,6 +887,7 @@ mod tests {
         let status = unsafe {
             rune_runtime_load_component(
                 runtime,
+                [0_u8; 16].as_ptr(),
                 RuneEventType::MessageCreate as u32,
                 ptr::null(),
                 1,

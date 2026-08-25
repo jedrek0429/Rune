@@ -11,6 +11,13 @@ public sealed class RuneCompilationOptions
     public string RustCompiler { get; set; } =
         "cargo";
 
+    public string RuneApiWitPath { get; set; } =
+        Path.GetFullPath(
+            Path.Combine("wit", "rune-api.wit"));
+
+    public string GeneratedApiRoot { get; set; } =
+        Path.GetFullPath("generated");
+
     public TimeSpan JavaScriptTimeout { get; set; } =
         TimeSpan.FromSeconds(30);
 

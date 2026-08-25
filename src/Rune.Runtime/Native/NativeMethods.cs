@@ -42,15 +42,25 @@ internal static partial class NativeMethods
         EntryPoint = "rune_runtime_load_component")]
     internal static unsafe partial int LoadComponent(
         nint runtime,
+        byte* runeId,
         uint eventType,
         byte* componentData,
         nuint componentLength);
 
     [LibraryImport(
         LibraryName,
+        EntryPoint = "rune_runtime_remove_component")]
+    internal static unsafe partial int RemoveComponent(
+        nint runtime,
+        byte* runeId);
+
+    [LibraryImport(
+        LibraryName,
         EntryPoint = "rune_runtime_invoke")]
     internal static unsafe partial int Invoke(
         nint runtime,
+        byte* runeId,
+        uint eventType,
         byte* invocationData,
         nuint invocationLength,
         out NativeActionList actions,

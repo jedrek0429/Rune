@@ -1,0 +1,467 @@
+{
+  "package": "rune:api",
+  "version": "0.1.0",
+  "netCordVersion": "1.0.0-beta.16",
+  "fingerprint": "f8ed91c0031f87daf067eff1714365ba0b5d6a3636f784359768e42d59b677d9",
+  "types": [
+    {
+      "name": "User",
+      "netCordName": "NetCord.User",
+      "isEnum": false,
+      "base": null,
+      "members": [
+        {
+          "name": "Id",
+          "canonicalId": "NetCord.User.Id",
+          "type": "u64",
+          "optional": false,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "id",
+            "python": "id",
+            "rust": "id"
+          }
+        },
+        {
+          "name": "Username",
+          "canonicalId": "NetCord.User.Username",
+          "type": "string",
+          "optional": false,
+          "representation": null,
+          "enumValue": null,
+          "projections": {
+            "javaScript": "username",
+            "python": "username",
+            "rust": "username"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Message",
+      "netCordName": "NetCord.Gateway.Message",
+      "isEnum": false,
+      "base": null,
+      "members": [
+        {
+          "name": "Id",
+          "canonicalId": "NetCord.Gateway.Message.Id",
+          "type": "u64",
+          "optional": false,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "id",
+            "python": "id",
+            "rust": "id"
+          }
+        },
+        {
+          "name": "ChannelId",
+          "canonicalId": "NetCord.Gateway.Message.ChannelId",
+          "type": "u64",
+          "optional": false,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "channelId",
+            "python": "channel_id",
+            "rust": "channel_id"
+          }
+        },
+        {
+          "name": "Content",
+          "canonicalId": "NetCord.Gateway.Message.Content",
+          "type": "string",
+          "optional": false,
+          "representation": null,
+          "enumValue": null,
+          "projections": {
+            "javaScript": "content",
+            "python": "content",
+            "rust": "content"
+          }
+        },
+        {
+          "name": "Author",
+          "canonicalId": "NetCord.Gateway.Message.Author",
+          "type": "User",
+          "optional": false,
+          "representation": null,
+          "enumValue": null,
+          "projections": {
+            "javaScript": "author",
+            "python": "author",
+            "rust": "author"
+          }
+        }
+      ]
+    },
+    {
+      "name": "MessageDeleteEventArgs",
+      "netCordName": "NetCord.Gateway.MessageDeleteEventArgs",
+      "isEnum": false,
+      "base": null,
+      "members": [
+        {
+          "name": "ChannelId",
+          "canonicalId": "NetCord.Gateway.MessageDeleteEventArgs.ChannelId",
+          "type": "u64",
+          "optional": false,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "channelId",
+            "python": "channel_id",
+            "rust": "channel_id"
+          }
+        },
+        {
+          "name": "GuildId",
+          "canonicalId": "NetCord.Gateway.MessageDeleteEventArgs.GuildId",
+          "type": "u64",
+          "optional": true,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "guildId",
+            "python": "guild_id",
+            "rust": "guild_id"
+          }
+        },
+        {
+          "name": "MessageId",
+          "canonicalId": "NetCord.Gateway.MessageDeleteEventArgs.MessageId",
+          "type": "u64",
+          "optional": false,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "messageId",
+            "python": "message_id",
+            "rust": "message_id"
+          }
+        }
+      ]
+    },
+    {
+      "name": "MessageReactionEmoji",
+      "netCordName": "NetCord.MessageReactionEmoji",
+      "isEnum": false,
+      "base": null,
+      "members": [
+        {
+          "name": "Animated",
+          "canonicalId": "NetCord.MessageReactionEmoji.Animated",
+          "type": "bool",
+          "optional": false,
+          "representation": null,
+          "enumValue": null,
+          "projections": {
+            "javaScript": "animated",
+            "python": "animated",
+            "rust": "animated"
+          }
+        },
+        {
+          "name": "Id",
+          "canonicalId": "NetCord.MessageReactionEmoji.Id",
+          "type": "u64",
+          "optional": true,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "id",
+            "python": "id",
+            "rust": "id"
+          }
+        },
+        {
+          "name": "Name",
+          "canonicalId": "NetCord.MessageReactionEmoji.Name",
+          "type": "string",
+          "optional": true,
+          "representation": null,
+          "enumValue": null,
+          "projections": {
+            "javaScript": "name",
+            "python": "name",
+            "rust": "name"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ReactionType",
+      "netCordName": "NetCord.ReactionType",
+      "isEnum": true,
+      "base": null,
+      "members": [
+        {
+          "name": "Normal",
+          "canonicalId": "NetCord.ReactionType.Normal",
+          "type": "ReactionType",
+          "optional": false,
+          "representation": null,
+          "enumValue": 0,
+          "projections": {
+            "javaScript": "normal",
+            "python": "normal",
+            "rust": "normal"
+          }
+        },
+        {
+          "name": "Burst",
+          "canonicalId": "NetCord.ReactionType.Burst",
+          "type": "ReactionType",
+          "optional": false,
+          "representation": null,
+          "enumValue": 1,
+          "projections": {
+            "javaScript": "burst",
+            "python": "burst",
+            "rust": "burst"
+          }
+        }
+      ]
+    },
+    {
+      "name": "MessageReactionAddEventArgs",
+      "netCordName": "NetCord.Gateway.MessageReactionAddEventArgs",
+      "isEnum": false,
+      "base": null,
+      "members": [
+        {
+          "name": "Burst",
+          "canonicalId": "NetCord.Gateway.MessageReactionAddEventArgs.Burst",
+          "type": "bool",
+          "optional": false,
+          "representation": null,
+          "enumValue": null,
+          "projections": {
+            "javaScript": "burst",
+            "python": "burst",
+            "rust": "burst"
+          }
+        },
+        {
+          "name": "ChannelId",
+          "canonicalId": "NetCord.Gateway.MessageReactionAddEventArgs.ChannelId",
+          "type": "u64",
+          "optional": false,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "channelId",
+            "python": "channel_id",
+            "rust": "channel_id"
+          }
+        },
+        {
+          "name": "Emoji",
+          "canonicalId": "NetCord.Gateway.MessageReactionAddEventArgs.Emoji",
+          "type": "MessageReactionEmoji",
+          "optional": false,
+          "representation": null,
+          "enumValue": null,
+          "projections": {
+            "javaScript": "emoji",
+            "python": "emoji",
+            "rust": "emoji"
+          }
+        },
+        {
+          "name": "GuildId",
+          "canonicalId": "NetCord.Gateway.MessageReactionAddEventArgs.GuildId",
+          "type": "u64",
+          "optional": true,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "guildId",
+            "python": "guild_id",
+            "rust": "guild_id"
+          }
+        },
+        {
+          "name": "MessageAuthorId",
+          "canonicalId": "NetCord.Gateway.MessageReactionAddEventArgs.MessageAuthorId",
+          "type": "u64",
+          "optional": true,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "messageAuthorId",
+            "python": "message_author_id",
+            "rust": "message_author_id"
+          }
+        },
+        {
+          "name": "MessageId",
+          "canonicalId": "NetCord.Gateway.MessageReactionAddEventArgs.MessageId",
+          "type": "u64",
+          "optional": false,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "messageId",
+            "python": "message_id",
+            "rust": "message_id"
+          }
+        },
+        {
+          "name": "Type",
+          "canonicalId": "NetCord.Gateway.MessageReactionAddEventArgs.Type",
+          "type": "ReactionType",
+          "optional": false,
+          "representation": null,
+          "enumValue": null,
+          "projections": {
+            "javaScript": "type",
+            "python": "type_",
+            "rust": "type_"
+          }
+        },
+        {
+          "name": "UserId",
+          "canonicalId": "NetCord.Gateway.MessageReactionAddEventArgs.UserId",
+          "type": "u64",
+          "optional": false,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "userId",
+            "python": "user_id",
+            "rust": "user_id"
+          }
+        }
+      ]
+    },
+    {
+      "name": "MessageReactionRemoveEventArgs",
+      "netCordName": "NetCord.Gateway.MessageReactionRemoveEventArgs",
+      "isEnum": false,
+      "base": null,
+      "members": [
+        {
+          "name": "Burst",
+          "canonicalId": "NetCord.Gateway.MessageReactionRemoveEventArgs.Burst",
+          "type": "bool",
+          "optional": false,
+          "representation": null,
+          "enumValue": null,
+          "projections": {
+            "javaScript": "burst",
+            "python": "burst",
+            "rust": "burst"
+          }
+        },
+        {
+          "name": "ChannelId",
+          "canonicalId": "NetCord.Gateway.MessageReactionRemoveEventArgs.ChannelId",
+          "type": "u64",
+          "optional": false,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "channelId",
+            "python": "channel_id",
+            "rust": "channel_id"
+          }
+        },
+        {
+          "name": "Emoji",
+          "canonicalId": "NetCord.Gateway.MessageReactionRemoveEventArgs.Emoji",
+          "type": "MessageReactionEmoji",
+          "optional": false,
+          "representation": null,
+          "enumValue": null,
+          "projections": {
+            "javaScript": "emoji",
+            "python": "emoji",
+            "rust": "emoji"
+          }
+        },
+        {
+          "name": "GuildId",
+          "canonicalId": "NetCord.Gateway.MessageReactionRemoveEventArgs.GuildId",
+          "type": "u64",
+          "optional": true,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "guildId",
+            "python": "guild_id",
+            "rust": "guild_id"
+          }
+        },
+        {
+          "name": "MessageId",
+          "canonicalId": "NetCord.Gateway.MessageReactionRemoveEventArgs.MessageId",
+          "type": "u64",
+          "optional": false,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "messageId",
+            "python": "message_id",
+            "rust": "message_id"
+          }
+        },
+        {
+          "name": "Type",
+          "canonicalId": "NetCord.Gateway.MessageReactionRemoveEventArgs.Type",
+          "type": "ReactionType",
+          "optional": false,
+          "representation": null,
+          "enumValue": null,
+          "projections": {
+            "javaScript": "type",
+            "python": "type_",
+            "rust": "type_"
+          }
+        },
+        {
+          "name": "UserId",
+          "canonicalId": "NetCord.Gateway.MessageReactionRemoveEventArgs.UserId",
+          "type": "u64",
+          "optional": false,
+          "representation": "snowflake",
+          "enumValue": null,
+          "projections": {
+            "javaScript": "userId",
+            "python": "user_id",
+            "rust": "user_id"
+          }
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "MessageCreate",
+      "netCordName": "NetCord.Gateway.GatewayClient.MessageCreate",
+      "payload": "Message",
+      "world": "message-create-rune"
+    },
+    {
+      "name": "MessageDelete",
+      "netCordName": "NetCord.Gateway.GatewayClient.MessageDelete",
+      "payload": "MessageDeleteEventArgs",
+      "world": "message-delete-rune"
+    },
+    {
+      "name": "MessageReactionAdd",
+      "netCordName": "NetCord.Gateway.GatewayClient.MessageReactionAdd",
+      "payload": "MessageReactionAddEventArgs",
+      "world": "message-reaction-add-rune"
+    },
+    {
+      "name": "MessageReactionRemove",
+      "netCordName": "NetCord.Gateway.GatewayClient.MessageReactionRemove",
+      "payload": "MessageReactionRemoveEventArgs",
+      "world": "message-reaction-remove-rune"
+    }
+  ]
+}

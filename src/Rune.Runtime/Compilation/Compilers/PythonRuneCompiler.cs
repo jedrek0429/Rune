@@ -36,7 +36,17 @@ public sealed class PythonRuneCompiler(
             var result = await processRunner.RunAsync(
                 options.PythonCompiler,
                 directory,
-                [input, "-o", output],
+                [
+                    "-d",
+                    options.RuneApiWitPath,
+                    "-w",
+                    World(eventType),
+                    "componentize",
+                    "--stub-wasi",
+                    "rune",
+                    "-o",
+                    output
+                ],
                 options.PythonTimeout,
                 cancellationToken);
 
@@ -50,6 +60,7 @@ public sealed class PythonRuneCompiler(
 
             return await wasmPipeline.ProcessAsync(
                 output,
+                eventType,
                 diagnostics,
                 cancellationToken);
         }
@@ -74,111 +85,31 @@ public sealed class PythonRuneCompiler(
             source
                 .Replace("\r\n", "\n")
                 .Split('\n')
-                .Select(line => $"    {line}"));
+                .Select(line => $"        {line}"));
 
         if (string.IsNullOrWhiteSpace(source))
-            body = "    pass";
+            body = "        pass";
 
         var parameter = eventType == RuneEventType.MessageCreate
             ? "message"
             : "args";
-        var input = eventType switch
-        {
-            RuneEventType.MessageCreate =>
-                "Message(invocation)",
-            RuneEventType.MessageDelete =>
-                "MessageDeleteEventArgs(invocation)",
-            RuneEventType.MessageReactionAdd =>
-                "MessageReactionAddEventArgs(invocation)",
-            RuneEventType.MessageReactionRemove =>
-                "MessageReactionRemoveEventArgs(invocation)",
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(eventType),
-                eventType,
-                "The gateway event is not supported.")
-        };
-
         return $$"""
-import extism
+import wit_world
 
 
-class User:
-    def __init__(self, data):
-        self.id = data["id"]
-        self.username = data["username"]
-
-
-class Message:
-    def __init__(self, data):
-        self.id = data["id"]
-        self.channel_id = data["channelId"]
-        self.content = data["content"]
-        self.author = User(data["author"])
-
-
-class MessageDeleteEventArgs:
-    def __init__(self, data):
-        self.channel_id = data["channelId"]
-        self.guild_id = data["guildId"]
-        self.message_id = data["messageId"]
-
-
-class MessageReactionEmoji:
-    def __init__(self, data):
-        self.animated = data["animated"]
-        self.id = data["id"]
-        self.name = data["name"]
-
-
-class MessageReactionAddEventArgs:
-    def __init__(self, data):
-        self.burst = data["burst"]
-        self.channel_id = data["channelId"]
-        self.emoji = MessageReactionEmoji(data["emoji"])
-        self.guild_id = data["guildId"]
-        self.message_author_id = data["messageAuthorId"]
-        self.message_id = data["messageId"]
-        self.type = data["type"]
-        self.user_id = data["userId"]
-
-
-class MessageReactionRemoveEventArgs:
-    def __init__(self, data):
-        self.burst = data["burst"]
-        self.channel_id = data["channelId"]
-        self.emoji = MessageReactionEmoji(data["emoji"])
-        self.guild_id = data["guildId"]
-        self.message_id = data["messageId"]
-        self.type = data["type"]
-        self.user_id = data["userId"]
-
-
-async def __rune__({{parameter}}):
+class WitWorld(wit_world.WitWorld):
+    def handle(self, {{parameter}}):
 {{body}}
-
-
-def _run(coroutine):
-    try:
-        coroutine.send(None)
-    except StopIteration:
-        return
-
-    coroutine.close()
-
-    raise RuntimeError(
-        "Rune suspended on an unsupported asynchronous operation"
-    )
-
-
-@extism.plugin_fn
-def handle():
-    invocation = extism.input_json()
-
-    _run(
-        __rune__(
-            {{input}}
-        )
-    )
 """;
     }
+
+    private static string World(RuneEventType eventType) =>
+        eventType switch
+        {
+            RuneEventType.MessageCreate => "message-create-rune",
+            RuneEventType.MessageDelete => "message-delete-rune",
+            RuneEventType.MessageReactionAdd => "message-reaction-add-rune",
+            RuneEventType.MessageReactionRemove => "message-reaction-remove-rune",
+            _ => throw new ArgumentOutOfRangeException(nameof(eventType))
+        };
 }

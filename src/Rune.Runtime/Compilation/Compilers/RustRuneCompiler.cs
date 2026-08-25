@@ -35,6 +35,19 @@ public sealed class RustRuneCompiler(
             Directory.CreateDirectory(
                 srcDirectory);
 
+            var witDirectory = Path.Combine(directory, "wit");
+            Directory.CreateDirectory(witDirectory);
+
+            await File.WriteAllTextAsync(
+                Path.Combine(witDirectory, "rune-api.wit"),
+                await File.ReadAllTextAsync(
+                    options.RuneApiWitPath,
+                    cancellationToken),
+                Encoding.UTF8,
+                cancellationToken);
+
+            var packageName = $"rune_{Guid.NewGuid():N}";
+
             var manifest =
                 Path.Combine(
                     directory,
@@ -47,13 +60,17 @@ public sealed class RustRuneCompiler(
 
             await File.WriteAllTextAsync(
                 manifest,
-                CargoManifest,
+                CargoManifest(packageName),
                 Encoding.UTF8,
                 cancellationToken);
 
             await File.WriteAllTextAsync(
                 input,
-                BuildWrapper(eventType, source),
+                await BuildWrapperAsync(
+                    options.GeneratedApiRoot,
+                    eventType,
+                    source,
+                    cancellationToken),
                 Encoding.UTF8,
                 cancellationToken);
 
@@ -65,7 +82,7 @@ public sealed class RustRuneCompiler(
                         "build",
                         "--release",
                         "--target",
-                        "wasm32-unknown-unknown",
+                        "wasm32-wasip2",
                         "--target-dir",
                         options.RustTargetDirectory
                     ],
@@ -75,9 +92,9 @@ public sealed class RustRuneCompiler(
             var output =
                 Path.Combine(
                     options.RustTargetDirectory,
-                    "wasm32-unknown-unknown",
+                    "wasm32-wasip2",
                     "release",
-                    "rune.wasm");
+                    $"{packageName}.wasm");
 
             var diagnostics =
                 new[]
@@ -93,6 +110,7 @@ public sealed class RustRuneCompiler(
 
             return await wasmPipeline.ProcessAsync(
                 output,
+                eventType,
                 diagnostics,
                 cancellationToken);
         }
@@ -110,9 +128,11 @@ public sealed class RustRuneCompiler(
         }
     }
 
-    private static string BuildWrapper(
+    private static async ValueTask<string> BuildWrapperAsync(
+        string generatedApiRoot,
         RuneEventType eventType,
-        string source)
+        string source,
+        CancellationToken cancellationToken)
     {
         var argumentType = eventType switch
         {
@@ -127,102 +147,37 @@ public sealed class RustRuneCompiler(
                 eventType,
                 "The gateway event is not supported.")
         };
+        var facade = await File.ReadAllTextAsync(
+            Path.Combine(generatedApiRoot, "rust", "rune_api.rs"),
+            cancellationToken);
 
         return $$"""
-use extism_pdk::*;
-use serde::Deserialize;
-
-#[derive(Debug, Deserialize)]
-pub struct User {
-    pub id: u64,
-    pub username: String,
+mod bindings {
+    wit_bindgen::generate!({
+        path: "wit",
+        world: "{{World(eventType)}}",
+    });
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Message {
-    pub id: u64,
-    pub channel_id: u64,
-    pub content: String,
-    pub author: User,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MessageDeleteEventArgs {
-    pub channel_id: u64,
-    pub guild_id: Option<u64>,
-    pub message_id: u64,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct MessageReactionEmoji {
-    pub animated: bool,
-    pub id: Option<u64>,
-    pub name: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(try_from = "u8")]
-pub enum ReactionType {
-    Normal,
-    Burst,
-}
-
-impl TryFrom<u8> for ReactionType {
-    type Error = String;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(Self::Normal),
-            1 => Ok(Self::Burst),
-            _ => Err(format!("unsupported reaction type {value}")),
-        }
-    }
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MessageReactionAddEventArgs {
-    pub burst: bool,
-    pub channel_id: u64,
-    pub emoji: MessageReactionEmoji,
-    pub guild_id: Option<u64>,
-    pub message_author_id: Option<u64>,
-    pub message_id: u64,
-    #[serde(rename = "type")]
-    pub type_: ReactionType,
-    pub user_id: u64,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MessageReactionRemoveEventArgs {
-    pub burst: bool,
-    pub channel_id: u64,
-    pub emoji: MessageReactionEmoji,
-    pub guild_id: Option<u64>,
-    pub message_id: u64,
-    #[serde(rename = "type")]
-    pub type_: ReactionType,
-    pub user_id: u64,
-}
+{{facade}}
 
 {{source}}
 
-#[plugin_fn]
-pub fn handle(_: ()) -> FnResult<()> {
-    let Json(argument): Json<{{argumentType}}> =
-        input()?;
+struct Component;
 
-    rune(argument)
+impl bindings::Guest for Component {
+    fn handle(argument: {{argumentType}}) {
+        rune(argument);
+    }
 }
+
+bindings::export!(Component with_types_in bindings);
 """;
     }
 
-    private const string CargoManifest = """
+    private static string CargoManifest(string packageName) => $$"""
 [package]
-name = "rune"
+name = "{{packageName}}"
 version = "0.0.0"
 edition = "2021"
 
@@ -230,7 +185,16 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-extism-pdk = "1"
-serde = { version = "1", features = ["derive"] }
+wit-bindgen = "0.60.0"
 """;
+
+    private static string World(RuneEventType eventType) =>
+        eventType switch
+        {
+            RuneEventType.MessageCreate => "message-create-rune",
+            RuneEventType.MessageDelete => "message-delete-rune",
+            RuneEventType.MessageReactionAdd => "message-reaction-add-rune",
+            RuneEventType.MessageReactionRemove => "message-reaction-remove-rune",
+            _ => throw new ArgumentOutOfRangeException(nameof(eventType))
+        };
 }

@@ -1,0 +1,100 @@
+schema: 1
+
+api:
+  package: rune:api
+  version: 0.1.0
+
+netcord:
+  package: NetCord
+  version: 1.0.0-beta.16
+
+types:
+  User:
+    netcord: NetCord.User
+    members:
+      - name: Id
+        representation: snowflake
+      - name: Username
+
+  Message:
+    netcord: NetCord.Gateway.Message
+    members:
+      - name: Id
+        representation: snowflake
+      - name: ChannelId
+        representation: snowflake
+      - name: Content
+      - name: Author
+
+  MessageDeleteEventArgs:
+    netcord: NetCord.Gateway.MessageDeleteEventArgs
+    members:
+      - name: ChannelId
+        representation: snowflake
+      - name: GuildId
+        representation: snowflake
+      - name: MessageId
+        representation: snowflake
+
+  MessageReactionEmoji:
+    netcord: NetCord.MessageReactionEmoji
+    members:
+      - name: Animated
+      - name: Id
+        representation: snowflake
+      - name: Name
+
+  ReactionType:
+    netcord: NetCord.ReactionType
+    members:
+      - name: Normal
+      - name: Burst
+
+  MessageReactionAddEventArgs:
+    netcord: NetCord.Gateway.MessageReactionAddEventArgs
+    members:
+      - name: Burst
+      - name: ChannelId
+        representation: snowflake
+      - name: Emoji
+      - name: GuildId
+        representation: snowflake
+      - name: MessageAuthorId
+        representation: snowflake
+      - name: MessageId
+        representation: snowflake
+      - name: Type
+      - name: UserId
+        representation: snowflake
+
+  MessageReactionRemoveEventArgs:
+    netcord: NetCord.Gateway.MessageReactionRemoveEventArgs
+    members:
+      - name: Burst
+      - name: ChannelId
+        representation: snowflake
+      - name: Emoji
+      - name: GuildId
+        representation: snowflake
+      - name: MessageId
+        representation: snowflake
+      - name: Type
+      - name: UserId
+        representation: snowflake
+
+events:
+  MessageCreate:
+    netcord: NetCord.Gateway.GatewayClient.MessageCreate
+    payload: Message
+
+  MessageDelete:
+    netcord: NetCord.Gateway.GatewayClient.MessageDelete
+    payload: MessageDeleteEventArgs
+
+  MessageReactionAdd:
+    netcord: NetCord.Gateway.GatewayClient.MessageReactionAdd
+    payload: MessageReactionAddEventArgs
+
+  MessageReactionRemove:
+    netcord: NetCord.Gateway.GatewayClient.MessageReactionRemove
+    payload: MessageReactionRemoveEventArgs

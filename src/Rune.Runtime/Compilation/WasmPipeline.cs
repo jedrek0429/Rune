@@ -1,4 +1,5 @@
 using Rune.Core.Runes;
+using Rune.Core.Api.Generated;
 
 namespace Rune.Runtime.Compilation;
 
@@ -6,6 +7,7 @@ public sealed class WasmPipeline
 {
     public async ValueTask<CompiledRune> ProcessAsync(
         string wasmPath,
+        RuneEventType eventType,
         IReadOnlyList<string>? diagnostics = null,
         CancellationToken cancellationToken = default)
     {
@@ -15,6 +17,8 @@ public sealed class WasmPipeline
 
         return new CompiledRune(
             wasm,
-            diagnostics ?? []);
+            diagnostics ?? [],
+            eventType,
+            RuneApiMetadata.Fingerprint);
     }
 }

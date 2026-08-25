@@ -1,5 +1,6 @@
 using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
+using Microsoft.Extensions.Logging;
 
 using Rune.Core.Invocations;
 using Rune.Runtime;

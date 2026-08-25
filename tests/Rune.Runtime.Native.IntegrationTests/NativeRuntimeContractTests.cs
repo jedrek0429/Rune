@@ -11,7 +11,83 @@ public sealed class NativeRuntimeContractTests
     [Fact]
     public void Native_runtime_exposes_supported_abi_version()
     {
-        Assert.Equal(4U, RuneNativeRuntime.AbiVersion);
+        Assert.Equal(5U, RuneNativeRuntime.AbiVersion);
+    }
+
+    [Fact]
+    public void Components_for_multiple_rune_ids_coexist()
+    {
+        var createId = Guid.NewGuid();
+        var deleteId = Guid.NewGuid();
+        using var runtime = new RuneNativeRuntime();
+
+        runtime.LoadComponent(
+            createId,
+            RuneEventType.MessageCreate,
+            Fixture("message_create_component.wasm"));
+        runtime.LoadComponent(
+            deleteId,
+            RuneEventType.MessageDelete,
+            Fixture("message_delete_component.wasm"));
+
+        Assert.Equal(
+            2,
+            runtime.Invoke(createId, MessageCreate("Ada")).Actions.Count);
+        Assert.Single(
+            runtime.Invoke(
+                deleteId,
+                new MessageDeleteEventRuneInvocation(
+                    Guid.NewGuid(),
+                    1,
+                    2,
+                    3)).Actions);
+        Assert.Equal(
+            2,
+            runtime.Invoke(createId, MessageCreate("Grace")).Actions.Count);
+    }
+
+    [Fact]
+    public void Removing_one_component_does_not_remove_another()
+    {
+        var removedId = Guid.NewGuid();
+        var retainedId = Guid.NewGuid();
+        using var runtime = new RuneNativeRuntime();
+
+        runtime.LoadComponent(
+            removedId,
+            RuneEventType.MessageCreate,
+            Fixture("message_create_component.wasm"));
+        runtime.LoadComponent(
+            retainedId,
+            RuneEventType.MessageCreate,
+            Fixture("message_create_component.wasm"));
+
+        Assert.True(runtime.RemoveComponent(removedId));
+        Assert.Throws<RuneNativeException>(
+            () => runtime.Invoke(removedId, MessageCreate("Ada")));
+        Assert.Equal(
+            2,
+            runtime.Invoke(retainedId, MessageCreate("Ada")).Actions.Count);
+    }
+
+    [Fact]
+    public void Invocation_event_must_match_loaded_component_world()
+    {
+        var runeId = Guid.NewGuid();
+        using var runtime = new RuneNativeRuntime();
+        runtime.LoadComponent(
+            runeId,
+            RuneEventType.MessageCreate,
+            Fixture("message_create_component.wasm"));
+
+        Assert.Throws<RuneNativeException>(
+            () => runtime.Invoke(
+                runeId,
+                new MessageDeleteEventRuneInvocation(
+                    Guid.NewGuid(),
+                    1,
+                    2,
+                    3)));
     }
 
     [Fact]
@@ -403,6 +479,9 @@ public sealed class NativeRuntimeContractTests
             + $"    (import \"{importName}\" (type (sub resource)))\n"
             + ")");
     }
+
+    private static byte[] Fixture(string name) =>
+        File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, name));
 
     private static void AssertCleanRecovery(RuneNativeRuntime runtime)
     {

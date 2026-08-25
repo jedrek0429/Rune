@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Rune.API selection manifest",
+  "type": "object",
+  "required": ["schema", "api", "netcord", "types", "events"],
+  "properties": {
+    "schema": { "const": 1 },
+    "api": {
+      "type": "object",
+      "required": ["package", "version"],
+      "properties": {
+        "package": { "type": "string" },
+        "version": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "netcord": {
+      "type": "object",
+      "required": ["package", "version"],
+      "properties": {
+        "package": { "const": "NetCord" },
+        "version": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "types": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["netcord", "members"],
+        "properties": {
+          "netcord": { "type": "string" },
+          "base": { "type": "string" },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "properties": {
+                "name": { "type": "string" },
+                "representation": { "enum": ["snowflake"] }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["netcord", "payload"],
+        "properties": {
+          "netcord": { "type": "string" },
+          "payload": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

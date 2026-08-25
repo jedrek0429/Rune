@@ -13,5 +13,7 @@ public sealed record RegisteredRune(
 
 public sealed record CompiledRune(
     byte[] Wasm,
-    IReadOnlyList<string> Diagnostics
+    IReadOnlyList<string> Diagnostics,
+    RuneEventType EventType = RuneEventType.MessageCreate,
+    string ApiFingerprint = ""
 );

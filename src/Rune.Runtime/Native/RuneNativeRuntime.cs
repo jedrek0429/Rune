@@ -8,6 +8,9 @@ namespace Rune.Runtime.Native;
 
 public sealed class RuneNativeRuntime : IDisposable
 {
+    private static readonly Guid LegacyRuneId =
+        new("9857d586-d123-49a3-98a2-1fc65fb3c0d4");
+
     private nint handle;
 
     public RuneNativeRuntime()
@@ -23,15 +26,26 @@ public sealed class RuneNativeRuntime : IDisposable
 
     public unsafe void LoadComponent(
         RuneEventType eventType,
+        ReadOnlySpan<byte> component) =>
+        LoadComponent(LegacyRuneId, eventType, component);
+
+    public unsafe void LoadComponent(
+        Guid runeId,
+        RuneEventType eventType,
         ReadOnlySpan<byte> component)
     {
         ObjectDisposedException.ThrowIf(handle == nint.Zero, this);
 
+        Span<byte> runeIdBytes = stackalloc byte[16];
+        runeId.TryWriteBytes(runeIdBytes);
+
+        fixed (byte* runeIdData = runeIdBytes)
         fixed (byte* componentData = component)
         {
             ThrowIfFailed(
                 NativeMethods.LoadComponent(
                     handle,
+                    runeIdData,
                     (uint)eventType,
                     componentData,
                     (nuint)component.Length),
@@ -40,7 +54,33 @@ public sealed class RuneNativeRuntime : IDisposable
         }
     }
 
+    public unsafe bool RemoveComponent(Guid runeId)
+    {
+        ObjectDisposedException.ThrowIf(handle == nint.Zero, this);
+
+        Span<byte> runeIdBytes = stackalloc byte[16];
+        runeId.TryWriteBytes(runeIdBytes);
+
+        fixed (byte* runeIdData = runeIdBytes)
+        {
+            var status = NativeMethods.RemoveComponent(handle, runeIdData);
+            if (status == 4)
+                return false;
+
+            ThrowIfFailed(
+                status,
+                "The component could not be removed.",
+                string.Empty);
+            return true;
+        }
+    }
+
     public RuneInvocationResult Invoke(
+        EventRuneInvocation invocation) =>
+        Invoke(LegacyRuneId, invocation);
+
+    public RuneInvocationResult Invoke(
+        Guid runeId,
         EventRuneInvocation invocation)
     {
         ArgumentNullException.ThrowIfNull(invocation);
@@ -48,20 +88,28 @@ public sealed class RuneNativeRuntime : IDisposable
 
         var payload = RuneEventDispatcher.Serialize(invocation);
 
-        return InvokePayload(payload);
+        return InvokePayload(runeId, invocation.EventType, payload);
     }
 
     private unsafe RuneInvocationResult InvokePayload(
+        Guid runeId,
+        RuneEventType eventType,
         byte[] payload)
     {
         NativeActionList nativeActions;
         NativeBuffer nativeError;
         int status;
 
+        Span<byte> runeIdBytes = stackalloc byte[16];
+        runeId.TryWriteBytes(runeIdBytes);
+
+        fixed (byte* runeIdData = runeIdBytes)
         fixed (byte* payloadData = payload)
         {
             status = NativeMethods.Invoke(
                 handle,
+                runeIdData,
+                (uint)eventType,
                 payloadData,
                 (nuint)payload.Length,
                 out nativeActions,
