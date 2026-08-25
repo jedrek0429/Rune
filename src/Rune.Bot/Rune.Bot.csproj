@@ -27,7 +27,11 @@
   </PropertyGroup>
 
   <Target Name="BuildRuneNativeRuntime" AfterTargets="Build">
-    <Exec Command="cargo build --manifest-path &quot;$(NativeRuntimeManifest)&quot; --release" />
+    <Exec
+      Command="cargo build --manifest-path &quot;$(NativeRuntimeManifest)&quot; --release --verbose"
+      ConsoleToMsBuild="true"
+      StandardOutputImportance="High"
+      StandardErrorImportance="High" />
     <Copy SourceFiles="$(NativeRuntimeOutput)/$(NativeRuntimeLibrary)" DestinationFolder="$(OutDir)" />
   </Target>
 
