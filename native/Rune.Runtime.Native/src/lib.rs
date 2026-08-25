@@ -18,6 +18,9 @@ const STATUS_PANIC: i32 = 3;
 const ACTION_REPLY: u32 = 1;
 const INVOCATION_FUEL: u64 = 1_000_000;
 const INVOCATION_MEMORY_BYTES: usize = 16 * 1024 * 1024;
+const INVOCATION_MAX_ACTIONS: usize = 16;
+const INVOCATION_MAX_REPLY_BYTES: usize = 8 * 1024;
+const INVOCATION_MAX_OUTPUT_BYTES: usize = 64 * 1024;
 
 mod bindings {
     wasmtime::component::bindgen!({
@@ -33,6 +36,8 @@ struct RuneRuntime {
 
 struct InvocationState {
     replies: Vec<String>,
+    reply_bytes: usize,
+    output_failure: Option<&'static str>,
     limits: StoreLimits,
     wasi: WasiCtx,
     resources: ResourceTable,
@@ -42,6 +47,8 @@ impl InvocationState {
     fn new() -> Self {
         Self {
             replies: Vec::new(),
+            reply_bytes: 0,
+            output_failure: None,
             limits: StoreLimitsBuilder::new()
                 .memory_size(INVOCATION_MEMORY_BYTES)
                 .trap_on_grow_failure(true)
@@ -50,11 +57,46 @@ impl InvocationState {
             resources: ResourceTable::new(),
         }
     }
+
+    fn record_reply(&mut self, content: String) {
+        if self.output_failure.is_some() {
+            return;
+        }
+
+        if self.replies.len() >= INVOCATION_MAX_ACTIONS {
+            self.reject_output("component exceeded the invocation action limit");
+            return;
+        }
+
+        let content_bytes = content.len();
+        if content_bytes > INVOCATION_MAX_REPLY_BYTES {
+            self.reject_output("component reply exceeded the per-reply byte limit");
+            return;
+        }
+
+        let Some(total_bytes) = self.reply_bytes.checked_add(content_bytes) else {
+            self.reject_output("component output exceeded the invocation byte limit");
+            return;
+        };
+        if total_bytes > INVOCATION_MAX_OUTPUT_BYTES {
+            self.reject_output("component output exceeded the invocation byte limit");
+            return;
+        }
+
+        self.reply_bytes = total_bytes;
+        self.replies.push(content);
+    }
+
+    fn reject_output(&mut self, detail: &'static str) {
+        self.replies.clear();
+        self.reply_bytes = 0;
+        self.output_failure = Some(detail);
+    }
 }
 
 impl bindings::MessageCreateRuneImports for InvocationState {
     fn reply(&mut self, content: String) {
-        self.replies.push(content);
+        self.record_reply(content);
     }
 }
 
@@ -330,6 +372,10 @@ unsafe fn invoke_message_create(
     bindings
         .call_handle_message_create(&mut store, author)
         .map_err(NativeFailure::runtime)?;
+
+    if let Some(detail) = store.data().output_failure {
+        return Err(NativeFailure::runtime(detail));
+    }
 
     let replies = mem::take(&mut store.data_mut().replies);
     Ok(RuneActionList::from_replies(replies))
