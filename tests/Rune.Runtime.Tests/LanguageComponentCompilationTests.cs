@@ -101,7 +101,8 @@ public sealed class LanguageComponentCompilationTests
                     "jco",
                     "node_modules",
                     ".bin",
-                    "jco")),
+                    "jco"),
+                "jco"),
             PythonCompiler = Tool(
                 "RUNE_COMPONENTIZE_PY",
                 Path.Combine(
@@ -110,7 +111,8 @@ public sealed class LanguageComponentCompilationTests
                     ".toolchains",
                     "componentize-py",
                     "bin",
-                    "componentize-py")),
+                    "componentize-py"),
+                "componentize-py"),
             RustCompiler = Tool(
                 "RUNE_CARGO",
                 Path.Combine(
@@ -120,7 +122,8 @@ public sealed class LanguageComponentCompilationTests
                     "rust",
                     "cargo",
                     "bin",
-                    "cargo")),
+                    "cargo"),
+                "cargo"),
             RuneApiWitPath = Path.Combine(Root, "wit", "rune-api.wit"),
             GeneratedApiRoot = Path.Combine(Root, "generated"),
             RustTargetDirectory = Path.Combine(
@@ -180,8 +183,12 @@ public sealed class LanguageComponentCompilationTests
             _ => throw new ArgumentOutOfRangeException(nameof(eventType))
         };
 
-    private static string Tool(string variable, string fallback) =>
-        Environment.GetEnvironmentVariable(variable) ?? fallback;
+    private static string Tool(
+        string variable,
+        string localPath,
+        string pathCommand) =>
+        Environment.GetEnvironmentVariable(variable) ??
+        (File.Exists(localPath) ? localPath : pathCommand);
 
     private static string FindRepositoryRoot()
     {
