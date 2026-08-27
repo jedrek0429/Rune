@@ -19,20 +19,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <NativeRuntimeManifest>$(MSBuildThisFileDirectory)../../native/Rune.Runtime.Native/Cargo.toml</NativeRuntimeManifest>
-    <NativeRuntimeOutput>$(MSBuildThisFileDirectory)../../target/release</NativeRuntimeOutput>
-    <NativeRuntimeLibrary Condition="$([MSBuild]::IsOSPlatform('Linux'))">librune_runtime.so</NativeRuntimeLibrary>
-    <NativeRuntimeLibrary Condition="$([MSBuild]::IsOSPlatform('OSX'))">librune_runtime.dylib</NativeRuntimeLibrary>
-    <NativeRuntimeLibrary Condition="$([MSBuild]::IsOSPlatform('Windows'))">rune_runtime.dll</NativeRuntimeLibrary>
   </PropertyGroup>
-
-  <Target Name="BuildRuneNativeRuntime" AfterTargets="Build">
-    <Exec
-      Command="cargo build --manifest-path &quot;$(NativeRuntimeManifest)&quot; --release --verbose"
-      ConsoleToMsBuild="true"
-      StandardOutputImportance="High"
-      StandardErrorImportance="High" />
-    <Copy SourceFiles="$(NativeRuntimeOutput)/$(NativeRuntimeLibrary)" DestinationFolder="$(OutDir)" />
-  </Target>
 
 </Project>

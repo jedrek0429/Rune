@@ -1,16 +1,18 @@
 using Microsoft.Extensions.DependencyInjection;
-using Rune.Runtime.Native;
 
 namespace Rune.Runtime;
 
 public static class DependencyInjection
 {
     public static IServiceCollection AddRuneRuntime(
-        this IServiceCollection services)
+        this IServiceCollection services,
+        Action<RuneRedisOptions>? configure = null)
     {
-        services.AddSingleton<RuneNativeRuntime>();
-        services.AddSingleton<IRuneComponentRuntime>(provider =>
-            provider.GetRequiredService<RuneNativeRuntime>());
+        var options = new RuneRedisOptions();
+        configure?.Invoke(options);
+
+        services.AddSingleton(options);
+        services.AddSingleton<IRuneTransport, RedisRuneTransport>();
 
         return services;
     }

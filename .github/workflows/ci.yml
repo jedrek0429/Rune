@@ -21,38 +21,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-          targets: wasm32-wasip2
-
-      - name: Verify Rust toolchain
-        run: |
-          rustc --version
-          cargo --version
-          rustup target list --installed | grep wasm32-wasip2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install Component compilers
-        run: |
-          npm install --global @bytecodealliance/jco@1.32.1
-          python -m pip install componentize-py==0.25.0
-          jco --version
-          componentize-py --version
 
       - name: Check Rust formatting
-        run: |
-          cargo fmt --all --check
-          find tests/fixtures -name Cargo.toml -print0 \
-            | while IFS= read -r -d '' manifest; do
-                cargo fmt --manifest-path "$manifest" -- --check
-              done
+        run: cargo fmt --all --check
 
       - name: Check Rust workspace
         run: cargo check --workspace
@@ -63,11 +34,17 @@ jobs:
       - name: Test Rust workspace
         run: cargo test --workspace
 
-      - name: Restore
-        run: dotnet restore
+      - name: Restore .NET
+        run: dotnet restore Rune.slnx
 
-      - name: Build
-        run: dotnet build --no-restore --configuration Release
+      - name: Build .NET
+        run: dotnet build Rune.slnx --no-restore --configuration Release
 
-      - name: Test
-        run: dotnet test --no-build --configuration Release
+      - name: Test .NET
+        run: dotnet test Rune.slnx --no-build --configuration Release
+
+  firecracker-smoke:
+    runs-on: ubuntu-latest
+    if: ${{ false }}
+    steps:
+      - run: echo "Enable this job on a self-hosted Linux runner with /dev/kvm."

@@ -1,9 +1,11 @@
 [workspace]
 members = [
-    "native/Rune.Runtime.JavaScript",
-    "native/Rune.Runtime.Native",
+    "native/Rune.Firecracker.Guest",
+    "native/Rune.Firecracker.Runner",
 ]
 exclude = [
+    "native/Rune.Runtime.JavaScript",
+    "native/Rune.Runtime.Native",
     "tests/fixtures/message-create-component",
     "tests/fixtures/message-delete-component",
     "tests/fixtures/message-reaction-add-component",

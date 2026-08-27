@@ -9,7 +9,6 @@ using Rune.Bot;
 using Rune.Bot.Host;
 using Rune.Core.Runes;
 using Rune.Runtime;
-using Rune.Runtime.Compilation;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -26,59 +25,29 @@ builder.Services
     .AddApplicationCommands()
     .AddGatewayHandlers(typeof(Program).Assembly);
 
-
 builder.Services
     .AddSingleton<RuneRegistry>()
     .AddSingleton<RuneService>()
     .AddSingleton<RuneUploadReader>()
-    .AddRuneCompilation(options =>
+    .AddRuneRuntime(options =>
     {
-        options.JavaScriptCompiler =
-            Environment.GetEnvironmentVariable("RUNE_JCO") ??
-            "jco";
+        options.ConnectionString =
+            Environment.GetEnvironmentVariable("RUNE_REDIS") ??
+            "localhost:6379";
 
-        options.PythonCompiler =
-            Environment.GetEnvironmentVariable("RUNE_COMPONENTIZE_PY") ??
-            "componentize-py";
+        options.InvocationStreamPrefix =
+            Environment.GetEnvironmentVariable("RUNE_INVOCATION_STREAM_PREFIX") ??
+            "rune:invocations";
 
-        options.RustCompiler =
-            Environment.GetEnvironmentVariable("RUNE_CARGO") ??
-            "cargo";
-
-        options.RuneApiWitPath =
-            Path.Combine(
-                builder.Environment.ContentRootPath,
-                "wit",
-                "rune-api.wit");
-
-        options.GeneratedApiRoot =
-            Path.Combine(
-                builder.Environment.ContentRootPath,
-                "generated");
-
-        options.JavaScriptTimeout =
-            TimeSpan.FromMinutes(2);
-
-        options.PythonTimeout =
-            TimeSpan.FromMinutes(2);
-
-        options.RustTimeout =
-            TimeSpan.FromMinutes(2);
-
-        options.RustTargetDirectory =
-            Path.Combine(
-                Path.GetTempPath(),
-                "rune-rust-target");
+        options.ResultStream =
+            Environment.GetEnvironmentVariable("RUNE_RESULT_STREAM") ??
+            "rune:results";
     })
-    .AddRuneRuntime()
     .AddSingleton<RuneEventDispatcher>()
-    .AddSingleton<
-        IRuneHostRequestHandler,
-        NetCordRuneHostRequestHandler>();
+    .AddSingleton<IRuneHostRequestHandler, NetCordRuneHostRequestHandler>()
+    .AddHostedService<RuneResultWorker>();
 
 var host = builder.Build();
-
-var registry = host.Services.GetRequiredService<RuneRegistry>();
 
 host.AddModules(typeof(Program).Assembly);
 
