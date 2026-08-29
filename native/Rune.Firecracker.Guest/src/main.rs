@@ -78,17 +78,17 @@ impl Worker {
     fn start(language: &str) -> Result<Self> {
         let mut command = match language {
             "javascript" => {
-                let mut command = Command::new("/usr/bin/node");
+                let mut command = Command::new("node");
                 command.arg("/opt/rune/worker.mjs");
                 command
             }
             "python" => {
-                let mut command = Command::new("/usr/bin/python3");
+                let mut command = Command::new("python3");
                 command.arg("-u").arg("/opt/rune/worker.py");
                 command
             }
             "rust" => {
-                let mut command = Command::new("/usr/bin/python3");
+                let mut command = Command::new("python3");
                 command.arg("-u").arg("/opt/rune/worker-rust.py");
                 command
             }
@@ -214,12 +214,36 @@ impl Drop for VsockListener {
 }
 
 fn mount_guest_filesystems() {
-    let _ = mount("devtmpfs", "/dev", "devtmpfs", "mode=0755,nosuid");
-    let _ = mount("proc", "/proc", "proc", "nosuid,nodev,noexec");
-    let _ = mount("tmpfs", "/tmp", "tmpfs", "size=384m,nosuid,nodev");
+    let _ = mount(
+        "devtmpfs",
+        "/dev",
+        "devtmpfs",
+        libc::MS_NOSUID,
+        "mode=0755",
+    );
+    let _ = mount(
+        "proc",
+        "/proc",
+        "proc",
+        libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC,
+        "",
+    );
+    let _ = mount(
+        "tmpfs",
+        "/tmp",
+        "tmpfs",
+        libc::MS_NOSUID | libc::MS_NODEV,
+        "size=384m",
+    );
 }
 
-fn mount(source: &str, target: &str, fstype: &str, data: &str) -> Result<()> {
+fn mount(
+    source: &str,
+    target: &str,
+    fstype: &str,
+    flags: libc::c_ulong,
+    data: &str,
+) -> Result<()> {
     let source = CString::new(source)?;
     let target = CString::new(target)?;
     let fstype = CString::new(fstype)?;
@@ -230,7 +254,7 @@ fn mount(source: &str, target: &str, fstype: &str, data: &str) -> Result<()> {
             source.as_ptr(),
             target.as_ptr(),
             fstype.as_ptr(),
-            0,
+            flags,
             data.as_ptr().cast(),
         )
     };
