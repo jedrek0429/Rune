@@ -132,10 +132,9 @@ impl WarmVm {
         stream.write_all(b"\n").await?;
         stream.flush().await?;
 
-        let mut reader = BufReader::new(stream);
+        let reader = BufReader::new(stream);
         let mut response = Vec::new();
         reader
-            .by_ref()
             .take((MAX_GUEST_RESPONSE + 1) as u64)
             .read_until(b'\n', &mut response)
             .await?;
