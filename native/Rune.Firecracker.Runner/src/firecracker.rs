@@ -17,6 +17,7 @@ use crate::{
 
 const GUEST_VSOCK_PORT: u32 = 5000;
 const MAX_GUEST_RESPONSE: usize = 256 * 1024;
+const MAX_API_ERROR_RESPONSE: u64 = 16 * 1024;
 
 pub struct WarmVm {
     child: Child,
@@ -173,7 +174,9 @@ async fn api_put(
     timeout: Duration,
 ) -> Result<()> {
     tokio::time::timeout(timeout, async {
-        let mut stream = UnixStream::connect(socket_path).await?;
+        let mut stream = UnixStream::connect(socket_path)
+            .await
+            .with_context(|| format!("failed to connect to Firecracker API socket for {route}"))?;
         let body = serde_json::to_vec(body)?;
         let headers = format!(
             "PUT {route} HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
@@ -182,14 +185,38 @@ async fn api_put(
 
         stream.write_all(headers.as_bytes()).await?;
         stream.write_all(&body).await?;
-        stream.shutdown().await?;
+        stream.flush().await?;
 
-        let mut response = Vec::new();
-        stream.read_to_end(&mut response).await?;
-        let status = String::from_utf8_lossy(&response);
+        let mut reader = BufReader::new(stream);
+        let mut status_line = String::new();
+        reader
+            .read_line(&mut status_line)
+            .await
+            .with_context(|| format!("failed to read Firecracker API status for {route}"))?;
 
-        if !(status.starts_with("HTTP/1.1 200") || status.starts_with("HTTP/1.1 204")) {
-            bail!("Firecracker API {route} failed: {status}");
+        if status_line.is_empty() {
+            bail!("Firecracker API {route} closed without an HTTP response");
+        }
+
+        let succeeded = status_line.starts_with("HTTP/1.1 200 ")
+            || status_line.starts_with("HTTP/1.1 204 ");
+
+        if !succeeded {
+            let mut remainder = Vec::new();
+            let _ = reader
+                .take(MAX_API_ERROR_RESPONSE)
+                .read_to_end(&mut remainder)
+                .await;
+            let detail = String::from_utf8_lossy(&remainder);
+            bail!(
+                "Firecracker API {route} failed: {}{}",
+                status_line.trim(),
+                if detail.is_empty() {
+                    String::new()
+                } else {
+                    format!("\n{}", detail.trim())
+                }
+            );
         }
 
         Ok::<(), anyhow::Error>(())
