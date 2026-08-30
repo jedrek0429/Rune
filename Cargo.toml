@@ -4,10 +4,4 @@ members = [
     "native/Rune.Firecracker.Guest",
     "native/Rune.Firecracker.Runner",
 ]
-exclude = [
-    "tests/fixtures/message-create-component",
-    "tests/fixtures/message-delete-component",
-    "tests/fixtures/message-reaction-add-component",
-    "tests/fixtures/message-reaction-remove-component",
-]
 resolver = "2"
