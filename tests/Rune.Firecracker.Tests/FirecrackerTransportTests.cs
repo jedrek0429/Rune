@@ -46,7 +46,7 @@ public sealed class FirecrackerTransportTests
     }
 
     [Fact]
-    public async Task RegistrationStoresSourceWithoutCompilingWasm()
+    public async Task RegistrationStoresSourceWithoutPretendingAnArtifactExists()
     {
         var registry = new RuneRegistry();
         var service = new RuneService(registry);
@@ -60,7 +60,7 @@ public sealed class FirecrackerTransportTests
             source);
 
         Assert.Equal(source, rune.Source);
-        Assert.Empty(rune.Wasm);
+        Assert.Null(rune.Artifact);
         Assert.True(rune.Enabled);
         Assert.Same(rune, registry.Get(42, "firecracker"));
     }
