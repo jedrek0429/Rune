@@ -3,7 +3,8 @@ namespace Rune.Core.Runes;
 public sealed record BuiltRuneArtifact(
     string Id,
     string Digest,
-    string Entrypoint
+    string Entrypoint,
+    long SizeBytes
 );
 
 public sealed record RegisteredRune(
