@@ -88,13 +88,13 @@ fn build_command(pool: &str, language: &str) -> Result<(&'static str, Vec<String
             ],
         ),
         ("python", "python") => (
-            "python3",
-            vec![
-                "-c",
-                "compile(open('/input/source.py','rb').read(), '/input/source.py', 'exec')",
-            ],
+            "rune-build-python",
+            vec!["/input/source.py", output],
         ),
-        ("ruby", "ruby") => ("ruby", vec!["-c", "/input/source.rb"]),
+        ("ruby", "ruby") => (
+            "rune-build-ruby",
+            vec!["/input/source.rb", output],
+        ),
         _ => bail!("unsupported build pool/language pair {pool}/{language}"),
     };
 
@@ -106,8 +106,8 @@ fn build_command(pool: &str, language: &str) -> Result<(&'static str, Vec<String
 
 fn main() -> Result<()> {
     mount_guest_filesystems()?;
-    let cmdline =
-        fs::read_to_string("/proc/cmdline").context("failed to read kernel command line")?;
+    let cmdline = fs::read_to_string("/proc/cmdline")
+        .context("failed to read kernel command line")?;
     let policy = parse_policy(&cmdline)?;
 
     for path in ["/work", "/input"] {
@@ -180,17 +180,8 @@ fn run_build(policy: &BuildPolicy) -> Result<()> {
         bail!("compiler exited with {status}");
     }
 
-    match policy.language.as_str() {
-        "python" => {
-            fs::copy("/input/source.py", "/work/artifact")?;
-        }
-        "ruby" => {
-            fs::copy("/input/source.rb", "/work/artifact")?;
-        }
-        "csharp" => {
-            fs::copy("/work/publish/Rune", "/work/artifact")?;
-        }
-        _ => {}
+    if policy.language == "csharp" {
+        fs::copy("/work/publish/Rune", "/work/artifact")?;
     }
 
     let metadata = fs::metadata("/work/artifact").context("compiler produced no artifact")?;
@@ -344,19 +335,21 @@ mod tests {
         assert_eq!(build_command("clang", "c").unwrap().0, "clang");
         assert_eq!(build_command("clang", "cpp").unwrap().0, "clang++");
         assert_eq!(build_command("dotnet-aot", "csharp").unwrap().0, "dotnet");
-        assert_eq!(build_command("python", "python").unwrap().0, "python3");
-        assert_eq!(build_command("ruby", "ruby").unwrap().0, "ruby");
+        assert_eq!(build_command("python", "python").unwrap().0, "rune-build-python");
+        assert_eq!(build_command("ruby", "ruby").unwrap().0, "rune-build-ruby");
         assert!(build_command("scriptc", "python").is_err());
     }
 
     #[test]
-    fn compiler_outputs_stay_on_bounded_scratch() {
+    fn every_direct_compiler_targets_the_executable_artifact() {
         for pair in [
             ("scriptc", "javascript"),
             ("scriptc", "typescript"),
             ("rust", "rust"),
             ("clang", "c"),
             ("clang", "cpp"),
+            ("python", "python"),
+            ("ruby", "ruby"),
         ] {
             let (_, args) = build_command(pair.0, pair.1).unwrap();
             assert!(args.iter().any(|arg| arg == "/work/artifact"));
@@ -365,9 +358,6 @@ mod tests {
 
     #[test]
     fn read_only_inputs_are_never_compiler_working_directories() {
-        let (_, python) = build_command("python", "python").unwrap();
-        assert!(!python.iter().any(|arg| arg == "py_compile"));
-
         let (_, csharp) = build_command("dotnet-aot", "csharp").unwrap();
         assert!(csharp.iter().any(|arg| arg == "/work/project/Rune.csproj"));
         assert!(!csharp.iter().any(|arg| arg == "/input/Rune.csproj"));
