@@ -21,6 +21,8 @@ pub struct Config {
     pub autoscale_interval: Duration,
     pub result_stream_max_len: usize,
     pub read_batch_size: usize,
+    pub max_concurrent_per_rune: usize,
+    pub max_concurrent_per_guild: usize,
 }
 
 impl Config {
@@ -46,11 +48,13 @@ impl Config {
             min_vms: parse("RUNE_VM_MIN", 1)?,
             max_vms: parse("RUNE_VM_MAX", 8)?,
             backlog_per_vm: parse("RUNE_VM_BACKLOG_PER_VM", 4)?,
-            invocation_timeout: Duration::from_millis(parse("RUNE_INVOCATION_TIMEOUT_MS", 6_000)?),
+            invocation_timeout: Duration::from_millis(parse("RUNE_INVOCATION_TIMEOUT_MS", 3_000)?),
             restore_timeout: Duration::from_millis(parse("RUNE_VM_RESTORE_TIMEOUT_MS", 2_000)?),
             autoscale_interval: Duration::from_millis(parse("RUNE_VM_AUTOSCALE_INTERVAL_MS", 250)?),
             result_stream_max_len: parse("RUNE_RESULT_STREAM_MAX_LEN", 10_000)?,
             read_batch_size: parse("RUNE_REDIS_BATCH", 32)?,
+            max_concurrent_per_rune: parse("RUNE_MAX_CONCURRENT_PER_RUNE", 1)?,
+            max_concurrent_per_guild: parse("RUNE_MAX_CONCURRENT_PER_GUILD", 4)?,
         };
 
         if config.min_vms == 0 {
@@ -61,6 +65,12 @@ impl Config {
         }
         if config.backlog_per_vm == 0 {
             bail!("RUNE_VM_BACKLOG_PER_VM must be at least 1");
+        }
+        if config.max_concurrent_per_rune == 0 || config.max_concurrent_per_guild == 0 {
+            bail!("Rune concurrency limits must be at least 1");
+        }
+        if config.max_concurrent_per_guild < config.max_concurrent_per_rune {
+            bail!("guild concurrency limit must be >= per-rune concurrency limit");
         }
 
         Ok(config)
