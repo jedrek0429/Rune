@@ -10,9 +10,10 @@ ARG POOL
 ARG MICROPYTHON_VERSION=v1.29.0
 ENV NUGET_PACKAGES=/opt/rune/nuget
 ENV SCRIPTC_CACHE_DIR=/opt/rune/scriptc-cache
+COPY firecracker/build-tools/scriptc.sh /usr/local/bin/rune-build-scriptc
 COPY firecracker/build-tools/python.sh /usr/local/bin/rune-build-python
 COPY firecracker/build-tools/ruby.sh /usr/local/bin/rune-build-ruby
-RUN chmod 0755 /usr/local/bin/rune-build-python /usr/local/bin/rune-build-ruby \
+RUN chmod 0755 /usr/local/bin/rune-build-scriptc /usr/local/bin/rune-build-python /usr/local/bin/rune-build-ruby \
     && apt-get update \
     && case "$POOL" in \
       scriptc) mkdir -p "$SCRIPTC_CACHE_DIR" && chmod 0700 "$SCRIPTC_CACHE_DIR" && apt-get install -y --no-install-recommends clang ca-certificates && npm install -g --allow-scripts=scriptc scriptc && env -i PATH=/usr/local/bin:/usr/bin:/bin SCRIPTC_CACHE_DIR="$SCRIPTC_CACHE_DIR" scriptc cache warm dynamic && chown -R 1000:1000 "$SCRIPTC_CACHE_DIR" ;; \
