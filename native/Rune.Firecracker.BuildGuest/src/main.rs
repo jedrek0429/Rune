@@ -260,13 +260,23 @@ fn drain_bounded(mut reader: impl Read) -> Vec<u8> {
 
 fn mount_guest_filesystems() -> Result<()> {
     fs::create_dir_all("/proc")?;
-    fs::create_dir_all("/dev")?;
-    mount("proc", "/proc", "proc", libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC, "")?;
-    mount("devtmpfs", "/dev", "devtmpfs", libc::MS_NOSUID, "mode=0755")?;
+    mount(
+        "proc",
+        "/proc",
+        "proc",
+        libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC,
+        "",
+    )?;
     Ok(())
 }
 
-fn mount(source: &str, target: &str, fs_type: &str, flags: libc::c_ulong, data: &str) -> Result<()> {
+fn mount(
+    source: &str,
+    target: &str,
+    fs_type: &str,
+    flags: libc::c_ulong,
+    data: &str,
+) -> Result<()> {
     let source = CString::new(source)?;
     let target = CString::new(target)?;
     let fs_type = CString::new(fs_type)?;
@@ -281,7 +291,10 @@ fn mount(source: &str, target: &str, fs_type: &str, flags: libc::c_ulong, data: 
         )
     };
     if result != 0 {
-        bail!("mount {source:?} on {target:?} failed: {}", std::io::Error::last_os_error());
+        bail!(
+            "mount {source:?} on {target:?} failed: {}",
+            std::io::Error::last_os_error()
+        );
     }
     Ok(())
 }
@@ -323,14 +336,26 @@ mod tests {
 
     #[test]
     fn build_commands_cover_all_language_pools() {
-        assert_eq!(build_command("scriptc", "javascript").unwrap().0, "rune-build-scriptc");
-        assert_eq!(build_command("scriptc", "typescript").unwrap().0, "rune-build-scriptc");
+        assert_eq!(
+            build_command("scriptc", "javascript").unwrap().0,
+            "rune-build-scriptc"
+        );
+        assert_eq!(
+            build_command("scriptc", "typescript").unwrap().0,
+            "rune-build-scriptc"
+        );
         assert_eq!(build_command("rust", "rust").unwrap().0, "rustc");
         assert_eq!(build_command("clang", "c").unwrap().0, "clang");
         assert_eq!(build_command("clang", "cpp").unwrap().0, "clang++");
         assert_eq!(build_command("dotnet-aot", "csharp").unwrap().0, "dotnet");
-        assert_eq!(build_command("python", "python").unwrap().0, "rune-build-python");
-        assert_eq!(build_command("ruby", "ruby").unwrap().0, "rune-build-ruby");
+        assert_eq!(
+            build_command("python", "python").unwrap().0,
+            "rune-build-python"
+        );
+        assert_eq!(
+            build_command("ruby", "ruby").unwrap().0,
+            "rune-build-ruby"
+        );
     }
 
     #[test]
@@ -340,6 +365,9 @@ mod tests {
 
     #[test]
     fn policy_requires_positive_limits() {
-        assert!(parse_policy("rune.build_pool=clang rune.language=c rune.pid_limit=0 rune.fd_limit=1 rune.wall_seconds=1").is_err());
+        assert!(parse_policy(
+            "rune.build_pool=clang rune.language=c rune.pid_limit=0 rune.fd_limit=1 rune.wall_seconds=1"
+        )
+        .is_err());
     }
 }
