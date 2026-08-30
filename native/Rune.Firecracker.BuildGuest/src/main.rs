@@ -183,11 +183,40 @@ fn warm_scriptc_cache(cmdline: &str) -> Result<()> {
         .status()
         .context("failed to start ScriptC cache warm")?;
     if !status.success() {
+        diagnose_scriptc_cache_warm();
         println!("RUNE_CACHE_WARM_FAILED");
         bail!("ScriptC cache warm exited with {status}");
     }
     println!("RUNE_CACHE_WARM_DONE");
     Ok(())
+}
+
+fn diagnose_scriptc_cache_warm() {
+    const DIAGNOSTIC: &str = r#"
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
+const require = createRequire('/usr/local/lib/node_modules/scriptc/package.json');
+const compiler = await import(pathToFileURL(require.resolve('@scriptc/compiler')).href);
+try {
+  await compiler.warmNativeCaches({ profiles: ['dynamic'] });
+} catch (error) {
+  let current = error;
+  while (current) {
+    console.error('SCRIPTC_CAUSE:', current.stack ?? current.message ?? String(current));
+    current = current.cause;
+  }
+  process.exitCode = 1;
+}
+"#;
+    let _ = Command::new("node")
+        .args(["--input-type=module", "-e", DIAGNOSTIC])
+        .env_clear()
+        .env("PATH", "/usr/local/bin:/usr/bin:/bin")
+        .env("HOME", "/work")
+        .env("TMPDIR", "/work")
+        .env("SCRIPTC_CACHE_DIR", "/work")
+        .current_dir("/work")
+        .status();
 }
 
 fn run_build(policy: &BuildPolicy) -> Result<()> {
