@@ -62,7 +62,10 @@ fn apply_resource_limits() -> Result<()> {
 }
 
 fn set_limit(resource: libc::__rlimit_resource_t, value: libc::rlim_t) -> Result<()> {
-    let limit = libc::rlimit { rlim_cur: value, rlim_max: value };
+    let limit = libc::rlimit {
+        rlim_cur: value,
+        rlim_max: value,
+    };
     if unsafe { libc::setrlimit(resource, &limit) } != 0 {
         return Err(std::io::Error::last_os_error()).context("setrlimit failed");
     }
@@ -75,7 +78,10 @@ fn write_error(connection: &mut File, message: &str) -> Result<()> {
         .replace('"', "\\\"")
         .replace('\n', "\\n")
         .replace('\r', "\\r");
-    writeln!(connection, "{{\"actions\":[],\"error\":\"{escaped}\",\"durationMicros\":0}}")?;
+    writeln!(
+        connection,
+        "{{\"actions\":[],\"error\":\"{escaped}\",\"durationMicros\":0}}"
+    )?;
     Ok(())
 }
 
@@ -107,7 +113,10 @@ impl Worker {
         };
 
         command
-            .env("PATH", "/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+            .env(
+                "PATH",
+                "/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            )
             .env("HOME", "/root")
             .env("TMPDIR", "/tmp");
 
@@ -128,27 +137,42 @@ impl Worker {
             bail!("language worker did not become ready: {}", ready.trim());
         }
 
-        Ok(Self { _child: child, stdin, stdout })
+        Ok(Self {
+            _child: child,
+            stdin,
+            stdout,
+        })
     }
 
     fn invoke(&mut self, request: &str) -> Result<String> {
         self.stdin.write_all(request.as_bytes())?;
-        if !request.ends_with('\n') { self.stdin.write_all(b"\n")?; }
+        if !request.ends_with('\n') {
+            self.stdin.write_all(b"\n")?;
+        }
         self.stdin.flush()?;
 
         let mut response = String::new();
-        self.stdout.by_ref().take(MAX_RESPONSE_BYTES as u64 + 1).read_line(&mut response)?;
-        if response.len() > MAX_RESPONSE_BYTES { bail!("worker response exceeded limit"); }
+        self.stdout
+            .by_ref()
+            .take(MAX_RESPONSE_BYTES as u64 + 1)
+            .read_line(&mut response)?;
+        if response.len() > MAX_RESPONSE_BYTES {
+            bail!("worker response exceeded limit");
+        }
         Ok(response.trim_end_matches(['\r', '\n']).to_owned())
     }
 }
 
-struct VsockListener { fd: i32 }
+struct VsockListener {
+    fd: i32,
+}
 
 impl VsockListener {
     fn bind(port: u32) -> Result<Self> {
         let fd = unsafe { libc::socket(libc::AF_VSOCK, libc::SOCK_STREAM | libc::SOCK_CLOEXEC, 0) };
-        if fd < 0 { return Err(std::io::Error::last_os_error()).context("socket(AF_VSOCK) failed"); }
+        if fd < 0 {
+            return Err(std::io::Error::last_os_error()).context("socket(AF_VSOCK) failed");
+        }
         let address = libc::sockaddr_vm {
             svm_family: libc::AF_VSOCK as libc::sa_family_t,
             svm_reserved1: 0,
@@ -157,8 +181,11 @@ impl VsockListener {
             svm_zero: [0; 4],
         };
         let result = unsafe {
-            libc::bind(fd, &address as *const libc::sockaddr_vm as *const libc::sockaddr,
-                size_of::<libc::sockaddr_vm>() as libc::socklen_t)
+            libc::bind(
+                fd,
+                &address as *const libc::sockaddr_vm as *const libc::sockaddr,
+                size_of::<libc::sockaddr_vm>() as libc::socklen_t,
+            )
         };
         if result != 0 {
             let error = std::io::Error::last_os_error();
@@ -174,19 +201,36 @@ impl VsockListener {
     }
 
     fn accept(&self) -> Result<File> {
-        let fd = unsafe { libc::accept4(self.fd, std::ptr::null_mut(), std::ptr::null_mut(), libc::SOCK_CLOEXEC) };
-        if fd < 0 { return Err(std::io::Error::last_os_error()).context("accept(AF_VSOCK) failed"); }
+        let fd = unsafe {
+            libc::accept4(
+                self.fd,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                libc::SOCK_CLOEXEC,
+            )
+        };
+        if fd < 0 {
+            return Err(std::io::Error::last_os_error()).context("accept(AF_VSOCK) failed");
+        }
         Ok(unsafe { File::from_raw_fd(fd) })
     }
 }
 
 impl Drop for VsockListener {
-    fn drop(&mut self) { unsafe { libc::close(self.fd) }; }
+    fn drop(&mut self) {
+        unsafe { libc::close(self.fd) };
+    }
 }
 
 fn mount_guest_filesystems() {
     let _ = mount("devtmpfs", "/dev", "devtmpfs", libc::MS_NOSUID, "mode=0755");
-    let _ = mount("proc", "/proc", "proc", libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC, "");
+    let _ = mount(
+        "proc",
+        "/proc",
+        "proc",
+        libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC,
+        "",
+    );
     let _ = mount(
         "tmpfs",
         "/tmp",
@@ -202,9 +246,17 @@ fn mount(source: &str, target: &str, fstype: &str, flags: libc::c_ulong, data: &
     let fstype = CString::new(fstype)?;
     let data = CString::new(data)?;
     let result = unsafe {
-        libc::mount(source.as_ptr(), target.as_ptr(), fstype.as_ptr(), flags, data.as_ptr().cast())
+        libc::mount(
+            source.as_ptr(),
+            target.as_ptr(),
+            fstype.as_ptr(),
+            flags,
+            data.as_ptr().cast(),
+        )
     };
-    if result != 0 { return Err(std::io::Error::last_os_error()).context("mount failed"); }
+    if result != 0 {
+        return Err(std::io::Error::last_os_error()).context("mount failed");
+    }
     Ok(())
 }
 
