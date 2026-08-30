@@ -11,7 +11,6 @@ use admission::AdmissionController;
 use anyhow::Result;
 use firecracker::load_artifact;
 use pool::VmPool;
-use protocol::{InvocationRuntime, RuneLanguage};
 use redis_queue::RedisQueue;
 use tokio::task::JoinSet;
 use tracing::{error, info};
@@ -31,41 +30,37 @@ async fn main() -> Result<()> {
     config.validate_host()?;
 
     let queue = Arc::new(RedisQueue::connect(config.clone()).await?);
+    queue.ensure_group().await?;
     let admission = Arc::new(AdmissionController::new(
         config.max_concurrent_per_rune,
         config.max_concurrent_per_guild,
         config.max_invocations_per_rune_per_second,
         config.max_invocations_per_guild_per_second,
     ));
+    let pool = Arc::new(VmPool::new(config.clone()));
+    pool.prime().await?;
+
     let mut tasks = JoinSet::new();
-
-    for runtime in InvocationRuntime::ALL {
-        let pool = Arc::new(VmPool::new(runtime, config.clone()));
-        pool.prime().await?;
-
-        {
-            let pool = pool.clone();
-            tasks.spawn(async move {
-                pool.maintain().await;
-                Ok::<(), anyhow::Error>(())
-            });
-        }
-
-        {
-            let pool = pool.clone();
-            let queue = queue.clone();
-            tasks.spawn(async move {
-                autoscale(runtime, pool, queue).await;
-                Ok::<(), anyhow::Error>(())
-            });
-        }
-
-        for language in languages_for_runtime(runtime) {
-            let pool = pool.clone();
-            let queue = queue.clone();
-            let admission = admission.clone();
-            tasks.spawn(async move { consume(language, pool, queue, admission).await });
-        }
+    {
+        let pool = pool.clone();
+        tasks.spawn(async move {
+            pool.maintain().await;
+            Ok::<(), anyhow::Error>(())
+        });
+    }
+    {
+        let pool = pool.clone();
+        let queue = queue.clone();
+        tasks.spawn(async move {
+            autoscale(pool, queue).await;
+            Ok::<(), anyhow::Error>(())
+        });
+    }
+    {
+        let pool = pool.clone();
+        let queue = queue.clone();
+        let admission = admission.clone();
+        tasks.spawn(async move { consume(pool, queue, admission).await });
     }
 
     info!("Rune Firecracker runner is ready");
@@ -84,28 +79,18 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn languages_for_runtime(runtime: InvocationRuntime) -> impl Iterator<Item = RuneLanguage> {
-    RuneLanguage::ALL
-        .into_iter()
-        .filter(move |language| language.invocation_runtime() == runtime)
-}
-
 async fn consume(
-    language: RuneLanguage,
     pool: Arc<VmPool>,
     queue: Arc<RedisQueue>,
     admission: Arc<AdmissionController>,
 ) -> Result<()> {
-    queue.ensure_group(language).await?;
-
     loop {
-        let jobs = queue.read(language).await?;
+        let jobs = queue.read().await?;
         if jobs.is_empty() {
             continue;
         }
 
         let mut invocations = JoinSet::new();
-
         for job in jobs {
             let pool = pool.clone();
             let queue = queue.clone();
@@ -116,15 +101,6 @@ async fn consume(
                 if let Err(message) = envelope.validate() {
                     return queue.finish(job, &envelope.fail(message.into())).await;
                 }
-                if envelope.language.invocation_runtime() != pool.runtime() {
-                    return queue
-                        .finish(
-                            job,
-                            &envelope
-                                .fail("Rune was routed to the wrong invocation runtime".into()),
-                        )
-                        .await;
-                }
 
                 let artifact = match load_artifact(
                     &pool.config().state_root.join("artifacts"),
@@ -133,9 +109,7 @@ async fn consume(
                 .await
                 {
                     Ok(artifact) => artifact,
-                    Err(error) => {
-                        return queue.finish(job, &envelope.fail(error.to_string())).await;
-                    }
+                    Err(error) => return queue.finish(job, &envelope.fail(error.to_string())).await,
                 };
 
                 let _admission = match admission.acquire(&envelope).await {
@@ -166,39 +140,13 @@ async fn consume(
     }
 }
 
-async fn autoscale(runtime: InvocationRuntime, pool: Arc<VmPool>, queue: Arc<RedisQueue>) {
+async fn autoscale(pool: Arc<VmPool>, queue: Arc<RedisQueue>) {
     let interval = pool.config().autoscale_interval;
-
     loop {
-        match queue.backlog_for_runtime(runtime).await {
-            Ok(backlog) => {
-                let target = pool.target_for_backlog(backlog);
-                pool.set_target(target);
-            }
-            Err(error) => error!(?runtime, %error, "failed to measure Redis backlog"),
+        match queue.backlog().await {
+            Ok(backlog) => pool.set_target(pool.target_for_backlog(backlog)),
+            Err(error) => error!(%error, "failed to measure Redis backlog"),
         }
-
         tokio::time::sleep(interval).await;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn native_runtime_owns_all_native_compiled_languages() {
-        let languages: Vec<_> = languages_for_runtime(InvocationRuntime::Native).collect();
-        assert_eq!(
-            languages,
-            vec![
-                RuneLanguage::Javascript,
-                RuneLanguage::Typescript,
-                RuneLanguage::Rust,
-                RuneLanguage::C,
-                RuneLanguage::Cpp,
-                RuneLanguage::Csharp,
-            ]
-        );
     }
 }
