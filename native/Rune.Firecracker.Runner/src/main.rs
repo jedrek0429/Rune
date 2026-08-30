@@ -118,7 +118,11 @@ async fn consume(
                 }
                 if envelope.language.invocation_runtime() != pool.runtime() {
                     return queue
-                        .finish(job, &envelope.fail("Rune was routed to the wrong invocation runtime".into()))
+                        .finish(
+                            job,
+                            &envelope
+                                .fail("Rune was routed to the wrong invocation runtime".into()),
+                        )
                         .await;
                 }
 
@@ -129,7 +133,9 @@ async fn consume(
                 .await
                 {
                     Ok(artifact) => artifact,
-                    Err(error) => return queue.finish(job, &envelope.fail(error.to_string())).await,
+                    Err(error) => {
+                        return queue.finish(job, &envelope.fail(error.to_string())).await;
+                    }
                 };
 
                 let _admission = match admission.acquire(&envelope).await {
