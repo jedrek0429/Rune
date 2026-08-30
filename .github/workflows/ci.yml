@@ -90,7 +90,12 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bin" "$RUNE_FIRECRACKER_ROOT"
           install "release-${FIRECRACKER_VERSION}-${arch}/firecracker-${FIRECRACKER_VERSION}-${arch}" "$RUNNER_TEMP/bin/firecracker"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-          curl -fsSL -o "$RUNE_FIRECRACKER_ROOT/vmlinux" "https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/kernels/vmlinux.bin"
+
+          s3="https://s3.amazonaws.com/spec.ccfc.min"
+          ci_prefix="$(curl -fsSL "$s3?list-type=2&prefix=firecracker-ci/&delimiter=/" | grep -oP '(?<=<Prefix>)firecracker-ci/[0-9]{8}-[^/]+/(?=</Prefix>)' | sort | tail -1)"
+          kernel_key="$(curl -fsSL "$s3?list-type=2&prefix=${ci_prefix}${arch}/vmlinux-6.1" | grep -oP "(?<=<Key>)${ci_prefix}${arch}/vmlinux-6\.1\.[0-9]+(?=</Key>)" | sort -V | tail -1)"
+          test -n "$kernel_key"
+          curl -fsSL -o "$RUNE_FIRECRACKER_ROOT/vmlinux" "$s3/$kernel_key"
 
       - name: Test all languages end to end
         run: tests/firecracker/e2e.sh
