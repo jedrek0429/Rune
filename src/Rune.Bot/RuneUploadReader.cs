@@ -72,18 +72,18 @@ public sealed class RuneUploadReader(
         return Path.GetExtension(fileName)
             .ToLowerInvariant()
             switch
-            {
-                ".js" or ".mjs" =>
-                    RuneLanguage.JavaScript,
+        {
+            ".js" or ".mjs" =>
+                RuneLanguage.JavaScript,
 
-                ".py" =>
-                    RuneLanguage.Python,
+            ".py" =>
+                RuneLanguage.Python,
 
-                ".rs" =>
-                    RuneLanguage.Rust,
+            ".rs" =>
+                RuneLanguage.Rust,
 
-                _ => null
-            };
+            _ => null
+        };
     }
 }
 
