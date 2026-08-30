@@ -160,9 +160,12 @@ fn run_build(policy: &BuildPolicy) -> Result<()> {
     let mut diagnostics = stdout_thread.join().unwrap_or_default();
     diagnostics.extend(stderr_thread.join().unwrap_or_default());
     diagnostics.truncate(MAX_DIAGNOSTIC_BYTES);
-    fs::write("/work/diagnostics.txt", diagnostics)?;
+    fs::write("/work/diagnostics.txt", &diagnostics)?;
 
     if !status.success() {
+        if !diagnostics.is_empty() {
+            eprintln!("{}", String::from_utf8_lossy(&diagnostics));
+        }
         println!("RUNE_BUILD_FAILED");
         bail!("compiler exited with {status}");
     }
