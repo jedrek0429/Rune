@@ -46,7 +46,7 @@ public sealed class FirecrackerTransportTests
     }
 
     [Fact]
-    public async Task RegistrationStoresSourceWithoutCompilingWasm()
+    public async Task RegistrationStoresSourceForBuildPlaneWithoutCreatingArtifact()
     {
         var registry = new RuneRegistry();
         var service = new RuneService(registry);
@@ -60,13 +60,23 @@ public sealed class FirecrackerTransportTests
             source);
 
         Assert.Equal(source, rune.Source);
-        Assert.Empty(rune.Wasm);
+        Assert.Null(rune.Artifact);
         Assert.True(rune.Enabled);
         Assert.Same(rune, registry.Get(42, "firecracker"));
     }
 
-    [Fact]
-    public void InvocationStreamIsPartitionedByLanguage()
+    [Theory]
+    [InlineData(RuneLanguage.JavaScript, "javascript")]
+    [InlineData(RuneLanguage.TypeScript, "typescript")]
+    [InlineData(RuneLanguage.Python, "python")]
+    [InlineData(RuneLanguage.Ruby, "ruby")]
+    [InlineData(RuneLanguage.Rust, "rust")]
+    [InlineData(RuneLanguage.C, "c")]
+    [InlineData(RuneLanguage.Cpp, "cpp")]
+    [InlineData(RuneLanguage.CSharp, "csharp")]
+    public void InvocationStreamIsPartitionedByLanguage(
+        RuneLanguage language,
+        string suffix)
     {
         var options = new RuneRedisOptions
         {
@@ -74,13 +84,7 @@ public sealed class FirecrackerTransportTests
         };
 
         Assert.Equal(
-            "test:invocations:javascript",
-            options.GetInvocationStream(RuneLanguage.JavaScript));
-        Assert.Equal(
-            "test:invocations:python",
-            options.GetInvocationStream(RuneLanguage.Python));
-        Assert.Equal(
-            "test:invocations:rust",
-            options.GetInvocationStream(RuneLanguage.Rust));
+            $"test:invocations:{suffix}",
+            options.GetInvocationStream(language));
     }
 }
