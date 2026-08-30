@@ -57,4 +57,9 @@ rm -f "$rootfs"
 truncate -s "${size}M" "$rootfs"
 mkfs.ext4 -q -F -d "$tmp/rootfs" "$rootfs"
 chmod 0444 "$rootfs"
+
+if [[ "$kind/$profile" == build/scriptc ]]; then
+  bash firecracker/warm-scriptc-cache.sh
+fi
+
 echo "built $rootfs (${size} MiB)"
