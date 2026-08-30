@@ -30,8 +30,7 @@ public sealed class FirecrackerRuneBuilderTests
         var directory = Path.Combine(Path.GetTempPath(), $"rune-build-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         var script = Path.Combine(directory, "build.sh");
-        await File.WriteAllTextAsync(script, "#!/bin/sh\necho 'sha256:abc 123 rune'\n");
-        File.SetUnixFileMode(script, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        await File.WriteAllTextAsync(script, "echo 'sha256:abc 123 rune'\n");
 
         try
         {
