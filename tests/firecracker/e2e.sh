@@ -43,13 +43,13 @@ probe_source() {
     printf '%s\n' 'fn main() { println!(r#"{"actions":[],"error":null,"durationMicros":1}"#); }'
     ;;
   c)
-    printf '%s\n' '#include <stdio.h>' 'int main(void) { puts("{\\"actions\\":[],\\"error\\":null,\\"durationMicros\\":1}"); return 0; }'
+    printf '%s\n' '#include <stdio.h>' 'int main(void) { puts("{\"actions\":[],\"error\":null,\"durationMicros\":1}"); return 0; }'
     ;;
   cpp)
-    printf '%s\n' '#include <iostream>' 'int main() { std::cout << "{\\"actions\\":[],\\"error\\":null,\\"durationMicros\\":1}\\n"; }'
+    printf '%s\n' '#include <iostream>' 'int main() { std::cout << "{\"actions\":[],\"error\":null,\"durationMicros\":1}\n"; }'
     ;;
   csharp)
-    printf '%s\n' 'Console.WriteLine("{\\"actions\\":[],\\"error\\":null,\\"durationMicros\\":1}");'
+    printf '%s\n' 'Console.WriteLine("{\"actions\":[],\"error\":null,\"durationMicros\":1}");'
     ;;
   *) return 2 ;;
   esac
