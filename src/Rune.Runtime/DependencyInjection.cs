@@ -13,6 +13,7 @@ public static class DependencyInjection
 
         services.AddSingleton(options);
         services.AddSingleton<IRuneTransport, RedisRuneTransport>();
+        services.AddSingleton<IRuneBuilder>(_ => new FirecrackerRuneBuilder());
 
         return services;
     }
