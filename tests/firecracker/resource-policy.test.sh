@@ -54,7 +54,7 @@ grep -q 'timeout .*wall_seconds' "$builder" || { echo "build VM launcher must en
 grep -q 'truncate -s .*disk_mib.*scratch' "$builder" || { echo "build VM launcher must bound scratch disk" >&2; exit 1; }
 grep -q 'rune.language=' "$builder" || { echo "build VM must receive language" >&2; exit 1; }
 grep -q 'drive_id.*input' "$builder" && grep -q 'is_read_only.*true' "$builder" || { echo "build input must be read-only" >&2; exit 1; }
-grep -q 'drive_id.*cache-seed' "$builder" && grep -q 'is_read_only.*true' "$builder" || { echo "ScriptC cache seed must enter build VMs read-only" >&2; exit 1; }
+grep -q 'drive_id.*cache_seed' "$builder" && grep -q 'is_read_only.*true' "$builder" || { echo "ScriptC cache seed must enter build VMs read-only with a valid Firecracker resource ID" >&2; exit 1; }
 grep -q 'size <= 16777216' "$builder" || { echo "artifact must be capped at 16 MiB" >&2; exit 1; }
 grep -q 'sha256sum' "$builder" || { echo "artifact store must be content-addressed" >&2; exit 1; }
 
