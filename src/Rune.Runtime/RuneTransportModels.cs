@@ -13,7 +13,8 @@ public sealed record RuneInvocationEnvelope(
     RuneEventType EventType,
     string Source,
     JsonElement Payload,
-    DateTimeOffset EnqueuedAt);
+    DateTimeOffset EnqueuedAt,
+    BuiltRuneArtifact? Artifact = null);
 
 public sealed record RuneHostActionEnvelope(
     string Method,
