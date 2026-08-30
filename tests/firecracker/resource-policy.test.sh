@@ -69,8 +69,8 @@ if grep -q 'scriptc cache warm' "$dockerfile"; then
   exit 1
 fi
 [[ -f "$scriptc_warmer" ]] || { echo "final-rootfs ScriptC cache warmer is missing" >&2; exit 1; }
-grep -q 'scriptc cache warm dynamic' "$build_guest" || { echo "build guest must warm the expensive ScriptC dynamic-engine cache" >&2; exit 1; }
-if grep -q 'scriptc cache warm runtime dynamic' "$build_guest"; then
+grep -Fq '.args(["cache", "warm", "dynamic"])' "$build_guest" || { echo "build guest must warm the expensive ScriptC dynamic-engine cache" >&2; exit 1; }
+if grep -Fq '.args(["cache", "warm", "runtime", "dynamic"])' "$build_guest"; then
   echo "ScriptC cache preparation must not precompile the ordinary runtime family" >&2
   exit 1
 fi
