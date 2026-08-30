@@ -64,12 +64,12 @@ fn build_command(pool: &str, language: &str) -> Result<(&'static str, Vec<String
     let output = "/work/artifact";
     let command = match (pool, language) {
         ("scriptc", "javascript") => (
-            "scriptc",
-            vec!["build", "/input/source.js", "--dynamic", "-o", output],
+            "rune-build-scriptc",
+            vec!["/input/source.js", output],
         ),
         ("scriptc", "typescript") => (
-            "scriptc",
-            vec!["build", "/input/source.ts", "--dynamic", "-o", output],
+            "rune-build-scriptc",
+            vec!["/input/source.ts", output],
         ),
         ("rust", "rust") => ("rustc", vec!["/input/source.rs", "-O", "-o", output]),
         ("clang", "c") => ("clang", vec!["/input/source.c", "-O2", "-o", output]),
@@ -150,7 +150,6 @@ fn run_build(policy: &BuildPolicy) -> Result<()> {
         .env("HOME", "/work")
         .env("TMPDIR", "/work/tmp")
         .env("NUGET_PACKAGES", "/opt/rune/nuget")
-        .env("SCRIPTC_CACHE_DIR", "/opt/rune/scriptc-cache")
         .current_dir("/work")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -323,8 +322,14 @@ mod tests {
 
     #[test]
     fn compiler_commands_cover_every_language() {
-        assert_eq!(build_command("scriptc", "javascript").unwrap().0, "scriptc");
-        assert_eq!(build_command("scriptc", "typescript").unwrap().0, "scriptc");
+        assert_eq!(
+            build_command("scriptc", "javascript").unwrap().0,
+            "rune-build-scriptc"
+        );
+        assert_eq!(
+            build_command("scriptc", "typescript").unwrap().0,
+            "rune-build-scriptc"
+        );
         assert_eq!(build_command("rust", "rust").unwrap().0, "rustc");
         assert_eq!(build_command("clang", "c").unwrap().0, "clang");
         assert_eq!(build_command("clang", "cpp").unwrap().0, "clang++");
