@@ -5,7 +5,46 @@ on:
   pull_request:
 
 jobs:
-  build:
+  rust:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Check workspace
+        run: cargo check --workspace
+
+      - name: Lint workspace
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test workspace
+        run: cargo test --workspace
+
+  javascript-guest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Test JavaScript guest worker
+        run: node --test tests/firecracker/javascript-worker.test.mjs
+
+  dotnet:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,41 +56,16 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24.x
-
-      - name: Check Rust formatting
-        run: cargo fmt --all --check
-
-      - name: Check Rust workspace
-        run: cargo check --workspace
-
-      - name: Lint Rust workspace
-        run: cargo clippy --workspace --all-targets -- -D warnings
-
-      - name: Test Rust workspace
-        run: cargo test --workspace
-
-      - name: Test JavaScript guest worker
-        run: node --test tests/firecracker/javascript-worker.test.mjs
-
-      - name: Restore .NET
+      - name: Restore
         run: dotnet restore Rune.slnx
 
-      - name: Check C# formatting
+      - name: Check formatting
         run: dotnet format Rune.slnx --no-restore --verify-no-changes
 
-      - name: Build .NET
+      - name: Build
         run: dotnet build Rune.slnx --no-restore --configuration Release
 
-      - name: Test .NET
+      - name: Test
         run: dotnet test Rune.slnx --no-build --configuration Release
 
   firecracker-smoke:
