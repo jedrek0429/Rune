@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
 
 rune_invocation_profile() {
-  case "${1:-}" in
-    native) echo "1 192 32 3 32 128" ;;
-    python|ruby) echo "1 256 32 3 32 128" ;;
-    *) return 2 ;;
-  esac
+  [[ $# -eq 0 ]] || return 2
+  echo "1 192 32 3 32 128"
 }
 
 rune_build_profile() {
