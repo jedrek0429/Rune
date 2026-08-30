@@ -16,8 +16,13 @@ types:
         representation: snowflake
       - name: Username
 
-  Message:
-    netcord: NetCord.Gateway.Message
+  ReplyMessageProperties:
+    netcord: NetCord.Rest.ReplyMessageProperties
+    members:
+      - name: Content
+
+  RestMessage:
+    netcord: NetCord.Rest.RestMessage
     members:
       - name: Id
         representation: snowflake
@@ -25,6 +30,15 @@ types:
         representation: snowflake
       - name: Content
       - name: Author
+    methods:
+      - name: ReplyAsync
+        parameters:
+          - replyMessage
+
+  Message:
+    netcord: NetCord.Gateway.Message
+    base: RestMessage
+    members: []
 
   MessageDeleteEventArgs:
     netcord: NetCord.Gateway.MessageDeleteEventArgs
