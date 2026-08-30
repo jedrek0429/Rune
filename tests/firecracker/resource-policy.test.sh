@@ -64,6 +64,12 @@ build_guest="$repo_root/native/Rune.Firecracker.BuildGuest/src/main.rs"
 invocation_dockerfile="$repo_root/firecracker/images/Dockerfile.invocation"
 scriptc_builder="$repo_root/firecracker/build-tools/scriptc.sh"
 grep -q 'scriptc).*build-essential.*clang' "$dockerfile" || { echo "ScriptC build image must include Linux headers, assembler and linker tooling" >&2; exit 1; }
+grep -q 'ARG SCRIPTC_VERSION=0\.0\.35' "$dockerfile" || { echo "ScriptC compiler version must be pinned" >&2; exit 1; }
+grep -Fq '"scriptc@$SCRIPTC_VERSION"' "$dockerfile" || { echo "ScriptC install must use the pinned compiler version" >&2; exit 1; }
+if grep -Eq 'npm install .*scriptc scriptc([ ;]|$)' "$dockerfile"; then
+  echo "ScriptC install must not float to the latest package" >&2
+  exit 1
+fi
 grep -q 'dotnet publish.*PublishAot=true' "$dockerfile" || { echo ".NET build image must prewarm Native AOT assets before network is removed" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES=/opt/rune/nuget' "$dockerfile" || { echo ".NET build image must expose its prewarmed packages outside root home" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES.*opt/rune/nuget' "$build_guest" || { echo "build guest must use the prewarmed NuGet cache" >&2; exit 1; }
@@ -88,12 +94,15 @@ grep -q 'rune.cache_warm=scriptc' "$scriptc_warmer" || { echo "ScriptC warmer mu
 grep -q 'chmod 0444.*cache' "$scriptc_warmer" || { echo "ScriptC cache seed must be frozen after warming" >&2; exit 1; }
 grep -q 'warm-scriptc-cache.sh' "$rootfs_builder" || { echo "ScriptC rootfs build must warm its final cache seed" >&2; exit 1; }
 grep -q 'rune-build-scriptc' "$build_guest" || { echo "JS/TS builds must use the ScriptC policy wrapper" >&2; exit 1; }
-grep -q 'scriptc build "$source" -o "$artifact"' "$scriptc_builder" || { echo "ScriptC wrapper must try static compilation first" >&2; exit 1; }
+grep -q 'SCRIPTC_NO_CACHE=1 scriptc build "$source" -o "$artifact"' "$scriptc_builder" || { echo "ScriptC static builds must bypass expensive persistent-cache validation" >&2; exit 1; }
 grep -q 'scriptc coverage "$source" --dynamic' "$scriptc_builder" || { echo "ScriptC wrapper must validate dynamic fallback" >&2; exit 1; }
 grep -q 'scriptc build "$source" --dynamic -o "$artifact"' "$scriptc_builder" || { echo "ScriptC wrapper must use dynamic mode only as fallback" >&2; exit 1; }
+static_line="$(grep -n 'SCRIPTC_NO_CACHE=1 scriptc build' "$scriptc_builder" | cut -d: -f1)"
+cache_line="$(grep -n 'mkdir -p /work/scriptc-cache' "$scriptc_builder" | cut -d: -f1)"
+[[ -n "$static_line" && -n "$cache_line" && "$static_line" -lt "$cache_line" ]] || { echo "ScriptC cache must be materialised only after the static path fails" >&2; exit 1; }
 grep -q 'find /cache-seed' "$scriptc_builder" && grep -q '! -name lost+found' "$scriptc_builder" || { echo "ScriptC wrapper must copy only cache payload and exclude ext4 bookkeeping" >&2; exit 1; }
 grep -q 'chmod 0700 /work/scriptc-cache' "$scriptc_builder" || { echo "per-build ScriptC cache must stay private" >&2; exit 1; }
-grep -q 'SCRIPTC_CACHE_DIR=/work/scriptc-cache' "$scriptc_builder" || { echo "ScriptC builds must use writable bounded scratch for cache mutations" >&2; exit 1; }
+grep -q 'SCRIPTC_CACHE_DIR=/work/scriptc-cache' "$scriptc_builder" || { echo "dynamic ScriptC builds must use writable bounded scratch for cache mutations" >&2; exit 1; }
 grep -q 'MICROPY_PERSISTENT_CODE_LOAD' "$dockerfile" || { echo "MicroPython embed must load precompiled bytecode" >&2; exit 1; }
 grep -q 'rune-build-python' "$build_guest" || { echo "Python builds must use the executable MicroPython packager" >&2; exit 1; }
 grep -q 'rune-build-ruby' "$build_guest" || { echo "Ruby builds must use the executable mruby packager" >&2; exit 1; }
