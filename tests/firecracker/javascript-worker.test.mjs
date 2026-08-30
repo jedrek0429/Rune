@@ -20,20 +20,25 @@ async function withWorker(run) {
         assert.equal(ready.done, false);
         assert.deepEqual(JSON.parse(ready.value), { ready: true });
 
-        async function invoke(source, payload = defaultPayload()) {
-            child.stdin.write(`${JSON.stringify({
-                runeName: "worker-test",
-                eventType: "messageCreate",
-                source,
-                payload,
-            })}\n`);
-
+        async function send(message) {
+            child.stdin.write(`${JSON.stringify(message)}\n`);
             const response = await lines.next();
             assert.equal(response.done, false);
             return JSON.parse(response.value);
         }
 
-        await run(invoke);
+        async function invoke(source, payload = defaultPayload()) {
+            return send({
+                type: "invoke",
+                invocationId: "00000000-0000-0000-0000-000000000001",
+                runeName: "worker-test",
+                eventType: "messageCreate",
+                source,
+                payload,
+            });
+        }
+
+        await run({ invoke, send, lines, child });
     } finally {
         output.close();
         child.kill();
@@ -52,66 +57,61 @@ function defaultPayload() {
     };
 }
 
-test("message.reply emits only the constrained host action and projects snowflakes as bigint", async () => {
-    await withWorker(async (invoke) => {
-        const result = await invoke(`
-            if (typeof message.id !== "bigint") throw new Error("message.id was not bigint");
-            if (typeof message.author.id !== "bigint") throw new Error("author.id was not bigint");
-            message.reply(message.id.toString() + ":" + message.author.id.toString());
-        `);
+test("message.reply suspends for a correlated host response and returns the projected RestMessage", async () => {
+    await withWorker(async ({ send, lines, child }) => {
+        child.stdin.write(`${JSON.stringify({
+            type: "invoke",
+            invocationId: "00000000-0000-0000-0000-000000000001",
+            runeName: "worker-test",
+            eventType: "messageCreate",
+            source: `
+                globalThis.handle = async () => {
+                    const reply = await message.reply({ content: "Hello" });
+                    if (typeof reply.id !== "bigint") throw new Error("reply.id was not bigint");
+                    if (reply.content !== "Hello") throw new Error("unexpected reply content");
+                };
+            `,
+            payload: defaultPayload(),
+        })}\n`);
 
-        assert.equal(result.error, null);
-        assert.deepEqual(result.actions, [
-            {
-                method: "message.reply",
-                arguments: {
-                    content: "18446744073709551612:18446744073709551613",
+        const requestLine = await lines.next();
+        assert.equal(requestLine.done, false);
+        const request = JSON.parse(requestLine.value);
+        assert.equal(request.type, "hostCall");
+        assert.equal(request.invocationId, "00000000-0000-0000-0000-000000000001");
+        assert.equal(request.method, "NetCord.Rest.RestMessage.ReplyAsync");
+        assert.equal(typeof request.requestId, "string");
+        assert.deepEqual(request.arguments, { replyMessage: { content: "Hello" } });
+
+        const completion = await send({
+            type: "hostResult",
+            invocationId: request.invocationId,
+            requestId: request.requestId,
+            result: {
+                id: "18446744073709551610",
+                channelId: "18446744073709551611",
+                content: "Hello",
+                author: {
+                    id: "18446744073709551613",
+                    username: "Ada",
                 },
             },
-        ]);
-        assert.ok(result.durationMicros >= 0);
-    });
-});
+        });
 
-test("a failed Rune never leaks host actions emitted before the failure", async () => {
-    await withWorker(async (invoke) => {
-        const result = await invoke(`
-            message.reply("must not escape");
-            throw new Error("boom");
-        `);
-
-        assert.deepEqual(result.actions, []);
-        assert.equal(result.error, "boom");
+        assert.equal(completion.type, "completed");
+        assert.equal(completion.invocationId, request.invocationId);
+        assert.equal(completion.error, null);
     });
 });
 
 test("each invocation receives a fresh JavaScript context", async () => {
-    await withWorker(async (invoke) => {
-        const source = `
-            globalThis.counter = (globalThis.counter ?? 0) + 1;
-            message.reply(String(globalThis.counter));
-        `;
+    await withWorker(async ({ invoke }) => {
+        const source = `globalThis.counter = (globalThis.counter ?? 0) + 1;`;
 
         const first = await invoke(source);
         const second = await invoke(source);
 
         assert.equal(first.error, null);
         assert.equal(second.error, null);
-        assert.equal(first.actions[0].arguments.content, "1");
-        assert.equal(second.actions[0].arguments.content, "1");
-    });
-});
-
-test("reply and action limits fail the invocation atomically", async () => {
-    await withWorker(async (invoke) => {
-        const oversized = await invoke(`message.reply("x".repeat(2001));`);
-        assert.deepEqual(oversized.actions, []);
-        assert.match(oversized.error, /reply exceeds 2000 UTF-8 bytes/);
-
-        const tooMany = await invoke(`
-            for (let i = 0; i < 17; i++) message.reply(String(i));
-        `);
-        assert.deepEqual(tooMany.actions, []);
-        assert.match(tooMany.error, /more than 16 host actions/);
     });
 });

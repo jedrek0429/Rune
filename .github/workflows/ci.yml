@@ -63,6 +63,9 @@ jobs:
       - name: Restore
         run: dotnet restore Rune.slnx
 
+      - name: Generate Rune.API
+        run: dotnet run --project tools/Rune.Api.Generator --no-restore -- generate
+
       - name: Check formatting
         run: dotnet format Rune.slnx --no-restore --verify-no-changes
 

@@ -1,49 +1,91 @@
+import crypto from "node:crypto";
 import vm from "node:vm";
 import readline from "node:readline";
 
 const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
 const encoder = new TextEncoder();
-const MAX_ACTIONS = 16;
+const MAX_HOST_CALLS = 16;
 const MAX_REPLY_BYTES = 2000;
+const pendingHostCalls = new Map();
+const activeInvocations = new Set();
 
 new vm.Script("1 + 1").runInNewContext(Object.create(null));
-process.stdout.write('{"ready":true}\n');
+write({ ready: true });
 
-for await (const line of rl) {
-    if (!line) continue;
+rl.on("line", (line) => {
+    if (!line) return;
 
+    let message;
+    try {
+        message = JSON.parse(line);
+    } catch (error) {
+        write({ type: "protocolError", error: errorMessage(error) });
+        return;
+    }
+
+    if (message.type === "hostResult" || message.type === "hostError") {
+        completeHostCall(message);
+        return;
+    }
+
+    if (message.type !== "invoke") {
+        write({ type: "protocolError", error: `unsupported message type: ${message.type}` });
+        return;
+    }
+
+    void invoke(message);
+});
+
+async function invoke(envelope) {
     const started = process.hrtime.bigint();
-    const actions = [];
-    let error = null;
+    const invocationId = String(envelope.invocationId);
+
+    if (activeInvocations.has(invocationId)) {
+        write({
+            type: "completed",
+            invocationId,
+            error: "invocation is already active",
+            durationMicros: 0,
+        });
+        return;
+    }
+
+    activeInvocations.add(invocationId);
+    let hostCalls = 0;
 
     try {
-        const envelope = JSON.parse(line);
-        const value = project(envelope.payload);
+        const makeReply = (receiverId) => async (replyMessage) => {
+            const content = replyMessage?.content;
+            if (content != null && encoder.encode(String(content)).length > MAX_REPLY_BYTES) {
+                throw new Error(`reply exceeds ${MAX_REPLY_BYTES} UTF-8 bytes`);
+            }
+            if (hostCalls >= MAX_HOST_CALLS) {
+                throw new Error(`Rune produced more than ${MAX_HOST_CALLS} host calls`);
+            }
+            hostCalls += 1;
 
-        if (envelope.eventType === "messageCreate") {
-            Object.defineProperty(value, "reply", {
-                enumerable: false,
-                configurable: false,
-                writable: false,
-                value(content) {
-                    const text = String(content);
-                    if (encoder.encode(text).length > MAX_REPLY_BYTES) {
-                        throw new Error(`reply exceeds ${MAX_REPLY_BYTES} UTF-8 bytes`);
-                    }
-                    if (actions.length >= MAX_ACTIONS) {
-                        throw new Error(`Rune produced more than ${MAX_ACTIONS} host actions`);
-                    }
-                    actions.push({ method: "message.reply", arguments: { content: text } });
+            const result = await hostCall({
+                invocationId,
+                method: "NetCord.Rest.RestMessage.ReplyAsync",
+                receiverId,
+                arguments: {
+                    replyMessage: {
+                        content: content == null ? null : String(content),
+                    },
                 },
             });
-        }
 
-        deepFreeze(value);
+            return projectRestMessage(result, makeReply);
+        };
+
+        const message = envelope.eventType === "messageCreate"
+            ? projectRestMessage(envelope.payload, makeReply)
+            : deepFreeze(project(envelope.payload));
 
         const sandbox = Object.create(null);
-        Object.defineProperty(sandbox, "event", { value, writable: false });
+        Object.defineProperty(sandbox, "event", { value: message, writable: false });
         if (envelope.eventType === "messageCreate") {
-            Object.defineProperty(sandbox, "message", { value, writable: false });
+            Object.defineProperty(sandbox, "message", { value: message, writable: false });
         }
 
         const context = vm.createContext(sandbox, {
@@ -54,13 +96,84 @@ for await (const line of rl) {
         new vm.Script(envelope.source, {
             filename: `${envelope.runeName}.js`,
         }).runInContext(context, { timeout: 1500 });
-    } catch (caught) {
-        actions.length = 0;
-        error = errorMessage(caught);
+
+        if (typeof context.handle === "function") {
+            await context.handle(message);
+        }
+
+        write({
+            type: "completed",
+            invocationId,
+            error: null,
+            durationMicros: elapsedMicros(started),
+        });
+    } catch (error) {
+        rejectInvocationHostCalls(invocationId, error);
+        write({
+            type: "completed",
+            invocationId,
+            error: errorMessage(error),
+            durationMicros: elapsedMicros(started),
+        });
+    } finally {
+        activeInvocations.delete(invocationId);
+    }
+}
+
+function hostCall({ invocationId, method, receiverId, arguments: args }) {
+    const requestId = crypto.randomUUID();
+
+    return new Promise((resolve, reject) => {
+        pendingHostCalls.set(requestId, { invocationId, resolve, reject });
+        write({
+            type: "hostCall",
+            invocationId,
+            requestId,
+            method,
+            receiverId,
+            arguments: args,
+        });
+    });
+}
+
+function completeHostCall(message) {
+    const requestId = String(message.requestId);
+    const pending = pendingHostCalls.get(requestId);
+
+    if (!pending || pending.invocationId !== String(message.invocationId)) {
+        write({
+            type: "protocolError",
+            error: "host response does not match an active request",
+        });
+        return;
     }
 
-    const durationMicros = Number((process.hrtime.bigint() - started) / 1000n);
-    process.stdout.write(JSON.stringify({ actions, error, durationMicros }) + "\n");
+    pendingHostCalls.delete(requestId);
+    if (message.type === "hostError") {
+        pending.reject(new Error(String(message.error ?? "host call failed")));
+    } else {
+        pending.resolve(message.result);
+    }
+}
+
+function rejectInvocationHostCalls(invocationId, cause) {
+    for (const [requestId, pending] of pendingHostCalls) {
+        if (pending.invocationId !== invocationId) continue;
+        pendingHostCalls.delete(requestId);
+        pending.reject(cause);
+    }
+}
+
+function projectRestMessage(value, makeReply) {
+    const projected = project(value);
+    const receiverId = String(value?.id ?? "");
+    Object.defineProperty(projected, "reply", {
+        enumerable: false,
+        configurable: false,
+        writable: false,
+        value: makeReply(receiverId),
+    });
+    return deepFreeze(projected);
 }
 
 function errorMessage(caught) {
@@ -108,4 +221,12 @@ function deepFreeze(value) {
 
 function isSnowflakeKey(key) {
     return key === "id" || key.endsWith("Id");
+}
+
+function elapsedMicros(started) {
+    return Number((process.hrtime.bigint() - started) / 1000n);
+}
+
+function write(value) {
+    process.stdout.write(`${JSON.stringify(value)}\n`);
 }
