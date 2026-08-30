@@ -131,7 +131,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::protocol::{BuiltRuneArtifact, RuneEventType, RuneLanguage};
+    use crate::protocol::{BuiltRuneArtifact, RuneEventType};
     use serde_json::Value;
     use std::time::Duration;
 
@@ -142,7 +142,6 @@ mod tests {
             rune_id: rune_id.into(),
             rune_name: rune_id.into(),
             guild_id,
-            language: RuneLanguage::Rust,
             event_type: RuneEventType::MessageCreate,
             artifact: BuiltRuneArtifact {
                 id: "artifact".into(),
