@@ -61,7 +61,7 @@ fn parse_positive(values: &HashMap<&str, &str>, key: &str) -> Result<u64> {
 }
 
 fn build_command(pool: &str, language: &str) -> Result<(&'static str, Vec<String>)> {
-    let output = "/out/artifact";
+    let output = "/work/artifact";
     let command = match (pool, language) {
         ("scriptc", "javascript") => (
             "scriptc",
@@ -110,7 +110,7 @@ fn main() -> Result<()> {
         fs::read_to_string("/proc/cmdline").context("failed to read kernel command line")?;
     let policy = parse_policy(&cmdline)?;
 
-    for path in ["/work", "/input", "/out"] {
+    for path in ["/work", "/input"] {
         fs::create_dir_all(path)?;
     }
     mount(
@@ -129,18 +129,8 @@ fn main() -> Result<()> {
         "",
     )
     .context("failed to mount build input")?;
-    mount(
-        "/dev/vdd",
-        "/out",
-        "ext4",
-        libc::MS_NOSUID | libc::MS_NODEV,
-        "",
-    )
-    .context("failed to mount bounded artifact disk")?;
-    for path in ["/work", "/out"] {
-        fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
-        chown(path, WORKER_UID, WORKER_GID)?;
-    }
+    fs::set_permissions("/work", fs::Permissions::from_mode(0o700))?;
+    chown("/work", WORKER_UID, WORKER_GID)?;
 
     set_limit(libc::RLIMIT_CPU, policy.cpu_seconds)?;
     set_limit(libc::RLIMIT_NPROC, policy.pid_limit)?;
@@ -154,11 +144,8 @@ fn run_build(policy: &BuildPolicy) -> Result<()> {
     fs::create_dir_all("/work/tmp")?;
     if policy.language == "csharp" {
         fs::create_dir_all("/work/project")?;
-        fs::copy("/input/source.cs", "/work/project/Program.cs")?;
-        fs::write(
-            "/work/project/Rune.csproj",
-            r#"<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><PublishAot>true</PublishAot><InvariantGlobalization>true</InvariantGlobalization></PropertyGroup></Project>"#,
-        )?;
+        fs::copy("/input/Program.cs", "/work/project/Program.cs")?;
+        fs::copy("/input/Rune.csproj", "/work/project/Rune.csproj")?;
     }
 
     let (program, args) = build_command(&policy.pool, &policy.language)?;
@@ -193,18 +180,18 @@ fn run_build(policy: &BuildPolicy) -> Result<()> {
 
     match policy.language.as_str() {
         "python" => {
-            fs::copy("/input/source.py", "/out/artifact")?;
+            fs::copy("/input/source.py", "/work/artifact")?;
         }
         "ruby" => {
-            fs::copy("/input/source.rb", "/out/artifact")?;
+            fs::copy("/input/source.rb", "/work/artifact")?;
         }
         "csharp" => {
-            fs::copy("/work/publish/Rune", "/out/artifact")?;
+            fs::copy("/work/publish/Rune", "/work/artifact")?;
         }
         _ => {}
     }
 
-    let metadata = fs::metadata("/out/artifact").context("compiler produced no artifact")?;
+    let metadata = fs::metadata("/work/artifact").context("compiler produced no artifact")?;
     if metadata.len() == 0 {
         bail!("compiler produced an empty artifact");
     }
@@ -366,7 +353,7 @@ mod tests {
     }
 
     #[test]
-    fn compiler_outputs_use_bounded_artifact_disk() {
+    fn compiler_outputs_stay_on_bounded_scratch() {
         for pair in [
             ("scriptc", "javascript"),
             ("scriptc", "typescript"),
@@ -375,7 +362,7 @@ mod tests {
             ("clang", "cpp"),
         ] {
             let (_, args) = build_command(pair.0, pair.1).unwrap();
-            assert!(args.iter().any(|arg| arg == "/out/artifact"));
+            assert!(args.iter().any(|arg| arg == "/work/artifact"));
         }
     }
 
