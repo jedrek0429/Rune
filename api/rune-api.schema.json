@@ -42,6 +42,22 @@
               },
               "additionalProperties": false
             }
+          },
+          "methods": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "parameters"],
+              "properties": {
+                "name": { "type": "string" },
+                "parameters": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "uniqueItems": true
+                }
+              },
+              "additionalProperties": false
+            }
           }
         },
         "additionalProperties": false
