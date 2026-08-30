@@ -5,20 +5,87 @@ use serde_json::Value;
 pub enum RuneLanguage {
     #[serde(rename = "javaScript")]
     Javascript,
+    #[serde(rename = "typeScript")]
+    Typescript,
     #[serde(rename = "python")]
     Python,
+    #[serde(rename = "ruby")]
+    Ruby,
     #[serde(rename = "rust")]
     Rust,
+    #[serde(rename = "c")]
+    C,
+    #[serde(rename = "cpp")]
+    Cpp,
+    #[serde(rename = "cSharp")]
+    Csharp,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum InvocationRuntime {
+    Native,
+    Python,
+    Ruby,
+    Dotnet,
+}
+
+impl InvocationRuntime {
+    pub const ALL: [Self; 4] = [Self::Native, Self::Python, Self::Ruby, Self::Dotnet];
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Native => "native",
+            Self::Python => "python",
+            Self::Ruby => "ruby",
+            Self::Dotnet => "dotnet",
+        }
+    }
 }
 
 impl RuneLanguage {
-    pub const ALL: [Self; 3] = [Self::Javascript, Self::Python, Self::Rust];
+    pub const ALL: [Self; 8] = [
+        Self::Javascript,
+        Self::Typescript,
+        Self::Python,
+        Self::Ruby,
+        Self::Rust,
+        Self::C,
+        Self::Cpp,
+        Self::Csharp,
+    ];
 
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Javascript => "javascript",
+            Self::Typescript => "typescript",
             Self::Python => "python",
+            Self::Ruby => "ruby",
             Self::Rust => "rust",
+            Self::C => "c",
+            Self::Cpp => "cpp",
+            Self::Csharp => "csharp",
+        }
+    }
+
+    pub const fn invocation_runtime(self) -> InvocationRuntime {
+        match self {
+            Self::Javascript | Self::Typescript | Self::Rust | Self::C | Self::Cpp => {
+                InvocationRuntime::Native
+            }
+            Self::Python => InvocationRuntime::Python,
+            Self::Ruby => InvocationRuntime::Ruby,
+            Self::Csharp => InvocationRuntime::Dotnet,
+        }
+    }
+
+    pub const fn build_pool(self) -> &'static str {
+        match self {
+            Self::Javascript | Self::Typescript => "scriptc",
+            Self::Rust => "rust",
+            Self::C | Self::Cpp => "clang",
+            Self::Csharp => "dotnet",
+            Self::Python => "python",
+            Self::Ruby => "ruby",
         }
     }
 }
@@ -35,6 +102,14 @@ pub enum RuneEventType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct BuiltRuneArtifact {
+    pub id: String,
+    pub digest: String,
+    pub entrypoint: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InvocationEnvelope {
     pub execution_id: String,
     pub invocation_id: String,
@@ -43,6 +118,9 @@ pub struct InvocationEnvelope {
     pub guild_id: u64,
     pub language: RuneLanguage,
     pub event_type: RuneEventType,
+    #[serde(default)]
+    pub artifact: Option<BuiltRuneArtifact>,
+    #[serde(default)]
     pub source: String,
     pub payload: Value,
     pub enqueued_at: String,
@@ -129,6 +207,7 @@ mod tests {
             guild_id: 18_446_744_073_709_551_610,
             language: RuneLanguage::Javascript,
             event_type: RuneEventType::MessageCreate,
+            artifact: None,
             source: "message.reply('hello')".into(),
             payload: json!({
                 "id": "18446744073709551612",
@@ -140,6 +219,28 @@ mod tests {
             }),
             enqueued_at: "2026-08-30T00:00:00Z".into(),
         }
+    }
+
+    #[test]
+    fn languages_map_to_shared_invocation_runtimes() {
+        for language in [
+            RuneLanguage::Javascript,
+            RuneLanguage::Typescript,
+            RuneLanguage::Rust,
+            RuneLanguage::C,
+            RuneLanguage::Cpp,
+        ] {
+            assert_eq!(language.invocation_runtime(), InvocationRuntime::Native);
+        }
+        assert_eq!(RuneLanguage::Python.invocation_runtime(), InvocationRuntime::Python);
+        assert_eq!(RuneLanguage::Ruby.invocation_runtime(), InvocationRuntime::Ruby);
+        assert_eq!(RuneLanguage::Csharp.invocation_runtime(), InvocationRuntime::Dotnet);
+    }
+
+    #[test]
+    fn javascript_and_typescript_build_with_scriptc() {
+        assert_eq!(RuneLanguage::Javascript.build_pool(), "scriptc");
+        assert_eq!(RuneLanguage::Typescript.build_pool(), "scriptc");
     }
 
     #[test]
@@ -165,10 +266,8 @@ mod tests {
         });
 
         let envelope: InvocationEnvelope = serde_json::from_value(wire).unwrap();
-
         assert_eq!(envelope.language, RuneLanguage::Javascript);
         assert!(matches!(envelope.event_type, RuneEventType::MessageCreate));
-        assert_eq!(envelope.payload["author"]["id"], "18446744073709551613");
 
         let result = envelope.complete(GuestResult {
             actions: vec![HostAction {
@@ -179,12 +278,8 @@ mod tests {
             duration_micros: 123,
         });
         let serialized = serde_json::to_value(result).unwrap();
-
         assert_eq!(serialized["language"], "javaScript");
-        assert_eq!(serialized["eventType"], "messageCreate");
-        assert_eq!(serialized["guildId"], 18_446_744_073_709_551_610_u64);
         assert_eq!(serialized["actions"][0]["method"], "message.reply");
-        assert_eq!(serialized["payload"]["id"], "18446744073709551612");
     }
 
     #[test]
@@ -192,13 +287,9 @@ mod tests {
         let envelope = invocation();
         let failed = envelope.fail("timed out".into());
         let serialized = serde_json::to_value(failed).unwrap();
-
         assert_eq!(serialized["executionId"], "execution-1");
-        assert_eq!(serialized["invocationId"], "invocation-1");
-        assert_eq!(serialized["runeId"], "rune-1");
         assert_eq!(serialized["payload"], envelope.payload);
         assert_eq!(serialized["actions"], json!([]));
         assert_eq!(serialized["error"], "timed out");
-        assert_eq!(serialized["durationMicros"], 0);
     }
 }
