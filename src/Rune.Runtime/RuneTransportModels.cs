@@ -11,10 +11,9 @@ public sealed record RuneInvocationEnvelope(
     ulong GuildId,
     RuneLanguage Language,
     RuneEventType EventType,
-    string Source,
+    BuiltRuneArtifact Artifact,
     JsonElement Payload,
-    DateTimeOffset EnqueuedAt,
-    BuiltRuneArtifact? Artifact = null);
+    DateTimeOffset EnqueuedAt);
 
 public sealed record RuneHostActionEnvelope(
     string Method,
