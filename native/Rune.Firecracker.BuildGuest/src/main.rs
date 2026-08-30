@@ -352,10 +352,7 @@ mod tests {
             build_command("python", "python").unwrap().0,
             "rune-build-python"
         );
-        assert_eq!(
-            build_command("ruby", "ruby").unwrap().0,
-            "rune-build-ruby"
-        );
+        assert_eq!(build_command("ruby", "ruby").unwrap().0, "rune-build-ruby");
     }
 
     #[test]
