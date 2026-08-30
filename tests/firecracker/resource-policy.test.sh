@@ -65,7 +65,11 @@ if grep -q 'scriptc cache warm' "$dockerfile"; then
   exit 1
 fi
 [[ -f "$scriptc_warmer" ]] || { echo "final-rootfs ScriptC cache warmer is missing" >&2; exit 1; }
-grep -q 'scriptc cache warm runtime dynamic' "$build_guest" || { echo "build guest must warm ScriptC runtime and dynamic caches" >&2; exit 1; }
+grep -q 'scriptc cache warm dynamic' "$build_guest" || { echo "build guest must warm the expensive ScriptC dynamic-engine cache" >&2; exit 1; }
+if grep -q 'scriptc cache warm runtime dynamic' "$build_guest"; then
+  echo "ScriptC cache preparation must not precompile the ordinary runtime family" >&2
+  exit 1
+fi
 grep -q 'rune.cache_warm=scriptc' "$scriptc_warmer" || { echo "ScriptC warmer must boot the final build rootfs in cache-warm mode" >&2; exit 1; }
 grep -q 'chmod 0444.*cache' "$scriptc_warmer" || { echo "ScriptC cache seed must be frozen after warming" >&2; exit 1; }
 grep -q 'warm-scriptc-cache.sh' "$rootfs_builder" || { echo "ScriptC rootfs build must warm its final cache seed" >&2; exit 1; }
