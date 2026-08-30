@@ -30,7 +30,9 @@ pub async fn load_artifact(root: &Path, artifact: &BuiltRuneArtifact) -> Result<
         .id
         .strip_prefix("sha256:")
         .context("artifact id is not content-addressed")?;
-    let bytes = fs::read(root.join(hex)).await.context("artifact is missing")?;
+    let bytes = fs::read(root.join(hex))
+        .await
+        .context("artifact is missing")?;
     if bytes.len() as u64 != artifact.size_bytes || bytes.len() as u64 > MAX_ARTIFACT_BYTES {
         bail!("artifact size does not match descriptor");
     }
@@ -83,7 +85,14 @@ impl WarmVm {
             "vsock_override": { "uds_path": vsock_path }
         });
 
-        if let Err(error) = api_put(&api_path, "/snapshot/load", &request, config.restore_timeout).await {
+        if let Err(error) = api_put(
+            &api_path,
+            "/snapshot/load",
+            &request,
+            config.restore_timeout,
+        )
+        .await
+        {
             let _ = child.kill().await;
             let _ = fs::remove_dir_all(&runtime_dir).await;
             return Err(error);
@@ -103,10 +112,17 @@ impl WarmVm {
         })
     }
 
-    pub async fn invoke(&mut self, envelope: &InvocationEnvelope, artifact: &[u8]) -> Result<GuestResult> {
-        tokio::time::timeout(self.invocation_timeout, self.invoke_inner(envelope, artifact))
-            .await
-            .context("Rune invocation timed out; disposable microVM will be destroyed")?
+    pub async fn invoke(
+        &mut self,
+        envelope: &InvocationEnvelope,
+        artifact: &[u8],
+    ) -> Result<GuestResult> {
+        tokio::time::timeout(
+            self.invocation_timeout,
+            self.invoke_inner(envelope, artifact),
+        )
+        .await
+        .context("Rune invocation timed out; disposable microVM will be destroyed")?
     }
 
     pub async fn destroy(mut self) {
@@ -115,11 +131,17 @@ impl WarmVm {
         let _ = fs::remove_dir_all(&self.runtime_dir).await;
     }
 
-    async fn invoke_inner(&mut self, envelope: &InvocationEnvelope, artifact: &[u8]) -> Result<GuestResult> {
+    async fn invoke_inner(
+        &mut self,
+        envelope: &InvocationEnvelope,
+        artifact: &[u8],
+    ) -> Result<GuestResult> {
         let mut stream = UnixStream::connect(&self.vsock_path)
             .await
             .context("failed to connect to Firecracker vsock UDS")?;
-        stream.write_all(format!("CONNECT {GUEST_VSOCK_PORT}\n").as_bytes()).await?;
+        stream
+            .write_all(format!("CONNECT {GUEST_VSOCK_PORT}\n").as_bytes())
+            .await?;
 
         let mut reader = BufReader::new(stream);
         let mut handshake = String::new();
@@ -130,8 +152,13 @@ impl WarmVm {
 
         let mut stream = reader.into_inner();
         let payload = serde_json::to_vec(envelope)?;
-        let payload_len: u32 = payload.len().try_into().context("invocation envelope is too large")?;
-        stream.write_all(&(artifact.len() as u64).to_be_bytes()).await?;
+        let payload_len: u32 = payload
+            .len()
+            .try_into()
+            .context("invocation envelope is too large")?;
+        stream
+            .write_all(&(artifact.len() as u64).to_be_bytes())
+            .await?;
         stream.write_all(artifact).await?;
         stream.write_all(&payload_len.to_be_bytes()).await?;
         stream.write_all(&payload).await?;
@@ -139,7 +166,10 @@ impl WarmVm {
 
         let reader = BufReader::new(stream);
         let mut response = Vec::new();
-        reader.take((MAX_GUEST_RESPONSE + 1) as u64).read_until(b'\n', &mut response).await?;
+        reader
+            .take((MAX_GUEST_RESPONSE + 1) as u64)
+            .read_until(b'\n', &mut response)
+            .await?;
         if response.len() > MAX_GUEST_RESPONSE {
             bail!("guest response exceeded {MAX_GUEST_RESPONSE} bytes");
         }
@@ -164,7 +194,12 @@ async fn wait_for_path(path: &PathBuf, timeout: Duration) -> Result<()> {
     Ok(())
 }
 
-async fn api_put(socket_path: &PathBuf, route: &str, body: &serde_json::Value, timeout: Duration) -> Result<()> {
+async fn api_put(
+    socket_path: &PathBuf,
+    route: &str,
+    body: &serde_json::Value,
+    timeout: Duration,
+) -> Result<()> {
     tokio::time::timeout(timeout, async {
         let mut stream = UnixStream::connect(socket_path)
             .await
@@ -186,7 +221,10 @@ async fn api_put(socket_path: &PathBuf, route: &str, body: &serde_json::Value, t
         }
         if !status_line.starts_with("HTTP/1.1 200 ") && !status_line.starts_with("HTTP/1.1 204 ") {
             let mut remainder = Vec::new();
-            let _ = reader.take(MAX_API_ERROR_RESPONSE).read_to_end(&mut remainder).await;
+            let _ = reader
+                .take(MAX_API_ERROR_RESPONSE)
+                .read_to_end(&mut remainder)
+                .await;
             bail!(
                 "Firecracker API {route} failed: {}{}",
                 status_line.trim(),
@@ -206,19 +244,28 @@ async fn api_put(socket_path: &PathBuf, route: &str, body: &serde_json::Value, t
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-    use serde_json::json;
-    use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::UnixListener};
     use super::*;
+    use serde_json::json;
+    use std::time::Duration;
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt},
+        net::UnixListener,
+    };
 
     #[tokio::test]
     async fn artifact_loader_verifies_size_and_digest() {
         let dir = std::env::temp_dir().join(format!("rune-artifact-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&dir).await.unwrap();
-        fs::write(dir.join("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"), b"abc").await.unwrap();
+        fs::write(
+            dir.join("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"),
+            b"abc",
+        )
+        .await
+        .unwrap();
         let artifact = BuiltRuneArtifact {
             id: "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad".into(),
-            digest: "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad".into(),
+            digest: "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+                .into(),
             entrypoint: "rune".into(),
             size_bytes: 3,
         };
@@ -239,11 +286,21 @@ mod tests {
             let (mut stream, _) = listener.accept().await.unwrap();
             let mut request = [0_u8; 4096];
             let _ = stream.read(&mut request).await.unwrap();
-            stream.write_all(b"HTTP/1.1 204 No Content\r\nConnection: keep-alive\r\n\r\n").await.unwrap();
+            stream
+                .write_all(b"HTTP/1.1 204 No Content\r\nConnection: keep-alive\r\n\r\n")
+                .await
+                .unwrap();
             stream.flush().await.unwrap();
             tokio::time::sleep(Duration::from_millis(250)).await;
         });
-        api_put(&socket, "/snapshot/load", &json!({ "resume_vm": true }), Duration::from_millis(100)).await.unwrap();
+        api_put(
+            &socket,
+            "/snapshot/load",
+            &json!({ "resume_vm": true }),
+            Duration::from_millis(100),
+        )
+        .await
+        .unwrap();
         server.await.unwrap();
         fs::remove_dir_all(&dir).await.unwrap();
     }
@@ -258,9 +315,20 @@ mod tests {
             let (mut stream, _) = listener.accept().await.unwrap();
             let mut request = [0_u8; 4096];
             let _ = stream.read(&mut request).await.unwrap();
-            stream.write_all(b"HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\ninvalid snapshot").await.unwrap();
+            stream
+                .write_all(b"HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\ninvalid snapshot")
+                .await
+                .unwrap();
         });
-        let error = api_put(&socket, "/snapshot/load", &json!({ "resume_vm": true }), Duration::from_millis(500)).await.unwrap_err().to_string();
+        let error = api_put(
+            &socket,
+            "/snapshot/load",
+            &json!({ "resume_vm": true }),
+            Duration::from_millis(500),
+        )
+        .await
+        .unwrap_err()
+        .to_string();
         assert!(error.contains("400 Bad Request"));
         assert!(error.contains("invalid snapshot"));
         server.await.unwrap();
