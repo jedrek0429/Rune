@@ -33,7 +33,8 @@ public sealed class RuneEventDispatcher(
                         rune.EventType,
                         rune.Source,
                         payload,
-                        DateTimeOffset.UtcNow),
+                        DateTimeOffset.UtcNow,
+                        rune.Artifact),
                     cancellationToken);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
