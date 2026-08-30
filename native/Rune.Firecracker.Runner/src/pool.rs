@@ -10,10 +10,10 @@ use anyhow::Result;
 use tokio::sync::{Mutex, Notify};
 use tracing::{error, info};
 
-use crate::{config::Config, firecracker::WarmVm, protocol::RuneLanguage};
+use crate::{config::Config, firecracker::WarmVm, protocol::InvocationRuntime};
 
 pub struct VmPool {
-    language: RuneLanguage,
+    runtime: InvocationRuntime,
     config: Arc<Config>,
     idle: Mutex<VecDeque<WarmVm>>,
     in_flight: AtomicUsize,
@@ -22,9 +22,9 @@ pub struct VmPool {
 }
 
 impl VmPool {
-    pub fn new(language: RuneLanguage, config: Arc<Config>) -> Self {
+    pub fn new(runtime: InvocationRuntime, config: Arc<Config>) -> Self {
         Self {
-            language,
+            runtime,
             target: AtomicUsize::new(config.min_vms),
             config,
             idle: Mutex::new(VecDeque::new()),
@@ -37,18 +37,17 @@ impl VmPool {
         &self.config
     }
 
+    pub fn runtime(&self) -> InvocationRuntime {
+        self.runtime
+    }
+
     pub async fn prime(&self) -> Result<()> {
         for _ in 0..self.config.min_vms {
-            let vm = WarmVm::restore(self.language, self.config.clone()).await?;
+            let vm = WarmVm::restore(self.runtime, self.config.clone()).await?;
             self.idle.lock().await.push_back(vm);
         }
 
-        info!(
-            language = self.language.as_str(),
-            count = self.config.min_vms,
-            "warm Firecracker pool primed"
-        );
-
+        info!(runtime = self.runtime.as_str(), count = self.config.min_vms, "warm Firecracker pool primed");
         Ok(())
     }
 
@@ -74,10 +73,7 @@ impl VmPool {
         let target = target.clamp(self.config.min_vms, self.config.max_vms);
         let previous = self.target.swap(target, Ordering::AcqRel);
         if previous != target {
-            info!(
-                language = self.language.as_str(),
-                previous, target, "warm Firecracker pool target changed"
-            );
+            info!(runtime = self.runtime.as_str(), previous, target, "warm Firecracker pool target changed");
             self.changed.notify_one();
         }
     }
@@ -102,17 +98,13 @@ impl VmPool {
             if total < target {
                 let missing = target - total;
                 for _ in 0..missing {
-                    match WarmVm::restore(self.language, self.config.clone()).await {
+                    match WarmVm::restore(self.runtime, self.config.clone()).await {
                         Ok(vm) => {
                             self.idle.lock().await.push_back(vm);
                             self.changed.notify_waiters();
                         }
                         Err(error) => {
-                            error!(
-                                language = self.language.as_str(),
-                                %error,
-                                "failed to restore warm Firecracker VM"
-                            );
+                            error!(runtime = self.runtime.as_str(), %error, "failed to restore warm Firecracker VM");
                             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                             break;
                         }
@@ -165,8 +157,7 @@ mod tests {
 
     #[test]
     fn backlog_target_uses_ceiling_and_respects_pool_bounds() {
-        let pool = VmPool::new(RuneLanguage::Javascript, config(2, 5, 4));
-
+        let pool = VmPool::new(InvocationRuntime::Native, config(2, 5, 4));
         assert_eq!(pool.target_for_backlog(0), 2);
         assert_eq!(pool.target_for_backlog(1), 2);
         assert_eq!(pool.target_for_backlog(8), 2);
