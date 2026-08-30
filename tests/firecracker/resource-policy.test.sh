@@ -60,6 +60,10 @@ scriptc_builder="$repo_root/firecracker/build-tools/scriptc.sh"
 grep -q 'dotnet publish.*PublishAot=true' "$dockerfile" || { echo ".NET build image must prewarm Native AOT assets before network is removed" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES=/opt/rune/nuget' "$dockerfile" || { echo ".NET build image must expose its prewarmed packages outside root home" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES.*opt/rune/nuget' "$build_guest" || { echo "build guest must use the prewarmed NuGet cache" >&2; exit 1; }
+if grep -q 'mount("devtmpfs", "/dev"' "$build_guest"; then
+  echo "build guest must use the kernel-provided /dev mount" >&2
+  exit 1
+fi
 if grep -q 'scriptc cache warm' "$dockerfile"; then
   echo "ScriptC cache must not be warmed before the final rootfs exists" >&2
   exit 1
