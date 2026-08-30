@@ -278,9 +278,7 @@ mod tests {
             let mut request = [0_u8; 4096];
             let _ = stream.read(&mut request).await.unwrap();
             stream
-                .write_all(
-                    b"HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\ninvalid snapshot",
-                )
+                .write_all(b"HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\ninvalid snapshot")
                 .await
                 .unwrap();
         });
