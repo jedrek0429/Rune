@@ -173,7 +173,7 @@ fn warm_scriptc_cache(cmdline: &str) -> Result<()> {
     drop_privileges()?;
 
     let status = Command::new("scriptc")
-        .args(["cache", "warm", "dynamic"])
+        .args(["cache", "warm", "runtime", "dynamic"])
         .env_clear()
         .env("PATH", "/usr/local/bin:/usr/bin:/bin")
         .env("HOME", "/work")
@@ -198,7 +198,7 @@ import { pathToFileURL } from 'node:url';
 const require = createRequire('/usr/local/lib/node_modules/scriptc/package.json');
 const compiler = await import(pathToFileURL(require.resolve('@scriptc/compiler')).href);
 try {
-  await compiler.warmNativeCaches({ profiles: ['dynamic'] });
+  await compiler.warmNativeCaches({ profiles: ['runtime', 'dynamic'] });
 } catch (error) {
   let current = error;
   while (current) {
@@ -350,6 +350,9 @@ fn set_limit(resource: libc::__rlimit_resource_t, value: u64) -> Result<()> {
 }
 
 fn drop_privileges() -> Result<()> {
+    if unsafe { libc::setgroups(0, std::ptr::null()) } != 0 {
+        bail!("setgroups failed: {}", std::io::Error::last_os_error());
+    }
     if unsafe { libc::setgid(WORKER_GID) } != 0 {
         bail!("setgid failed: {}", std::io::Error::last_os_error());
     }
