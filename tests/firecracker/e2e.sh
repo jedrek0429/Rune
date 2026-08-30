@@ -69,20 +69,9 @@ build_target() {
   esac
 }
 
-wire_language() {
-  case "$1" in
-  javascript) echo javaScript ;;
-  typescript) echo typeScript ;;
-  csharp) echo cSharp ;;
-  *) echo "$1" ;;
-  esac
-}
-
 mkdir -p "$root"
-for runtime in native python ruby; do
-  bash "$repo_root/firecracker/build-rootfs.sh" invocation "$runtime"
-  bash "$repo_root/firecracker/build-snapshot.sh" "$runtime"
-done
+bash "$repo_root/firecracker/build-rootfs.sh" invocation rune
+bash "$repo_root/firecracker/build-snapshot.sh"
 
 declare -A artifact_id artifact_size
 for pool in scriptc clang rust dotnet-aot python ruby; do
@@ -129,17 +118,15 @@ done
 
 for language in javascript typescript python ruby rust c cpp csharp; do
   execution_id="e2e-$language"
-  wire="$(wire_language "$language")"
-  json="$(python3 - "$execution_id" "$wire" "${artifact_id[$language]}" "${artifact_size[$language]}" <<'PY'
+  json="$(python3 - "$execution_id" "${artifact_id[$language]}" "${artifact_size[$language]}" <<'PY'
 import json, sys
-execution, language, artifact, size = sys.argv[1:]
+execution, artifact, size = sys.argv[1:]
 print(json.dumps({
     "executionId": execution,
     "invocationId": execution,
     "runeId": execution,
     "runeName": execution,
     "guildId": 1,
-    "language": language,
     "eventType": "messageCreate",
     "artifact": {"id": artifact, "digest": artifact, "entrypoint": "rune", "sizeBytes": int(size)},
     "payload": {"content": "firecracker e2e"},
@@ -147,7 +134,7 @@ print(json.dumps({
 }, separators=(",", ":")))
 PY
 )"
-  redis-cli XADD "rune:invocations:$language" '*' json "$json" >/dev/null
+  redis-cli XADD rune:invocations '*' json "$json" >/dev/null
 
   result=""
   for _ in $(seq 1 300); do
@@ -167,4 +154,4 @@ PY
   echo "$language e2e passed"
 done
 
-echo "all eight Firecracker language paths passed"
+echo "all eight languages passed through one Rune execution pool"
