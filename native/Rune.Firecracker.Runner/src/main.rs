@@ -117,7 +117,8 @@ async fn consume(
                     return queue
                         .finish(
                             job,
-                            &envelope.fail("Rune was routed to the wrong invocation runtime".into()),
+                            &envelope
+                                .fail("Rune was routed to the wrong invocation runtime".into()),
                         )
                         .await;
                 }
