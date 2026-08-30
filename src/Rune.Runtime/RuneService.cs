@@ -1,3 +1,4 @@
+using System.Text;
 using Rune.Core.Runes;
 
 namespace Rune.Runtime;
@@ -13,6 +14,7 @@ public sealed class RuneService(RuneRegistry runeRegistry)
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        ValidateSource(source);
 
         if (runeRegistry.Get(guildId, name) is not null)
             throw new InvalidOperationException($"A rune named '{name}' already exists.");
@@ -39,6 +41,7 @@ public sealed class RuneService(RuneRegistry runeRegistry)
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        ValidateSource(source);
 
         var updated = current with
         {
@@ -49,6 +52,25 @@ public sealed class RuneService(RuneRegistry runeRegistry)
 
         runeRegistry.Replace(updated);
         return ValueTask.FromResult(updated);
+    }
+
+    public RegisteredRune CompleteBuild(
+        RegisteredRune current,
+        BuiltRuneArtifact artifact)
+    {
+        if (artifact.SizeBytes < 0 || artifact.SizeBytes > RuneResourceLimits.MaxArtifactBytes)
+            throw new InvalidOperationException("Built Rune artifact may not exceed 16 MiB.");
+
+        if (string.IsNullOrWhiteSpace(artifact.Id) ||
+            string.IsNullOrWhiteSpace(artifact.Digest) ||
+            string.IsNullOrWhiteSpace(artifact.Entrypoint))
+        {
+            throw new InvalidOperationException("Built Rune artifact descriptor is incomplete.");
+        }
+
+        var updated = current with { Artifact = artifact };
+        runeRegistry.Replace(updated);
+        return updated;
     }
 
     public ValueTask<RegisteredRune?> RemoveAsync(
@@ -77,5 +99,11 @@ public sealed class RuneService(RuneRegistry runeRegistry)
             runeRegistry.SetEnabled(guildId, name, enabled, out var updated)
                 ? updated
                 : null);
+    }
+
+    private static void ValidateSource(string source)
+    {
+        if (Encoding.UTF8.GetByteCount(source) > RuneResourceLimits.MaxSourceBytes)
+            throw new InvalidOperationException("Rune source may not exceed 64 KiB.");
     }
 }
