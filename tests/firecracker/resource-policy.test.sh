@@ -18,7 +18,7 @@ assert_eq() {
 assert_eq "1 192 32 3 32 128" "$(rune_invocation_profile native)" "native invocation profile"
 assert_eq "1 256 32 3 32 128" "$(rune_invocation_profile python)" "python invocation profile"
 assert_eq "1 256 32 3 32 128" "$(rune_invocation_profile ruby)" "ruby invocation profile"
-assert_eq "1 512 512 60 128 256" "$(rune_build_profile scriptc)" "ScriptC build profile"
+assert_eq "1 512 512 30 128 256" "$(rune_build_profile scriptc)" "ScriptC build profile"
 assert_eq "1 512 512 20 128 256" "$(rune_build_profile clang)" "Clang build profile"
 assert_eq "2 1024 512 45 128 256" "$(rune_build_profile rust)" "Rust build profile"
 assert_eq "2 2048 768 60 128 256" "$(rune_build_profile dotnet-aot)" ".NET AOT build profile"
@@ -30,7 +30,7 @@ builder="$repo_root/firecracker/run-build-vm.sh"
 assert_eq "1 192" "$(bash "$snapshot" --print-profile native)" "native snapshot profile"
 assert_eq "1 256" "$(bash "$snapshot" --print-profile python)" "python snapshot profile"
 assert_eq "1 256" "$(bash "$snapshot" --print-profile ruby)" "ruby snapshot profile"
-assert_eq "1 512 512 60 128 256" "$(bash "$builder" --print-profile scriptc)" "ScriptC build launcher profile"
+assert_eq "1 512 512 30 128 256" "$(bash "$builder" --print-profile scriptc)" "ScriptC build launcher profile"
 assert_eq "2 1024 512 45 128 256" "$(bash "$builder" --print-profile rust)" "Rust build launcher profile"
 assert_eq "2 2048 768 60 128 256" "$(bash "$builder" --print-profile dotnet-aot)" ".NET AOT build launcher profile"
 
@@ -63,8 +63,9 @@ build_guest="$repo_root/native/Rune.Firecracker.BuildGuest/src/main.rs"
 grep -q 'dotnet publish.*PublishAot=true' "$dockerfile" || { echo ".NET build image must prewarm Native AOT assets before network is removed" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES=/opt/rune/nuget' "$dockerfile" || { echo ".NET build image must expose its prewarmed packages outside root home" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES.*opt/rune/nuget' "$build_guest" || { echo "build guest must use the prewarmed NuGet cache" >&2; exit 1; }
-grep -q 'allow-scripts=scriptc' "$dockerfile" || { echo "ScriptC build image must run its cache-warming install hook" >&2; exit 1; }
+grep -q 'allow-scripts=scriptc' "$dockerfile" || { echo "ScriptC build image must run its install hook" >&2; exit 1; }
 grep -q 'SCRIPTC_CACHE_DIR=/opt/rune/scriptc-cache' "$dockerfile" || { echo "ScriptC build image must use an explicit compiler cache" >&2; exit 1; }
+grep -q 'scriptc cache warm dynamic' "$dockerfile" || { echo "ScriptC build image must explicitly warm the dynamic engine cache" >&2; exit 1; }
 grep -q 'chown -R 1000:1000.*SCRIPTC_CACHE_DIR' "$dockerfile" || { echo "ScriptC cache must be owned by the unprivileged build user" >&2; exit 1; }
 grep -q 'chmod 0700.*SCRIPTC_CACHE_DIR' "$dockerfile" || { echo "ScriptC cache must stay private" >&2; exit 1; }
 grep -q 'SCRIPTC_CACHE_DIR.*opt/rune/scriptc-cache' "$build_guest" || { echo "build guest must reuse the prewarmed ScriptC cache" >&2; exit 1; }
