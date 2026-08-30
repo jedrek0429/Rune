@@ -61,7 +61,7 @@ fn parse_positive(values: &HashMap<&str, &str>, key: &str) -> Result<u64> {
 }
 
 fn build_command(pool: &str, language: &str) -> Result<(&'static str, Vec<String>)> {
-    let output = "/work/artifact";
+    let output = "/out/artifact";
     let command = match (pool, language) {
         ("scriptc", "javascript") => (
             "scriptc",
@@ -110,8 +110,9 @@ fn main() -> Result<()> {
         fs::read_to_string("/proc/cmdline").context("failed to read kernel command line")?;
     let policy = parse_policy(&cmdline)?;
 
-    fs::create_dir_all("/work")?;
-    fs::create_dir_all("/input")?;
+    for path in ["/work", "/input", "/out"] {
+        fs::create_dir_all(path)?;
+    }
     mount(
         "/dev/vdb",
         "/work",
@@ -128,8 +129,18 @@ fn main() -> Result<()> {
         "",
     )
     .context("failed to mount build input")?;
-    fs::set_permissions("/work", fs::Permissions::from_mode(0o700))?;
-    chown("/work", WORKER_UID, WORKER_GID)?;
+    mount(
+        "/dev/vdd",
+        "/out",
+        "ext4",
+        libc::MS_NOSUID | libc::MS_NODEV,
+        "",
+    )
+    .context("failed to mount bounded artifact disk")?;
+    for path in ["/work", "/out"] {
+        fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
+        chown(path, WORKER_UID, WORKER_GID)?;
+    }
 
     set_limit(libc::RLIMIT_CPU, policy.cpu_seconds)?;
     set_limit(libc::RLIMIT_NPROC, policy.pid_limit)?;
@@ -143,8 +154,11 @@ fn run_build(policy: &BuildPolicy) -> Result<()> {
     fs::create_dir_all("/work/tmp")?;
     if policy.language == "csharp" {
         fs::create_dir_all("/work/project")?;
-        fs::copy("/input/Program.cs", "/work/project/Program.cs")?;
-        fs::copy("/input/Rune.csproj", "/work/project/Rune.csproj")?;
+        fs::copy("/input/source.cs", "/work/project/Program.cs")?;
+        fs::write(
+            "/work/project/Rune.csproj",
+            r#"<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><PublishAot>true</PublishAot><InvariantGlobalization>true</InvariantGlobalization></PropertyGroup></Project>"#,
+        )?;
     }
 
     let (program, args) = build_command(&policy.pool, &policy.language)?;
@@ -178,13 +192,19 @@ fn run_build(policy: &BuildPolicy) -> Result<()> {
     }
 
     match policy.language.as_str() {
-        "python" => fs::copy("/input/source.py", "/work/artifact")?,
-        "ruby" => fs::copy("/input/source.rb", "/work/artifact")?,
-        "csharp" => fs::copy("/work/publish/Rune", "/work/artifact")?,
-        _ => 0,
-    };
+        "python" => {
+            fs::copy("/input/source.py", "/out/artifact")?;
+        }
+        "ruby" => {
+            fs::copy("/input/source.rb", "/out/artifact")?;
+        }
+        "csharp" => {
+            fs::copy("/work/publish/Rune", "/out/artifact")?;
+        }
+        _ => {}
+    }
 
-    let metadata = fs::metadata("/work/artifact").context("compiler produced no artifact")?;
+    let metadata = fs::metadata("/out/artifact").context("compiler produced no artifact")?;
     if metadata.len() == 0 {
         bail!("compiler produced an empty artifact");
     }
@@ -343,6 +363,20 @@ mod tests {
         assert_eq!(build_command("python", "python").unwrap().0, "python3");
         assert_eq!(build_command("ruby", "ruby").unwrap().0, "ruby");
         assert!(build_command("scriptc", "python").is_err());
+    }
+
+    #[test]
+    fn compiler_outputs_use_bounded_artifact_disk() {
+        for pair in [
+            ("scriptc", "javascript"),
+            ("scriptc", "typescript"),
+            ("rust", "rust"),
+            ("clang", "c"),
+            ("clang", "cpp"),
+        ] {
+            let (_, args) = build_command(pair.0, pair.1).unwrap();
+            assert!(args.iter().any(|arg| arg == "/out/artifact"));
+        }
     }
 
     #[test]
