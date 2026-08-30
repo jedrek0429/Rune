@@ -6,7 +6,7 @@ source="$1"
 artifact="$2"
 
 mkdir -p /work/scriptc-cache
-cp -R /cache-seed/. /work/scriptc-cache/
+find /cache-seed -mindepth 1 -maxdepth 1 ! -name lost+found -exec cp -R -- {} /work/scriptc-cache/ \;
 chmod 0700 /work/scriptc-cache
 export SCRIPTC_CACHE_DIR=/work/scriptc-cache
 
