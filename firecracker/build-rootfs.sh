@@ -9,13 +9,13 @@ fi
 kind="$1"
 profile="$2"
 case "$kind/$profile" in
-  invocation/rune) base=debian:bookworm-slim; size=256; dir=images/rune; arg=RUNTIME ;;
-  build/scriptc) base=node:24-bookworm; size=1536; dir=build-images/scriptc; arg=POOL ;;
-  build/clang) base=debian:bookworm-slim; size=768; dir=build-images/clang; arg=POOL ;;
-  build/rust) base=rust:1-bookworm; size=1536; dir=build-images/rust; arg=POOL ;;
-  build/dotnet-aot) base=mcr.microsoft.com/dotnet/sdk:10.0-bookworm-slim; size=3072; dir=build-images/dotnet-aot; arg=POOL ;;
-  build/python) base=debian:bookworm-slim; size=1024; dir=build-images/python; arg=POOL ;;
-  build/ruby) base=debian:bookworm-slim; size=768; dir=build-images/ruby; arg=POOL ;;
+  invocation/rune) base=debian:bookworm-slim; size=256; dir=images/rune ;;
+  build/scriptc) base=node:24-bookworm; size=1536; dir=build-images/scriptc ;;
+  build/clang) base=debian:bookworm-slim; size=768; dir=build-images/clang ;;
+  build/rust) base=rust:1-bookworm; size=1536; dir=build-images/rust ;;
+  build/dotnet-aot) base=mcr.microsoft.com/dotnet/sdk:10.0-bookworm-slim; size=3072; dir=build-images/dotnet-aot ;;
+  build/python) base=debian:bookworm-slim; size=1024; dir=build-images/python ;;
+  build/ruby) base=debian:bookworm-slim; size=768; dir=build-images/ruby ;;
   *) echo "unsupported rootfs profile: $kind/$profile" >&2; exit 2 ;;
 esac
 
@@ -35,11 +35,12 @@ command -v docker >/dev/null
 command -v mkfs.ext4 >/dev/null
 mkdir -p "$(dirname "$rootfs")"
 
-docker build \
-  --file "firecracker/images/Dockerfile.$kind" \
-  --build-arg "BASE_IMAGE=$base" \
-  --build-arg "$arg=$profile" \
-  --tag "$tag" .
+args=(
+  --file "firecracker/images/Dockerfile.$kind"
+  --build-arg "BASE_IMAGE=$base"
+)
+[[ "$kind" == build ]] && args+=(--build-arg "POOL=$profile")
+docker build "${args[@]}" --tag "$tag" .
 
 cid="$(docker create "$tag")"
 mkdir -p "$tmp/rootfs"
