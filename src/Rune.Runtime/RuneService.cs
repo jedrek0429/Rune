@@ -24,7 +24,6 @@ public sealed class RuneService(RuneRegistry runeRegistry)
             language,
             eventType,
             source,
-            [],
             true);
 
         if (runeRegistry.Add(rune))
@@ -45,7 +44,7 @@ public sealed class RuneService(RuneRegistry runeRegistry)
         {
             Language = language,
             Source = source,
-            Wasm = []
+            Artifact = null
         };
 
         runeRegistry.Replace(updated);
