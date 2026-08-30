@@ -28,7 +28,7 @@ public sealed class RuneUploadReader(
         if (language is null)
         {
             return RuneUpload.Fail(
-                "Supported files are `.js`, `.mjs`, `.py`, and `.rs`.");
+                "Supported files are `.js`, `.mjs`, `.ts`, `.mts`, `.py`, `.rb`, `.rs`, `.c`, `.cc`, `.cpp`, `.cxx`, and `.cs`.");
         }
 
         try
@@ -76,11 +76,26 @@ public sealed class RuneUploadReader(
             ".js" or ".mjs" =>
                 RuneLanguage.JavaScript,
 
+            ".ts" or ".mts" =>
+                RuneLanguage.TypeScript,
+
             ".py" =>
                 RuneLanguage.Python,
 
+            ".rb" =>
+                RuneLanguage.Ruby,
+
             ".rs" =>
                 RuneLanguage.Rust,
+
+            ".c" =>
+                RuneLanguage.C,
+
+            ".cc" or ".cpp" or ".cxx" =>
+                RuneLanguage.Cpp,
+
+            ".cs" =>
+                RuneLanguage.CSharp,
 
             _ => null
         };
