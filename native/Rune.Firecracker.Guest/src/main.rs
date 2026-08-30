@@ -76,7 +76,11 @@ fn invoke(runtime: &str, connection: &mut File) -> Result<()> {
         .spawn()
         .context("failed to start Rune artifact")?;
 
-    child.stdin.take().context("artifact stdin was not piped")?.write_all(&request)?;
+    child
+        .stdin
+        .take()
+        .context("artifact stdin was not piped")?
+        .write_all(&request)?;
     let mut response = Vec::new();
     child
         .stdout
@@ -135,7 +139,10 @@ fn apply_resource_limits() -> Result<()> {
 }
 
 fn set_limit(resource: libc::__rlimit_resource_t, value: libc::rlim_t) -> Result<()> {
-    let limit = libc::rlimit { rlim_cur: value, rlim_max: value };
+    let limit = libc::rlimit {
+        rlim_cur: value,
+        rlim_max: value,
+    };
     if unsafe { libc::setrlimit(resource, &limit) } != 0 {
         return Err(std::io::Error::last_os_error()).context("setrlimit failed");
     }
@@ -161,11 +168,16 @@ fn write_error(connection: &mut File, message: &str) -> Result<()> {
         .replace('"', "\\\"")
         .replace('\n', "\\n")
         .replace('\r', "\\r");
-    writeln!(connection, "{{\"actions\":[],\"error\":\"{escaped}\",\"durationMicros\":0}}")?;
+    writeln!(
+        connection,
+        "{{\"actions\":[],\"error\":\"{escaped}\",\"durationMicros\":0}}"
+    )?;
     Ok(())
 }
 
-struct VsockListener { fd: i32 }
+struct VsockListener {
+    fd: i32,
+}
 
 impl VsockListener {
     fn bind(port: u32) -> Result<Self> {
@@ -202,7 +214,12 @@ impl VsockListener {
 
     fn accept(&self) -> Result<File> {
         let fd = unsafe {
-            libc::accept4(self.fd, std::ptr::null_mut(), std::ptr::null_mut(), libc::SOCK_CLOEXEC)
+            libc::accept4(
+                self.fd,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                libc::SOCK_CLOEXEC,
+            )
         };
         if fd < 0 {
             return Err(std::io::Error::last_os_error()).context("accept(AF_VSOCK) failed");
@@ -222,7 +239,13 @@ fn mount_guest_filesystems() -> Result<()> {
     fs::create_dir_all("/proc")?;
     fs::create_dir_all("/tmp")?;
     mount("devtmpfs", "/dev", "devtmpfs", libc::MS_NOSUID, "mode=0755")?;
-    mount("proc", "/proc", "proc", libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC, "")?;
+    mount(
+        "proc",
+        "/proc",
+        "proc",
+        libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC,
+        "",
+    )?;
     mount(
         "tmpfs",
         "/tmp",
@@ -239,7 +262,11 @@ fn mount(source: &str, target: &str, fstype: &str, flags: libc::c_ulong, data: &
     let data = CString::new(data)?;
     if unsafe {
         libc::mount(
-            source.as_ptr(), target.as_ptr(), fstype.as_ptr(), flags, data.as_ptr().cast(),
+            source.as_ptr(),
+            target.as_ptr(),
+            fstype.as_ptr(),
+            flags,
+            data.as_ptr().cast(),
         )
     } != 0
     {
