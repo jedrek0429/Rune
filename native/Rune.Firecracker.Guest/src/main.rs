@@ -123,7 +123,10 @@ fn apply_resource_limits() -> Result<()> {
 }
 
 fn set_limit(resource: libc::__rlimit_resource_t, value: libc::rlim_t) -> Result<()> {
-    let limit = libc::rlimit { rlim_cur: value, rlim_max: value };
+    let limit = libc::rlimit {
+        rlim_cur: value,
+        rlim_max: value,
+    };
     if unsafe { libc::setrlimit(resource, &limit) } != 0 {
         return Err(std::io::Error::last_os_error()).context("setrlimit failed");
     }
@@ -156,7 +159,9 @@ fn write_error(connection: &mut File, message: &str) -> Result<()> {
     Ok(())
 }
 
-struct VsockListener { fd: i32 }
+struct VsockListener {
+    fd: i32,
+}
 
 impl VsockListener {
     fn bind(port: u32) -> Result<Self> {
@@ -177,7 +182,8 @@ impl VsockListener {
                 &address as *const libc::sockaddr_vm as *const libc::sockaddr,
                 size_of::<libc::sockaddr_vm>() as libc::socklen_t,
             )
-        } != 0 {
+        } != 0
+        {
             let error = std::io::Error::last_os_error();
             unsafe { libc::close(fd) };
             return Err(error).context("bind(AF_VSOCK) failed");
@@ -215,7 +221,13 @@ impl Drop for VsockListener {
 fn mount_guest_filesystems() -> Result<()> {
     fs::create_dir_all("/proc")?;
     fs::create_dir_all("/tmp")?;
-    mount("proc", "/proc", "proc", libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC, "")?;
+    mount(
+        "proc",
+        "/proc",
+        "proc",
+        libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC,
+        "",
+    )?;
     mount(
         "tmpfs",
         "/tmp",
@@ -238,7 +250,8 @@ fn mount(source: &str, target: &str, fstype: &str, flags: libc::c_ulong, data: &
             flags,
             data.as_ptr().cast(),
         )
-    } != 0 {
+    } != 0
+    {
         return Err(std::io::Error::last_os_error()).context("mount failed");
     }
     Ok(())
