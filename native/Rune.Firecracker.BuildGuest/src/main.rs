@@ -156,6 +156,7 @@ fn run_build(policy: &BuildPolicy) -> Result<()> {
         .env("HOME", "/work")
         .env("TMPDIR", "/work/tmp")
         .env("NUGET_PACKAGES", "/opt/rune/nuget")
+        .env("SCRIPTC_CACHE_DIR", "/opt/rune/scriptc-cache")
         .current_dir("/work")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
