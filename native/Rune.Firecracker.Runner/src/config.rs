@@ -2,7 +2,7 @@ use std::{env, path::PathBuf, time::Duration};
 
 use anyhow::{Context, Result, bail};
 
-use crate::protocol::RuneLanguage;
+use crate::protocol::{InvocationRuntime, RuneLanguage};
 
 #[derive(Debug)]
 pub struct Config {
@@ -86,23 +86,15 @@ impl Config {
     }
 
     fn validate_snapshots(&self) -> Result<()> {
-        for language in RuneLanguage::ALL {
-            let snapshot = self.snapshot_path(language);
-            let memory = self.memory_path(language);
+        for runtime in InvocationRuntime::ALL {
+            let snapshot = self.snapshot_path(runtime);
+            let memory = self.memory_path(runtime);
 
             if !snapshot.is_file() {
-                bail!(
-                    "missing {} snapshot: {}",
-                    language.as_str(),
-                    snapshot.display()
-                );
+                bail!("missing {} snapshot: {}", runtime.as_str(), snapshot.display());
             }
             if !memory.is_file() {
-                bail!(
-                    "missing {} memory image: {}",
-                    language.as_str(),
-                    memory.display()
-                );
+                bail!("missing {} memory image: {}", runtime.as_str(), memory.display());
             }
         }
 
@@ -113,17 +105,17 @@ impl Config {
         format!("{}:{}", self.invocation_stream_prefix, language.as_str())
     }
 
-    pub fn snapshot_path(&self, language: RuneLanguage) -> PathBuf {
+    pub fn snapshot_path(&self, runtime: InvocationRuntime) -> PathBuf {
         self.state_root
             .join("snapshots")
-            .join(language.as_str())
+            .join(runtime.as_str())
             .join("vmstate")
     }
 
-    pub fn memory_path(&self, language: RuneLanguage) -> PathBuf {
+    pub fn memory_path(&self, runtime: InvocationRuntime) -> PathBuf {
         self.state_root
             .join("snapshots")
-            .join(language.as_str())
+            .join(runtime.as_str())
             .join("memory")
     }
 
