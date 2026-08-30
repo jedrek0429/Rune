@@ -57,4 +57,7 @@ grep -q 'drive_id.*input' "$launcher" && grep -q 'is_read_only.*true' "$launcher
 grep -q 'size <= 16777216' "$launcher" || { echo "artifact must be capped at 16 MiB" >&2; exit 1; }
 grep -q 'sha256sum' "$launcher" || { echo "artifact store must be content-addressed" >&2; exit 1; }
 
+dockerfile="$repo_root/firecracker/images/Dockerfile.build"
+grep -q 'dotnet publish.*PublishAot=true' "$dockerfile" || { echo ".NET build image must prewarm Native AOT assets before network is removed" >&2; exit 1; }
+
 echo "resource policy tests passed"
