@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     ffi::CString,
     fs,
-    io::{Read, Write},
+    io::Read,
     os::unix::fs::PermissionsExt,
     process::{Command, Stdio},
     thread,
@@ -65,12 +65,19 @@ fn parse_positive(values: &HashMap<&str, &str>, key: &str) -> Result<u64> {
 
 fn main() -> Result<()> {
     mount_guest_filesystems()?;
-    let cmdline = fs::read_to_string("/proc/cmdline").context("failed to read kernel command line")?;
+    let cmdline =
+        fs::read_to_string("/proc/cmdline").context("failed to read kernel command line")?;
     let policy = parse_policy(&cmdline)?;
 
     fs::create_dir_all("/work")?;
-    mount("/dev/vdb", "/work", "ext4", libc::MS_NOSUID | libc::MS_NODEV, "")
-        .context("failed to mount bounded build scratch disk")?;
+    mount(
+        "/dev/vdb",
+        "/work",
+        "ext4",
+        libc::MS_NOSUID | libc::MS_NODEV,
+        "",
+    )
+    .context("failed to mount bounded build scratch disk")?;
     fs::set_permissions("/work", fs::Permissions::from_mode(0o700))?;
     chown("/work", WORKER_UID, WORKER_GID)?;
 
@@ -160,7 +167,13 @@ fn drop_privileges() -> Result<()> {
 fn mount_guest_filesystems() -> Result<()> {
     fs::create_dir_all("/dev")?;
     fs::create_dir_all("/proc")?;
-    mount("devtmpfs", "/dev", "devtmpfs", libc::MS_NOSUID, "mode=0755")?;
+    mount(
+        "devtmpfs",
+        "/dev",
+        "devtmpfs",
+        libc::MS_NOSUID,
+        "mode=0755",
+    )?;
     mount(
         "proc",
         "/proc",
@@ -240,8 +253,7 @@ mod tests {
             .is_err()
         );
         assert!(
-            parse_policy("rune.build_pool=rust rune.pid_limit=128 rune.wall_seconds=45")
-                .is_err()
+            parse_policy("rune.build_pool=rust rune.pid_limit=128 rune.wall_seconds=45").is_err()
         );
     }
 
