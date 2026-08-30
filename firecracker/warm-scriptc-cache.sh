@@ -20,7 +20,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for dependency in curl python3 truncate mkfs.ext4 "$firecracker"; do
+for dependency in curl python3 truncate mkfs.ext4 e2fsck "$firecracker"; do
   command -v "$dependency" >/dev/null 2>&1 || { echo "missing dependency: $dependency" >&2; exit 1; }
 done
 [[ -r "$kernel" ]] || { echo "missing kernel: $kernel" >&2; exit 1; }
@@ -72,6 +72,19 @@ if [[ "$status" -ne 0 ]]; then
   cat "$console_log" >&2 || true
   [[ "$status" -eq 124 ]] && echo "ScriptC cache warm exceeded 120s" >&2
   exit "$status"
+fi
+
+kill "$pid" >/dev/null 2>&1 || true
+wait "$pid" 2>/dev/null || true
+pid=""
+
+set +e
+e2fsck -p "$cache"
+fsck_status=$?
+set -e
+if (( fsck_status > 1 )); then
+  echo "ScriptC cache filesystem check failed with status $fsck_status" >&2
+  exit "$fsck_status"
 fi
 
 chmod 0444 "$cache"
