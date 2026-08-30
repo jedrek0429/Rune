@@ -19,7 +19,8 @@ public sealed record RuneApiType(
     string NetCordName,
     bool IsEnum,
     string? Base,
-    IReadOnlyList<RuneApiMember> Members);
+    IReadOnlyList<RuneApiMember> Members,
+    IReadOnlyList<RuneApiMethod> Methods);
 
 public sealed record RuneApiMember(
     string Name,
@@ -27,6 +28,17 @@ public sealed record RuneApiMember(
     RuneApiValueType Type,
     string? Representation,
     long? EnumValue);
+
+public sealed record RuneApiMethod(
+    string Name,
+    string CanonicalId,
+    bool IsAsync,
+    IReadOnlyList<RuneApiParameter> Parameters,
+    RuneApiValueType Result);
+
+public sealed record RuneApiParameter(
+    string Name,
+    RuneApiValueType Type);
 
 public sealed record RuneApiValueType(
     string Name,
@@ -102,13 +114,17 @@ public static class RuneApiLoader
             var members = runtimeType.IsEnum
                 ? LoadEnumMembers(runtimeType, selection)
                 : LoadPropertyMembers(runtimeType, selection, selectedByNetCord);
+            var methods = runtimeType.IsEnum
+                ? []
+                : LoadMethods(runtimeType, selection, selectedByNetCord);
 
             types.Add(new RuneApiType(
                 name,
                 selection.NetCord,
                 runtimeType.IsEnum,
                 selection.Base,
-                members));
+                members,
+                methods));
         }
 
         var events = new List<RuneApiEvent>();
@@ -131,10 +147,14 @@ public static class RuneApiLoader
         var fingerprintSource = string.Join(
             '\n',
             types.SelectMany(type =>
-                new[] { $"type:{type.NetCordName}" }.Concat(
-                    type.Members.Select(member =>
+                new[] { $"type:{type.NetCordName}:base:{type.Base}" }
+                    .Concat(type.Members.Select(member =>
                         $"member:{member.CanonicalId}:{member.Type.Name}:" +
-                        $"{member.Type.Optional}:{member.Representation}:{member.EnumValue}")))
+                        $"{member.Type.Optional}:{member.Representation}:{member.EnumValue}"))
+                    .Concat(type.Methods.Select(method =>
+                        $"method:{method.CanonicalId}:{method.IsAsync}:" +
+                        $"{string.Join(',', method.Parameters.Select(parameter => $"{parameter.Name}:{parameter.Type.Name}:{parameter.Type.Optional}"))}:" +
+                        $"{method.Result.Name}:{method.Result.Optional}")))
                 .Concat(events.Select(value =>
                     $"event:{value.NetCordName}:{value.Payload}:{value.World}")));
         var fingerprint = Convert.ToHexString(
@@ -188,6 +208,90 @@ public static class RuneApiLoader
         }
 
         return members;
+    }
+
+    private static IReadOnlyList<RuneApiMethod> LoadMethods(
+        Type runtimeType,
+        TypeSelection selection,
+        IReadOnlyDictionary<string, string> selectedByNetCord)
+    {
+        var methods = new List<RuneApiMethod>();
+
+        foreach (var selected in selection.Methods)
+        {
+            var candidates = runtimeType.GetMethods(
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy)
+                .Where(method => method.Name == selected.Name)
+                .Where(method => ParametersMatch(method, selected.Parameters))
+                .ToArray();
+
+            if (candidates.Length != 1)
+            {
+                throw new RuneApiValidationException(
+                    $"Method '{runtimeType.FullName}.{selected.Name}' with selected parameter prefix " +
+                    $"[{string.Join(", ", selected.Parameters)}] resolved to {candidates.Length} NetCord overloads.");
+            }
+
+            var method = candidates[0];
+            var runtimeParameters = method.GetParameters();
+            var parameters = new List<RuneApiParameter>();
+
+            for (var index = 0; index < selected.Parameters.Count; index++)
+            {
+                var parameter = runtimeParameters[index];
+                parameters.Add(new RuneApiParameter(
+                    parameter.Name!,
+                    ToValueType(parameter.ParameterType, selectedByNetCord, false)));
+            }
+
+            if (!method.ReturnType.IsGenericType ||
+                method.ReturnType.GetGenericTypeDefinition() != typeof(Task<>))
+            {
+                throw new RuneApiValidationException(
+                    $"Selected method '{method.DeclaringType?.FullName}.{method.Name}' must return Task<T>.");
+            }
+
+            var result = ToValueType(
+                method.ReturnType.GetGenericArguments()[0],
+                selectedByNetCord,
+                false);
+
+            methods.Add(new RuneApiMethod(
+                method.Name,
+                $"{method.DeclaringType?.FullName}.{method.Name}",
+                true,
+                parameters,
+                result));
+        }
+
+        return methods;
+    }
+
+    private static bool ParametersMatch(
+        MethodInfo method,
+        IReadOnlyList<string> selectedParameters)
+    {
+        var parameters = method.GetParameters();
+        if (selectedParameters.Count > parameters.Length)
+            return false;
+
+        for (var index = 0; index < selectedParameters.Count; index++)
+        {
+            if (!string.Equals(
+                    parameters[index].Name,
+                    selectedParameters[index],
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return parameters
+            .Skip(selectedParameters.Count)
+            .All(parameter =>
+                parameter.IsOptional ||
+                parameter.HasDefaultValue ||
+                parameter.ParameterType == typeof(CancellationToken));
     }
 
     private static IReadOnlyList<RuneApiMember> LoadEnumMembers(
@@ -320,12 +424,19 @@ public static class RuneApiLoader
         public string NetCord { get; init; } = string.Empty;
         public string? Base { get; init; }
         public List<MemberSelection> Members { get; init; } = [];
+        public List<MethodSelection> Methods { get; init; } = [];
     }
 
     private sealed class MemberSelection
     {
         public string Name { get; init; } = string.Empty;
         public string? Representation { get; init; }
+    }
+
+    private sealed class MethodSelection
+    {
+        public string Name { get; init; } = string.Empty;
+        public List<string> Parameters { get; init; } = [];
     }
 
     private sealed class EventSelection
@@ -343,6 +454,11 @@ internal static class Names
 
     internal static string Camel(string value) =>
         value.Length == 0 ? value : char.ToLowerInvariant(value[0]) + value[1..];
+
+    internal static string WithoutAsync(string value) =>
+        value.EndsWith("Async", StringComparison.Ordinal)
+            ? value[..^5]
+            : value;
 
     private static string Separate(string value, char separator)
     {
