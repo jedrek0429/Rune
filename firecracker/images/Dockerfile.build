@@ -7,16 +7,23 @@ RUN cargo build --release
 
 FROM ${BASE_IMAGE}
 ARG POOL
+ARG MICROPYTHON_VERSION=v1.29.0
 ENV NUGET_PACKAGES=/opt/rune/nuget
 ENV SCRIPTC_CACHE_DIR=/opt/rune/scriptc-cache
-RUN apt-get update && case "$POOL" in \
+COPY firecracker/build-tools/python.sh /usr/local/bin/rune-build-python
+COPY firecracker/build-tools/ruby.sh /usr/local/bin/rune-build-ruby
+RUN chmod 0755 /usr/local/bin/rune-build-python /usr/local/bin/rune-build-ruby \
+    && apt-get update \
+    && case "$POOL" in \
       scriptc) mkdir -p "$SCRIPTC_CACHE_DIR" && chmod 0700 "$SCRIPTC_CACHE_DIR" && apt-get install -y --no-install-recommends clang ca-certificates && npm install -g --allow-scripts=scriptc scriptc && env -i PATH=/usr/local/bin:/usr/bin:/bin SCRIPTC_CACHE_DIR="$SCRIPTC_CACHE_DIR" scriptc cache warm dynamic && chown -R 1000:1000 "$SCRIPTC_CACHE_DIR" ;; \
       clang) apt-get install -y --no-install-recommends clang g++ ;; \
       rust) true ;; \
       dotnet-aot) apt-get install -y --no-install-recommends clang zlib1g-dev ;; \
-      python|ruby) true ;; \
+      python) apt-get install -y --no-install-recommends build-essential git python3 ca-certificates && git clone --depth 1 --branch "$MICROPYTHON_VERSION" https://github.com/micropython/micropython.git /opt/micropython && make -C /opt/micropython/mpy-cross -j2 && mkdir -p /tmp/micropython-embed && cp -a /opt/micropython/examples/embedding/. /tmp/micropython-embed/ && make -C /tmp/micropython-embed -f micropython_embed.mk MICROPYTHON_TOP=/opt/micropython && make -C /tmp/micropython-embed && mkdir -p /opt/rune/micropython && find /tmp/micropython-embed/micropython_embed -name '*.o' -exec ar rcs /opt/rune/micropython/libmicropython_embed.a {} + && cp -a /tmp/micropython-embed/micropython_embed /opt/rune/micropython/embed && cp /opt/micropython/mpy-cross/build/mpy-cross /usr/local/bin/mpy-cross && rm -rf /opt/micropython /tmp/micropython-embed ;; \
+      ruby) apt-get install -y --no-install-recommends build-essential mruby libmruby-dev && mkdir -p /opt/rune/mruby && cp "$(find /usr/lib -name libmruby.a -print -quit)" /opt/rune/mruby/libmruby.a ;; \
       *) exit 2 ;; \
-    esac && rm -rf /var/lib/apt/lists/*
+    esac \
+    && rm -rf /var/lib/apt/lists/*
 RUN if [ "$POOL" = dotnet-aot ]; then \
       mkdir -p /tmp/rune-aot /opt/rune/nuget && \
       printf '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><PublishAot>true</PublishAot></PropertyGroup></Project>' > /tmp/rune-aot/Rune.csproj && \
