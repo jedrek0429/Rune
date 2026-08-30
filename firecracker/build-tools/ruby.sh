@@ -11,6 +11,7 @@ launcher="$work/rune-ruby.c"
 mrbc -B rune_irep -o "$irep" "$source"
 cat >"$launcher" <<'EOF'
 #include <mruby.h>
+#include <mruby/error.h>
 #include <mruby/irep.h>
 #include "rune_irep.c"
 
