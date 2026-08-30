@@ -23,6 +23,8 @@ pub struct Config {
     pub read_batch_size: usize,
     pub max_concurrent_per_rune: usize,
     pub max_concurrent_per_guild: usize,
+    pub max_invocations_per_rune_per_second: usize,
+    pub max_invocations_per_guild_per_second: usize,
 }
 
 impl Config {
@@ -55,6 +57,8 @@ impl Config {
             read_batch_size: parse("RUNE_REDIS_BATCH", 32)?,
             max_concurrent_per_rune: parse("RUNE_MAX_CONCURRENT_PER_RUNE", 1)?,
             max_concurrent_per_guild: parse("RUNE_MAX_CONCURRENT_PER_GUILD", 4)?,
+            max_invocations_per_rune_per_second: parse("RUNE_MAX_INVOCATIONS_PER_RUNE_PER_SECOND", 10)?,
+            max_invocations_per_guild_per_second: parse("RUNE_MAX_INVOCATIONS_PER_GUILD_PER_SECOND", 50)?,
         };
 
         if config.min_vms == 0 {
@@ -71,6 +75,14 @@ impl Config {
         }
         if config.max_concurrent_per_guild < config.max_concurrent_per_rune {
             bail!("guild concurrency limit must be >= per-rune concurrency limit");
+        }
+        if config.max_invocations_per_rune_per_second == 0
+            || config.max_invocations_per_guild_per_second == 0
+        {
+            bail!("Rune rate limits must be at least 1");
+        }
+        if config.max_invocations_per_guild_per_second < config.max_invocations_per_rune_per_second {
+            bail!("guild rate limit must be >= per-rune rate limit");
         }
 
         Ok(config)
