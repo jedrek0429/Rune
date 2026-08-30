@@ -76,9 +76,7 @@ impl VmPool {
         if previous != target {
             info!(
                 language = self.language.as_str(),
-                previous,
-                target,
-                "warm Firecracker pool target changed"
+                previous, target, "warm Firecracker pool target changed"
             );
             self.changed.notify_one();
         }

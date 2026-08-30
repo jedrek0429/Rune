@@ -33,10 +33,8 @@ impl Config {
                 .unwrap_or_else(|_| "redis://127.0.0.1:6379/".into()),
             invocation_stream_prefix: env::var("RUNE_INVOCATION_STREAM_PREFIX")
                 .unwrap_or_else(|_| "rune:invocations".into()),
-            result_stream: env::var("RUNE_RESULT_STREAM")
-                .unwrap_or_else(|_| "rune:results".into()),
-            consumer_group: env::var("RUNE_RUNNER_GROUP")
-                .unwrap_or_else(|_| "rune-runners".into()),
+            result_stream: env::var("RUNE_RESULT_STREAM").unwrap_or_else(|_| "rune:results".into()),
+            consumer_group: env::var("RUNE_RUNNER_GROUP").unwrap_or_else(|_| "rune-runners".into()),
             consumer_name: env::var("RUNE_RUNNER_NAME")
                 .unwrap_or_else(|_| format!("{hostname}-{pid}")),
             firecracker_binary: env::var_os("RUNE_FIRECRACKER")
@@ -93,10 +91,18 @@ impl Config {
             let memory = self.memory_path(language);
 
             if !snapshot.is_file() {
-                bail!("missing {} snapshot: {}", language.as_str(), snapshot.display());
+                bail!(
+                    "missing {} snapshot: {}",
+                    language.as_str(),
+                    snapshot.display()
+                );
             }
             if !memory.is_file() {
-                bail!("missing {} memory image: {}", language.as_str(), memory.display());
+                bail!(
+                    "missing {} memory image: {}",
+                    language.as_str(),
+                    memory.display()
+                );
             }
         }
 
@@ -132,9 +138,7 @@ where
     T::Err: std::error::Error + Send + Sync + 'static,
 {
     match env::var(name) {
-        Ok(value) => value
-            .parse()
-            .with_context(|| format!("invalid {name}")),
+        Ok(value) => value.parse().with_context(|| format!("invalid {name}")),
         Err(_) => Ok(default),
     }
 }

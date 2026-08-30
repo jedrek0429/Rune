@@ -37,6 +37,9 @@ jobs:
       - name: Restore .NET
         run: dotnet restore Rune.slnx
 
+      - name: Check C# formatting
+        run: dotnet format Rune.slnx --no-restore --verify-no-changes
+
       - name: Build .NET
         run: dotnet build Rune.slnx --no-restore --configuration Release
 

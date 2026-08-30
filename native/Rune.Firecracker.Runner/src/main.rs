@@ -76,11 +76,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn consume(
-    language: RuneLanguage,
-    pool: Arc<VmPool>,
-    queue: Arc<RedisQueue>,
-) -> Result<()> {
+async fn consume(language: RuneLanguage, pool: Arc<VmPool>, queue: Arc<RedisQueue>) -> Result<()> {
     queue.ensure_group(language).await?;
 
     loop {
@@ -122,11 +118,7 @@ async fn consume(
     }
 }
 
-async fn autoscale(
-    language: RuneLanguage,
-    pool: Arc<VmPool>,
-    queue: Arc<RedisQueue>,
-) {
+async fn autoscale(language: RuneLanguage, pool: Arc<VmPool>, queue: Arc<RedisQueue>) {
     let interval = pool.config().autoscale_interval;
 
     loop {

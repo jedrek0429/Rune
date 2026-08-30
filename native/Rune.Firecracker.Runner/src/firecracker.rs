@@ -46,12 +46,7 @@ impl WarmVm {
             .stderr(Stdio::null())
             .kill_on_drop(true)
             .spawn()
-            .with_context(|| {
-                format!(
-                    "failed to start {}",
-                    config.firecracker_binary.display()
-                )
-            })?;
+            .with_context(|| format!("failed to start {}", config.firecracker_binary.display()))?;
 
         if let Err(error) = wait_for_path(&api_path, config.restore_timeout).await {
             let _ = child.kill().await;
@@ -147,8 +142,7 @@ impl WarmVm {
             response.pop();
         }
 
-        serde_json::from_slice(&response)
-            .context("guest returned malformed JSON")
+        serde_json::from_slice(&response).context("guest returned malformed JSON")
     }
 }
 

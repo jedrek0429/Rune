@@ -92,11 +92,7 @@ impl RedisQueue {
         Ok(jobs)
     }
 
-    pub async fn finish(
-        &self,
-        job: QueueJob,
-        result: &OwnedResultEnvelope,
-    ) -> Result<()> {
+    pub async fn finish(&self, job: QueueJob, result: &OwnedResultEnvelope) -> Result<()> {
         let mut connection = self.client.get_multiplexed_async_connection().await?;
         let json = serde_json::to_string(result)?;
 

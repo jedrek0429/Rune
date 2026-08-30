@@ -96,7 +96,10 @@ impl Worker {
         };
 
         command
-            .env("PATH", "/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+            .env(
+                "PATH",
+                "/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            )
             .env("HOME", "/root")
             .env("TMPDIR", "/tmp")
             .env("RUSTUP_HOME", "/usr/local/rustup")
@@ -214,13 +217,7 @@ impl Drop for VsockListener {
 }
 
 fn mount_guest_filesystems() {
-    let _ = mount(
-        "devtmpfs",
-        "/dev",
-        "devtmpfs",
-        libc::MS_NOSUID,
-        "mode=0755",
-    );
+    let _ = mount("devtmpfs", "/dev", "devtmpfs", libc::MS_NOSUID, "mode=0755");
     let _ = mount(
         "proc",
         "/proc",
@@ -237,13 +234,7 @@ fn mount_guest_filesystems() {
     );
 }
 
-fn mount(
-    source: &str,
-    target: &str,
-    fstype: &str,
-    flags: libc::c_ulong,
-    data: &str,
-) -> Result<()> {
+fn mount(source: &str, target: &str, fstype: &str, flags: libc::c_ulong, data: &str) -> Result<()> {
     let source = CString::new(source)?;
     let target = CString::new(target)?;
     let fstype = CString::new(fstype)?;
