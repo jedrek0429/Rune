@@ -22,6 +22,11 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
       - name: Check Rust formatting
         run: cargo fmt --all --check
 
@@ -33,6 +38,9 @@ jobs:
 
       - name: Test Rust workspace
         run: cargo test --workspace
+
+      - name: Test JavaScript guest worker
+        run: node --test tests/firecracker/javascript-worker.test.mjs
 
       - name: Restore .NET
         run: dotnet restore Rune.slnx

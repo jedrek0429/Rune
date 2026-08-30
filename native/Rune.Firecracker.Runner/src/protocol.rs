@@ -25,6 +25,7 @@ impl RuneLanguage {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(clippy::enum_variant_names)]
 pub enum RuneEventType {
     MessageCreate,
     MessageDelete,
@@ -112,4 +113,95 @@ pub struct OwnedResultEnvelope {
     pub actions: Vec<HostAction>,
     pub error: Option<String>,
     pub duration_micros: i64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn invocation() -> InvocationEnvelope {
+        InvocationEnvelope {
+            execution_id: "execution-1".into(),
+            invocation_id: "invocation-1".into(),
+            rune_id: "rune-1".into(),
+            rune_name: "hello".into(),
+            guild_id: 18_446_744_073_709_551_610,
+            language: RuneLanguage::Javascript,
+            event_type: RuneEventType::MessageCreate,
+            source: "message.reply('hello')".into(),
+            payload: json!({
+                "id": "18446744073709551612",
+                "channelId": "18446744073709551611",
+                "author": {
+                    "id": "18446744073709551613",
+                    "username": "Ada"
+                }
+            }),
+            enqueued_at: "2026-08-30T00:00:00Z".into(),
+        }
+    }
+
+    #[test]
+    fn csharp_wire_shape_deserializes_and_serializes_with_the_same_contract() {
+        let wire = json!({
+            "executionId": "execution-1",
+            "invocationId": "invocation-1",
+            "runeId": "rune-1",
+            "runeName": "hello",
+            "guildId": 18446744073709551610_u64,
+            "language": "javaScript",
+            "eventType": "messageCreate",
+            "source": "message.reply('hello')",
+            "payload": {
+                "id": "18446744073709551612",
+                "channelId": "18446744073709551611",
+                "author": {
+                    "id": "18446744073709551613",
+                    "username": "Ada"
+                }
+            },
+            "enqueuedAt": "2026-08-30T00:00:00Z"
+        });
+
+        let envelope: InvocationEnvelope = serde_json::from_value(wire).unwrap();
+
+        assert_eq!(envelope.language, RuneLanguage::Javascript);
+        assert!(matches!(envelope.event_type, RuneEventType::MessageCreate));
+        assert_eq!(
+            envelope.payload["author"]["id"],
+            "18446744073709551613"
+        );
+
+        let result = envelope.complete(GuestResult {
+            actions: vec![HostAction {
+                method: "message.reply".into(),
+                arguments: json!({ "content": "hello" }),
+            }],
+            error: None,
+            duration_micros: 123,
+        });
+        let serialized = serde_json::to_value(result).unwrap();
+
+        assert_eq!(serialized["language"], "javaScript");
+        assert_eq!(serialized["eventType"], "messageCreate");
+        assert_eq!(serialized["guildId"], 18_446_744_073_709_551_610_u64);
+        assert_eq!(serialized["actions"][0]["method"], "message.reply");
+        assert_eq!(serialized["payload"]["id"], "18446744073709551612");
+    }
+
+    #[test]
+    fn failed_invocation_preserves_identity_and_payload_but_never_actions() {
+        let envelope = invocation();
+        let failed = envelope.fail("timed out".into());
+        let serialized = serde_json::to_value(failed).unwrap();
+
+        assert_eq!(serialized["executionId"], "execution-1");
+        assert_eq!(serialized["invocationId"], "invocation-1");
+        assert_eq!(serialized["runeId"], "rune-1");
+        assert_eq!(serialized["payload"], envelope.payload);
+        assert_eq!(serialized["actions"], json!([]));
+        assert_eq!(serialized["error"], "timed out");
+        assert_eq!(serialized["durationMicros"], 0);
+    }
 }

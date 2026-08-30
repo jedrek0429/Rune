@@ -221,3 +221,84 @@ async fn api_put(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use serde_json::json;
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt},
+        net::UnixListener,
+    };
+
+    use super::*;
+
+    #[tokio::test]
+    async fn api_put_completes_from_success_status_without_waiting_for_eof() {
+        let dir = std::env::temp_dir().join(format!("rune-api-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&dir).await.unwrap();
+        let socket = dir.join("firecracker.sock");
+        let listener = UnixListener::bind(&socket).unwrap();
+
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut request = [0_u8; 4096];
+            let _ = stream.read(&mut request).await.unwrap();
+            stream
+                .write_all(b"HTTP/1.1 204 No Content\r\nConnection: keep-alive\r\n\r\n")
+                .await
+                .unwrap();
+            stream.flush().await.unwrap();
+            tokio::time::sleep(Duration::from_millis(250)).await;
+        });
+
+        api_put(
+            &socket,
+            "/snapshot/load",
+            &json!({ "resume_vm": true }),
+            Duration::from_millis(100),
+        )
+        .await
+        .unwrap();
+
+        server.await.unwrap();
+        fs::remove_dir_all(&dir).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn api_put_surfaces_firecracker_status_and_error_body() {
+        let dir = std::env::temp_dir().join(format!("rune-api-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&dir).await.unwrap();
+        let socket = dir.join("firecracker.sock");
+        let listener = UnixListener::bind(&socket).unwrap();
+
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut request = [0_u8; 4096];
+            let _ = stream.read(&mut request).await.unwrap();
+            stream
+                .write_all(
+                    b"HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\ninvalid snapshot",
+                )
+                .await
+                .unwrap();
+        });
+
+        let error = api_put(
+            &socket,
+            "/snapshot/load",
+            &json!({ "resume_vm": true }),
+            Duration::from_millis(500),
+        )
+        .await
+        .unwrap_err()
+        .to_string();
+
+        assert!(error.contains("400 Bad Request"));
+        assert!(error.contains("invalid snapshot"));
+
+        server.await.unwrap();
+        fs::remove_dir_all(&dir).await.unwrap();
+    }
+}

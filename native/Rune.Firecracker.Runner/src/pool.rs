@@ -136,3 +136,43 @@ impl VmPool {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{path::PathBuf, time::Duration};
+
+    use super::*;
+
+    fn config(min_vms: usize, max_vms: usize, backlog_per_vm: usize) -> Arc<Config> {
+        Arc::new(Config {
+            redis_url: "redis://127.0.0.1:6379/".into(),
+            invocation_stream_prefix: "rune:invocations".into(),
+            result_stream: "rune:results".into(),
+            consumer_group: "rune-runners".into(),
+            consumer_name: "test".into(),
+            firecracker_binary: PathBuf::from("firecracker"),
+            state_root: PathBuf::from("/tmp/rune-test"),
+            min_vms,
+            max_vms,
+            backlog_per_vm,
+            invocation_timeout: Duration::from_secs(6),
+            restore_timeout: Duration::from_secs(2),
+            autoscale_interval: Duration::from_millis(250),
+            result_stream_max_len: 10_000,
+            read_batch_size: 32,
+        })
+    }
+
+    #[test]
+    fn backlog_target_uses_ceiling_and_respects_pool_bounds() {
+        let pool = VmPool::new(RuneLanguage::Javascript, config(2, 5, 4));
+
+        assert_eq!(pool.target_for_backlog(0), 2);
+        assert_eq!(pool.target_for_backlog(1), 2);
+        assert_eq!(pool.target_for_backlog(8), 2);
+        assert_eq!(pool.target_for_backlog(9), 3);
+        assert_eq!(pool.target_for_backlog(16), 4);
+        assert_eq!(pool.target_for_backlog(17), 5);
+        assert_eq!(pool.target_for_backlog(1_000), 5);
+    }
+}
