@@ -17,10 +17,14 @@ const PID_LIMIT: libc::rlim_t = 32;
 const FD_LIMIT: libc::rlim_t = 128;
 const CPU_LIMIT_SECONDS: libc::rlim_t = 3;
 const WRITABLE_TMPFS_MIB: usize = 32;
+const WORKER_UID: libc::uid_t = 1000;
+const WORKER_GID: libc::gid_t = 1000;
 
 fn main() -> Result<()> {
+    mount_guest_filesystems()?;
+    chown("/tmp", WORKER_UID, WORKER_GID)?;
     apply_resource_limits()?;
-    mount_guest_filesystems();
+    drop_privileges()?;
 
     let language = std::fs::read_to_string("/etc/rune-language")
         .context("missing /etc/rune-language")?
@@ -74,6 +78,27 @@ fn set_limit(resource: libc::__rlimit_resource_t, value: libc::rlim_t) -> Result
     Ok(())
 }
 
+fn drop_privileges() -> Result<()> {
+    if unsafe { libc::setgroups(0, std::ptr::null()) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("setgroups failed");
+    }
+    if unsafe { libc::setgid(WORKER_GID) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("setgid failed");
+    }
+    if unsafe { libc::setuid(WORKER_UID) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("setuid failed");
+    }
+    Ok(())
+}
+
+fn chown(path: &str, uid: libc::uid_t, gid: libc::gid_t) -> Result<()> {
+    let path = CString::new(path)?;
+    if unsafe { libc::chown(path.as_ptr(), uid, gid) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("chown failed");
+    }
+    Ok(())
+}
+
 fn write_error(connection: &mut File, message: &str) -> Result<()> {
     let escaped = message
         .replace('\\', "\\\\")
@@ -115,11 +140,12 @@ impl Worker {
         };
 
         command
+            .env_clear()
             .env(
                 "PATH",
                 "/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
             )
-            .env("HOME", "/root")
+            .env("HOME", "/tmp")
             .env("TMPDIR", "/tmp");
 
         let mut child = command
@@ -224,22 +250,23 @@ impl Drop for VsockListener {
     }
 }
 
-fn mount_guest_filesystems() {
-    let _ = mount("devtmpfs", "/dev", "devtmpfs", libc::MS_NOSUID, "mode=0755");
-    let _ = mount(
+fn mount_guest_filesystems() -> Result<()> {
+    mount("devtmpfs", "/dev", "devtmpfs", libc::MS_NOSUID, "mode=0755")?;
+    mount(
         "proc",
         "/proc",
         "proc",
         libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC,
         "",
-    );
-    let _ = mount(
+    )?;
+    mount(
         "tmpfs",
         "/tmp",
         "tmpfs",
         libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC,
         &format!("size={WRITABLE_TMPFS_MIB}m,mode=0700"),
-    );
+    )?;
+    Ok(())
 }
 
 fn mount(source: &str, target: &str, fstype: &str, flags: libc::c_ulong, data: &str) -> Result<()> {
