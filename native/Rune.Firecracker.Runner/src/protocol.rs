@@ -138,11 +138,11 @@ impl InvocationEnvelope {
         if self.artifact.size_bytes > MAX_ARTIFACT_BYTES {
             return Err("Rune artifact exceeds the invocation artifact limit");
         }
-        if self.artifact.id.is_empty()
-            || self.artifact.digest.is_empty()
-            || self.artifact.entrypoint.is_empty()
+        if self.artifact.id != self.artifact.digest
+            || self.artifact.entrypoint != "rune"
+            || !canonical_sha256(&self.artifact.id)
         {
-            return Err("Rune artifact descriptor is incomplete");
+            return Err("Rune artifact descriptor is invalid");
         }
         Ok(())
     }
@@ -178,6 +178,13 @@ impl InvocationEnvelope {
             duration_micros: 0,
         }
     }
+}
+
+fn canonical_sha256(value: &str) -> bool {
+    let Some(hex) = value.strip_prefix("sha256:") else {
+        return false;
+    };
+    hex.len() == 64 && hex.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -268,14 +275,22 @@ mod tests {
 
     #[test]
     fn artifact_identity_must_be_canonical_sha256() {
-        assert!(envelope(
-            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        ).validate().is_ok());
+        assert!(
+            envelope(
+                "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            )
+            .validate()
+            .is_ok()
+        );
         assert!(envelope("../artifact", "sha256:abc").validate().is_err());
-        assert!(envelope(
-            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-        ).validate().is_err());
+        assert!(
+            envelope(
+                "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            )
+            .validate()
+            .is_err()
+        );
     }
 }
