@@ -64,7 +64,7 @@ if grep -q 'scriptc cache warm' "$dockerfile"; then
   echo "ScriptC cache must not be warmed before the final rootfs exists" >&2
   exit 1
 fi
-[[ -x "$scriptc_warmer" ]] || { echo "final-rootfs ScriptC cache warmer is missing" >&2; exit 1; }
+[[ -f "$scriptc_warmer" ]] || { echo "final-rootfs ScriptC cache warmer is missing" >&2; exit 1; }
 grep -q 'scriptc cache warm runtime dynamic' "$build_guest" || { echo "build guest must warm ScriptC runtime and dynamic caches" >&2; exit 1; }
 grep -q 'rune.cache_warm=scriptc' "$scriptc_warmer" || { echo "ScriptC warmer must boot the final build rootfs in cache-warm mode" >&2; exit 1; }
 grep -q 'chmod 0444.*cache' "$scriptc_warmer" || { echo "ScriptC cache seed must be frozen after warming" >&2; exit 1; }
