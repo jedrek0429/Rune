@@ -16,7 +16,7 @@ assert_eq() {
 }
 
 assert_eq "1 192 32 3 32 128" "$(rune_invocation_profile)" "Rune invocation profile"
-assert_eq "1 512 512 30 128 256" "$(rune_build_profile scriptc)" "ScriptC build profile"
+assert_eq "1 512 512 30 128 512" "$(rune_build_profile scriptc)" "ScriptC build profile"
 assert_eq "1 512 512 20 128 256" "$(rune_build_profile clang)" "Clang build profile"
 assert_eq "2 1024 512 45 128 256" "$(rune_build_profile rust)" "Rust build profile"
 assert_eq "2 2048 768 60 128 256" "$(rune_build_profile dotnet-aot)" ".NET AOT build profile"
@@ -28,9 +28,11 @@ builder="$repo_root/firecracker/run-build-vm.sh"
 rootfs_builder="$repo_root/firecracker/build-rootfs.sh"
 scriptc_warmer="$repo_root/firecracker/warm-scriptc-cache.sh"
 assert_eq "1 192" "$(bash "$snapshot" --print-profile)" "Rune snapshot profile"
-assert_eq "1 512 512 30 128 256" "$(bash "$builder" --print-profile scriptc)" "ScriptC build launcher profile"
+assert_eq "1 512 512 30 128 512" "$(bash "$builder" --print-profile scriptc)" "ScriptC build launcher profile"
 assert_eq "2 1024 512 45 128 256" "$(bash "$builder" --print-profile rust)" "Rust build launcher profile"
 assert_eq "2 2048 768 60 128 256" "$(bash "$builder" --print-profile dotnet-aot)" ".NET AOT build launcher profile"
+
+grep -q 'rune.fd_limit=512' "$scriptc_warmer" || { echo "ScriptC cache warm must allow its parallel dependency rechecks without hitting EMFILE" >&2; exit 1; }
 
 if bash "$snapshot" python >/dev/null 2>&1; then
   echo "execution snapshots must not be language-specific" >&2
