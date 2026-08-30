@@ -37,7 +37,10 @@ impl VmPool {
 
     pub async fn prime(&self) -> Result<()> {
         for _ in 0..self.config.min_vms {
-            self.idle.lock().await.push_back(WarmVm::restore(self.config.clone()).await?);
+            self.idle
+                .lock()
+                .await
+                .push_back(WarmVm::restore(self.config.clone()).await?);
         }
         info!(count = self.config.min_vms, "warm Rune pool primed");
         Ok(())
@@ -118,8 +121,8 @@ impl VmPool {
 
 #[cfg(test)]
 mod tests {
-    use std::{path::PathBuf, time::Duration};
     use super::*;
+    use std::{path::PathBuf, time::Duration};
 
     fn config(min_vms: usize, max_vms: usize, backlog_per_vm: usize) -> Arc<Config> {
         Arc::new(Config {
