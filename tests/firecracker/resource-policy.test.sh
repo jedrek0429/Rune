@@ -58,11 +58,13 @@ grep -q 'dotnet publish.*PublishAot=true' "$dockerfile" || { echo ".NET build im
 grep -q 'NUGET_PACKAGES=/opt/rune/nuget' "$dockerfile" || { echo ".NET build image must expose its prewarmed packages outside root home" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES.*opt/rune/nuget' "$build_guest" || { echo "build guest must use the prewarmed NuGet cache" >&2; exit 1; }
 grep -q 'scriptc cache warm dynamic' "$dockerfile" || { echo "ScriptC dynamic cache must be prewarmed" >&2; exit 1; }
+grep -q 'chmod -R a+rX.*SCRIPTC_CACHE_DIR' "$dockerfile" || { echo "ScriptC seed cache must be readable from the immutable rootfs" >&2; exit 1; }
 grep -q 'rune-build-scriptc' "$build_guest" || { echo "JS/TS builds must use the ScriptC policy wrapper" >&2; exit 1; }
 grep -q 'scriptc build "$source" -o "$artifact"' "$scriptc_builder" || { echo "ScriptC wrapper must try static compilation first" >&2; exit 1; }
 grep -q 'scriptc coverage "$source" --dynamic' "$scriptc_builder" || { echo "ScriptC wrapper must validate dynamic fallback" >&2; exit 1; }
 grep -q 'scriptc build "$source" --dynamic -o "$artifact"' "$scriptc_builder" || { echo "ScriptC wrapper must use dynamic mode only as fallback" >&2; exit 1; }
-grep -q 'cp -a /opt/rune/scriptc-cache/. /work/scriptc-cache/' "$scriptc_builder" || { echo "ScriptC wrapper must seed its writable cache from the prewarmed image" >&2; exit 1; }
+grep -q 'cp -R /opt/rune/scriptc-cache/. /work/scriptc-cache/' "$scriptc_builder" || { echo "ScriptC wrapper must copy its immutable seed without preserving host ownership" >&2; exit 1; }
+grep -q 'chmod 0700 /work/scriptc-cache' "$scriptc_builder" || { echo "per-build ScriptC cache must stay private" >&2; exit 1; }
 grep -q 'SCRIPTC_CACHE_DIR=/work/scriptc-cache' "$scriptc_builder" || { echo "ScriptC builds must use writable bounded scratch for cache mutations" >&2; exit 1; }
 grep -q 'MICROPY_PERSISTENT_CODE_LOAD' "$dockerfile" || { echo "MicroPython embed must load precompiled bytecode" >&2; exit 1; }
 grep -q 'rune-build-python' "$build_guest" || { echo "Python builds must use the executable MicroPython packager" >&2; exit 1; }
