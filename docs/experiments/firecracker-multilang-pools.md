@@ -1,26 +1,30 @@
-# Firecracker multi-language pool experiment
+# Firecracker multi-language build experiment
 
-Rune uses separate disposable build VMs and warm disposable invocation VMs.
+Rune uses language-specific disposable build VMs and one language-agnostic disposable invocation pool.
 
-| Language | Build pool | Invocation runtime | Artifact |
-| --- | --- | --- | --- |
-| JavaScript | ScriptC `--dynamic` | `native` | Linux executable |
-| TypeScript | ScriptC `--dynamic` | `native` | Linux executable |
-| Rust | rustc | `native` | Linux executable |
-| C | clang | `native` | Linux executable |
-| C++ | clang++ | `native` | Linux executable |
-| C# | .NET Native AOT | `native` | Linux executable |
-| Python | CPython validation | `python` | source |
-| Ruby | Ruby validation | `ruby` | source |
+| Language | Build pool | Artifact |
+| --- | --- | --- |
+| JavaScript | ScriptC `--dynamic` | Linux executable |
+| TypeScript | ScriptC `--dynamic` | Linux executable |
+| Rust | rustc | Linux executable |
+| C | clang | Linux executable |
+| C++ | clang++ | Linux executable |
+| C# | .NET Native AOT | Linux executable |
+| Python | `mpy-cross` + embedded MicroPython | Linux executable |
+| Ruby | `mrbc` + embedded mruby | Linux executable |
 
-There are only three invocation snapshot families: `native`, `python` and `ruby`. JavaScript, TypeScript, Rust, C, C++ and C# therefore share one autoscaled native pool. C# is published with Native AOT and no .NET runtime is present in invocation VMs.
+The build boundary is the execution contract. Every accepted Rune becomes a self-contained executable that reads the invocation envelope from stdin and writes a Rune result to stdout. Source language is build metadata only; it is absent from invocation and result envelopes.
 
-Registration sends the source directly to `FirecrackerRuneBuilder`. The builder launches the matching isolated build VM, which has no network interface and has compiler-specific CPU, memory, process, file-descriptor, wall-time and writable-disk limits. Build dependencies are baked into the image. Source is attached read-only and is limited to 64 KiB.
+Registration sends source to the matching isolated build VM. Build VMs have no network interface and have compiler-specific CPU, memory, process, file-descriptor, wall-time and writable-disk limits. Source is attached read-only and limited to 64 KiB.
 
-A successful build produces one artifact in the bounded scratch filesystem. The host extracts it, rejects artifacts larger than 16 MiB, hashes it with SHA-256 and stores it by digest under the Firecracker artifact root. `RegisteredRune` stores only the resulting `BuiltRuneArtifact` descriptor for execution. Invocation envelopes contain the artifact descriptor and event payload, never source.
+Python is precompiled with `mpy-cross`; its `.mpy` bytecode is embedded with the MicroPython embed port into the final executable. Ruby is compiled with `mrbc`; its bytecode is linked with mruby into the final executable. Neither interpreter exists in the invocation image.
 
-Before invocation, the runner resolves the content-addressed file and verifies both its size and SHA-256 digest. It then streams the artifact and invocation envelope over vsock into a fresh VM. The guest executes native artifacts directly, Python artifacts with CPython and Ruby artifacts with Ruby. Invocation VMs have no network interface, run the Rune as an unprivileged user and are destroyed after one invocation.
+A successful build produces one executable in the bounded scratch filesystem. The host rejects artifacts larger than 16 MiB, hashes them with SHA-256 and stores them by digest. `RegisteredRune` retains the source language for rebuilds plus the resulting `BuiltRuneArtifact` descriptor.
 
-ScriptC belongs only in the build VM. Rune invokes it as `scriptc build <source> --dynamic -o <artifact>`. The build image contains Node 24+ and clang; the resulting invocation image contains neither Node nor ScriptC. Rune does not initially install user npm dependencies.
+All invocation envelopes enter the single `rune:invocations` Redis stream. The runner verifies the artifact size and digest, restores a VM from the single warm snapshot, streams the executable and invocation envelope over vsock, and executes `/tmp/rune-artifact` directly as an unprivileged user. The VM has no network interface and is destroyed after one invocation.
 
-The remaining acceptance work is intentionally small: keep CI green, remove obsolete pre-Firecracker/old language-worker files, and exercise build + invocation on a Linux KVM host for all eight languages. The GitHub-hosted CI gate covers the protocol, resource policy, compiler/runtime routing, registration and artifact validation; the KVM smoke gate remains opt-in for a self-hosted runner.
+The Redis backlog therefore scales one fungible VM pool. There is no language routing, interpreter routing or per-language snapshot balancing in the execution plane.
+
+ScriptC, `mpy-cross`, MicroPython, mruby, rustc, clang and the .NET SDK exist only in build images. The invocation rootfs contains the Rune guest plus the native system libraries required by produced executables.
+
+The acceptance gate is a real KVM end-to-end test that builds all eight languages into executable artifacts and invokes all eight through the same Redis stream and warm Firecracker snapshot.
