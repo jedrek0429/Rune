@@ -23,12 +23,15 @@ struct BuildPolicy {
     cpu_seconds: u64,
 }
 
-fn parse_policy(cmdline: &str) -> Result<BuildPolicy> {
-    let values: HashMap<_, _> = cmdline
+fn values(cmdline: &str) -> HashMap<&str, &str> {
+    cmdline
         .split_whitespace()
         .filter_map(|part| part.split_once('='))
-        .collect();
+        .collect()
+}
 
+fn parse_policy(cmdline: &str) -> Result<BuildPolicy> {
+    let values = values(cmdline);
     let pool = values
         .get("rune.build_pool")
         .context("missing rune.build_pool")?
@@ -96,6 +99,9 @@ fn main() -> Result<()> {
     mount_guest_filesystems()?;
     let cmdline =
         fs::read_to_string("/proc/cmdline").context("failed to read kernel command line")?;
+    if values(&cmdline).get("rune.cache_warm") == Some(&"scriptc") {
+        return warm_scriptc_cache(&cmdline);
+    }
     let policy = parse_policy(&cmdline)?;
 
     for path in ["/work", "/input"] {
@@ -117,6 +123,17 @@ fn main() -> Result<()> {
         "",
     )
     .context("failed to mount build input")?;
+    if policy.pool == "scriptc" {
+        fs::create_dir_all("/cache-seed")?;
+        mount(
+            "/dev/vdd",
+            "/cache-seed",
+            "ext4",
+            libc::MS_RDONLY | libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC,
+            "",
+        )
+        .context("failed to mount ScriptC cache seed")?;
+    }
     fs::set_permissions("/work", fs::Permissions::from_mode(0o700))?;
     chown("/work", WORKER_UID, WORKER_GID)?;
 
@@ -126,6 +143,51 @@ fn main() -> Result<()> {
 
     drop_privileges()?;
     run_build(&policy)
+}
+
+fn warm_scriptc_cache(cmdline: &str) -> Result<()> {
+    let values = values(cmdline);
+    fs::create_dir_all("/work")?;
+    mount(
+        "/dev/vdb",
+        "/work",
+        "ext4",
+        libc::MS_NOSUID | libc::MS_NODEV,
+        "",
+    )
+    .context("failed to mount ScriptC cache disk")?;
+    fs::set_permissions("/work", fs::Permissions::from_mode(0o700))?;
+    chown("/work", WORKER_UID, WORKER_GID)?;
+    set_limit(
+        libc::RLIMIT_CPU,
+        parse_positive(&values, "rune.wall_seconds")?,
+    )?;
+    set_limit(
+        libc::RLIMIT_NPROC,
+        parse_positive(&values, "rune.pid_limit")?,
+    )?;
+    set_limit(
+        libc::RLIMIT_NOFILE,
+        parse_positive(&values, "rune.fd_limit")?,
+    )?;
+    drop_privileges()?;
+
+    let status = Command::new("scriptc")
+        .args(["cache", "warm", "runtime", "dynamic"])
+        .env_clear()
+        .env("PATH", "/usr/local/bin:/usr/bin:/bin")
+        .env("HOME", "/work")
+        .env("TMPDIR", "/work")
+        .env("SCRIPTC_CACHE_DIR", "/work")
+        .current_dir("/work")
+        .status()
+        .context("failed to start ScriptC cache warm")?;
+    if !status.success() {
+        println!("RUNE_CACHE_WARM_FAILED");
+        bail!("ScriptC cache warm exited with {status}");
+    }
+    println!("RUNE_CACHE_WARM_DONE");
+    Ok(())
 }
 
 fn run_build(policy: &BuildPolicy) -> Result<()> {
@@ -281,6 +343,16 @@ mod tests {
                 fd_limit: 256,
                 cpu_seconds: 60,
             }
+        );
+    }
+
+    #[test]
+    fn recognizes_scriptc_cache_warm_mode() {
+        assert_eq!(
+            values("root=/dev/vda rune.cache_warm=scriptc")
+                .get("rune.cache_warm")
+                .copied(),
+            Some("scriptc")
         );
     }
 
