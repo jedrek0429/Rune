@@ -56,11 +56,31 @@ for await (const line of rl) {
         }).runInContext(context, { timeout: 1500 });
     } catch (caught) {
         actions.length = 0;
-        error = caught instanceof Error ? caught.message : String(caught);
+        error = errorMessage(caught);
     }
 
     const durationMicros = Number((process.hrtime.bigint() - started) / 1000n);
     process.stdout.write(JSON.stringify({ actions, error, durationMicros }) + "\n");
+}
+
+function errorMessage(caught) {
+    try {
+        if (
+            caught &&
+            (typeof caught === "object" || typeof caught === "function") &&
+            typeof caught.message === "string"
+        ) {
+            return caught.message;
+        }
+    } catch {
+        // A Rune can throw an object with a hostile message getter.
+    }
+
+    try {
+        return String(caught);
+    } catch {
+        return "Rune threw an unprintable value";
+    }
 }
 
 function project(value, key = "") {
