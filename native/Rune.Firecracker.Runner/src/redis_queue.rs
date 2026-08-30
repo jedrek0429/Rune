@@ -6,7 +6,7 @@ use tracing::debug;
 
 use crate::{
     config::Config,
-    protocol::{InvocationEnvelope, OwnedResultEnvelope, RuneLanguage},
+    protocol::{InvocationEnvelope, InvocationRuntime, OwnedResultEnvelope, RuneLanguage},
 };
 
 #[derive(Clone)]
@@ -129,5 +129,15 @@ impl RedisQueue {
         let mut connection = self.client.get_multiplexed_async_connection().await?;
         let len: usize = connection.xlen(stream).await?;
         Ok(len)
+    }
+
+    pub async fn backlog_for_runtime(&self, runtime: InvocationRuntime) -> Result<usize> {
+        let mut total = 0;
+        for language in RuneLanguage::ALL {
+            if language.invocation_runtime() == runtime {
+                total += self.backlog(language).await?;
+            }
+        }
+        Ok(total)
     }
 }
