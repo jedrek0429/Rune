@@ -30,9 +30,10 @@ impl WarmVm {
     pub async fn restore(language: RuneLanguage, config: Arc<Config>) -> Result<Self> {
         fs::create_dir_all(config.runtime_root()).await?;
 
-        let runtime_dir = config
-            .runtime_root()
-            .join(format!("{}-{}", language.as_str(), Uuid::new_v4()));
+        let runtime_dir =
+            config
+                .runtime_root()
+                .join(format!("{}-{}", language.as_str(), Uuid::new_v4()));
         fs::create_dir_all(&runtime_dir).await?;
 
         let api_path = runtime_dir.join("firecracker.sock");
