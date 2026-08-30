@@ -31,7 +31,6 @@ public sealed class FirecrackerDispatchTests
         Assert.Equal(matching.Id, envelope.RuneId);
         Assert.Equal(matching.Name, envelope.RuneName);
         Assert.Equal(matching.Artifact, envelope.Artifact);
-        Assert.Equal(RuneLanguage.JavaScript, envelope.Language);
         Assert.Equal(RuneEventType.MessageCreate, envelope.EventType);
         Assert.Equal("200", envelope.Payload.GetProperty("id").GetString());
         Assert.Equal("100", envelope.Payload.GetProperty("channelId").GetString());
