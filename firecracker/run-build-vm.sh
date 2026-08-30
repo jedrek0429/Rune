@@ -137,7 +137,7 @@ api_put /drives/rootfs "{\"drive_id\":\"rootfs\",\"path_on_host\":$(json_string 
 api_put /drives/scratch "{\"drive_id\":\"scratch\",\"path_on_host\":$(json_string "$scratch"),\"is_root_device\":false,\"is_read_only\":false}"
 api_put /drives/input "{\"drive_id\":\"input\",\"path_on_host\":$(json_string "$input"),\"is_root_device\":false,\"is_read_only\":true}"
 if [[ "$pool" == scriptc ]]; then
-  api_put /drives/cache-seed "{\"drive_id\":\"cache-seed\",\"path_on_host\":$(json_string "$cache_seed"),\"is_root_device\":false,\"is_read_only\":true}"
+  api_put /drives/cache_seed "{\"drive_id\":\"cache_seed\",\"path_on_host\":$(json_string "$cache_seed"),\"is_root_device\":false,\"is_read_only\":true}"
 fi
 api_put /entropy '{}'
 api_put /vsock "{\"guest_cid\":3,\"uds_path\":$(json_string "$vsock_sock")}"
