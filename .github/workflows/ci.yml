@@ -62,6 +62,33 @@ jobs:
 
   firecracker-smoke:
     runs-on: ubuntu-latest
-    if: ${{ false }}
+    env:
+      RUNE_FIRECRACKER_ROOT: ${{ runner.temp }}/rune-firecracker
+
     steps:
-      - run: echo "Enable this job on a self-hosted Linux runner with /dev/kvm."
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y e2fsprogs redis-server
+          test -e /dev/kvm
+          sudo chmod a+rw /dev/kvm
+
+      - name: Install Firecracker
+        env:
+          FIRECRACKER_VERSION: v1.16.1
+        run: |
+          arch="$(uname -m)"
+          curl -fsSL "https://github.com/firecracker-microvm/firecracker/releases/download/${FIRECRACKER_VERSION}/firecracker-${FIRECRACKER_VERSION}-${arch}.tgz" | tar -xz
+          mkdir -p "$RUNNER_TEMP/bin" "$RUNE_FIRECRACKER_ROOT"
+          install "release-${FIRECRACKER_VERSION}-${arch}/firecracker-${FIRECRACKER_VERSION}-${arch}" "$RUNNER_TEMP/bin/firecracker"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          curl -fsSL -o "$RUNE_FIRECRACKER_ROOT/vmlinux" "https://s3.amazonaws.com/spec.ccfc.min/img/quickstart_guide/x86_64/kernels/vmlinux.bin"
+
+      - name: Test all languages end to end
+        run: tests/firecracker/e2e.sh
