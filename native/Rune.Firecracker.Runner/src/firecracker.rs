@@ -233,6 +233,31 @@ mod tests {
     };
 
     use super::*;
+    use crate::protocol::BuiltRuneArtifact;
+
+    #[tokio::test]
+    async fn artifact_loader_verifies_size_and_digest() {
+        let dir = std::env::temp_dir().join(format!("rune-artifact-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&dir).await.unwrap();
+        fs::write(
+            dir.join("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"),
+            b"abc",
+        )
+        .await
+        .unwrap();
+        let artifact = BuiltRuneArtifact {
+            id: "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad".into(),
+            digest: "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad".into(),
+            entrypoint: "rune".into(),
+            size_bytes: 3,
+        };
+
+        assert_eq!(load_artifact(&dir, &artifact).await.unwrap(), b"abc");
+        let mut wrong = artifact.clone();
+        wrong.size_bytes = 2;
+        assert!(load_artifact(&dir, &wrong).await.is_err());
+        fs::remove_dir_all(&dir).await.unwrap();
+    }
 
     #[tokio::test]
     async fn api_put_completes_from_success_status_without_waiting_for_eof() {
