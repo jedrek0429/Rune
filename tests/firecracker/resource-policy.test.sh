@@ -25,18 +25,20 @@ assert_eq "2 2048 768 60 128 256" "$(rune_build_profile dotnet-aot)" ".NET AOT b
 assert_eq "1 512 256 20 128 256" "$(rune_build_profile python)" "Python build profile"
 assert_eq "1 512 256 20 128 256" "$(rune_build_profile ruby)" "Ruby build profile"
 
-assert_eq "1 192" "$($repo_root/firecracker/build-snapshot.sh --print-profile native)" "native snapshot profile"
-assert_eq "1 256" "$($repo_root/firecracker/build-snapshot.sh --print-profile python)" "python snapshot profile"
-assert_eq "1 256" "$($repo_root/firecracker/build-snapshot.sh --print-profile ruby)" "ruby snapshot profile"
-assert_eq "1 512 512 30 128 256" "$($repo_root/firecracker/run-build-vm.sh --print-profile scriptc)" "ScriptC build launcher profile"
-assert_eq "2 1024 512 45 128 256" "$($repo_root/firecracker/run-build-vm.sh --print-profile rust)" "Rust build launcher profile"
-assert_eq "2 2048 768 60 128 256" "$($repo_root/firecracker/run-build-vm.sh --print-profile dotnet-aot)" ".NET AOT build launcher profile"
+snapshot="$repo_root/firecracker/build-snapshot.sh"
+builder="$repo_root/firecracker/run-build-vm.sh"
+assert_eq "1 192" "$(bash "$snapshot" --print-profile native)" "native snapshot profile"
+assert_eq "1 256" "$(bash "$snapshot" --print-profile python)" "python snapshot profile"
+assert_eq "1 256" "$(bash "$snapshot" --print-profile ruby)" "ruby snapshot profile"
+assert_eq "1 512 512 30 128 256" "$(bash "$builder" --print-profile scriptc)" "ScriptC build launcher profile"
+assert_eq "2 1024 512 45 128 256" "$(bash "$builder" --print-profile rust)" "Rust build launcher profile"
+assert_eq "2 2048 768 60 128 256" "$(bash "$builder" --print-profile dotnet-aot)" ".NET AOT build launcher profile"
 
-if "$repo_root/firecracker/build-snapshot.sh" --print-profile javascript >/dev/null 2>&1; then
+if bash "$snapshot" --print-profile javascript >/dev/null 2>&1; then
   echo "javascript must not have a language-specific invocation snapshot" >&2
   exit 1
 fi
-if "$repo_root/firecracker/run-build-vm.sh" --print-profile node >/dev/null 2>&1; then
+if bash "$builder" --print-profile node >/dev/null 2>&1; then
   echo "Node must not be a Rune build pool" >&2
   exit 1
 fi
@@ -49,13 +51,12 @@ if grep -R -q '/network-interfaces' "$repo_root/firecracker" --include='*.sh'; t
   exit 1
 fi
 
-launcher="$repo_root/firecracker/run-build-vm.sh"
-grep -q 'timeout .*wall_seconds' "$launcher" || { echo "build VM launcher must enforce host wall time" >&2; exit 1; }
-grep -q 'scratch.*disk_mib' "$launcher" || { echo "build VM launcher must bound scratch disk" >&2; exit 1; }
-grep -q 'rune.language=' "$launcher" || { echo "build VM must receive language" >&2; exit 1; }
-grep -q 'drive_id.*input' "$launcher" && grep -q 'is_read_only.*true' "$launcher" || { echo "build input must be read-only" >&2; exit 1; }
-grep -q 'size <= 16777216' "$launcher" || { echo "artifact must be capped at 16 MiB" >&2; exit 1; }
-grep -q 'sha256sum' "$launcher" || { echo "artifact store must be content-addressed" >&2; exit 1; }
+grep -q 'timeout .*wall_seconds' "$builder" || { echo "build VM launcher must enforce host wall time" >&2; exit 1; }
+grep -q 'scratch.*disk_mib' "$builder" || { echo "build VM launcher must bound scratch disk" >&2; exit 1; }
+grep -q 'rune.language=' "$builder" || { echo "build VM must receive language" >&2; exit 1; }
+grep -q 'drive_id.*input' "$builder" && grep -q 'is_read_only.*true' "$builder" || { echo "build input must be read-only" >&2; exit 1; }
+grep -q 'size <= 16777216' "$builder" || { echo "artifact must be capped at 16 MiB" >&2; exit 1; }
+grep -q 'sha256sum' "$builder" || { echo "artifact store must be content-addressed" >&2; exit 1; }
 
 dockerfile="$repo_root/firecracker/images/Dockerfile.build"
 grep -q 'dotnet publish.*PublishAot=true' "$dockerfile" || { echo ".NET build image must prewarm Native AOT assets before network is removed" >&2; exit 1; }
