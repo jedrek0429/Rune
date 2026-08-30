@@ -27,6 +27,7 @@ root="${RUNE_FIRECRACKER_ROOT:-/var/lib/rune/firecracker}"
 firecracker="${RUNE_FIRECRACKER:-firecracker}"
 kernel="${RUNE_KERNEL:-$root/vmlinux}"
 rootfs="$root/build-images/$pool/rootfs.ext4"
+result_dir="$root/build-results"
 tmp="$(mktemp -d)"
 api_sock="$tmp/firecracker.sock"
 vsock_sock="$tmp/vsock.sock"
@@ -89,7 +90,8 @@ api_put /vsock "{\"guest_cid\":3,\"uds_path\":$(json_string "$vsock_sock")}"
 # No NIC is configured for compiler VMs. Toolchains and dependencies must be pre-baked.
 api_put /actions '{"action_type":"InstanceStart"}'
 
-if ! timeout "${wall_seconds}s" bash -c '
+set +e
+timeout "${wall_seconds}s" bash -c '
   log="$1"
   pid="$2"
   while kill -0 "$pid" 2>/dev/null; do
@@ -98,15 +100,22 @@ if ! timeout "${wall_seconds}s" bash -c '
     sleep 0.05
   done
   exit 4
-' _ "$console_log" "$pid"; then
-  status=$?
+' _ "$console_log" "$pid"
+status=$?
+set -e
+
+if [[ "$status" -ne 0 ]]; then
   cat "$console_log" >&2 || true
   if [[ "$status" -eq 124 ]]; then
     echo "Rune build exceeded ${wall_seconds}s wall-time limit" >&2
   else
-    echo "Rune build VM failed" >&2
+    echo "Rune build VM failed with status $status" >&2
   fi
   exit "$status"
 fi
 
-echo "$scratch"
+mkdir -p "$result_dir"
+result="$result_dir/${pool}-$(date +%s)-$$.ext4"
+mv "$scratch" "$result"
+chmod 0444 "$result"
+echo "$result"
