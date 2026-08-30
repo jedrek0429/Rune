@@ -65,7 +65,7 @@ grep -q 'NUGET_PACKAGES=/opt/rune/nuget' "$dockerfile" || { echo ".NET build ima
 grep -q 'NUGET_PACKAGES.*opt/rune/nuget' "$build_guest" || { echo "build guest must use the prewarmed NuGet cache" >&2; exit 1; }
 grep -q 'allow-scripts=scriptc' "$dockerfile" || { echo "ScriptC build image must run its install hook" >&2; exit 1; }
 grep -q 'SCRIPTC_CACHE_DIR=/opt/rune/scriptc-cache' "$dockerfile" || { echo "ScriptC build image must use an explicit compiler cache" >&2; exit 1; }
-grep -q 'scriptc cache warm dynamic' "$dockerfile" || { echo "ScriptC build image must explicitly warm the dynamic engine cache" >&2; exit 1; }
+grep -q 'env -i PATH=/usr/local/bin:/usr/bin:/bin SCRIPTC_CACHE_DIR=.*scriptc cache warm dynamic' "$dockerfile" || { echo "ScriptC dynamic cache must be warmed under the guest toolchain environment" >&2; exit 1; }
 grep -q 'chown -R 1000:1000.*SCRIPTC_CACHE_DIR' "$dockerfile" || { echo "ScriptC cache must be owned by the unprivileged build user" >&2; exit 1; }
 grep -q 'chmod 0700.*SCRIPTC_CACHE_DIR' "$dockerfile" || { echo "ScriptC cache must stay private" >&2; exit 1; }
 grep -q 'SCRIPTC_CACHE_DIR.*opt/rune/scriptc-cache' "$build_guest" || { echo "build guest must reuse the prewarmed ScriptC cache" >&2; exit 1; }
