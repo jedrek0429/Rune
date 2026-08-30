@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/Rune.Bot/Rune.Bot.csproj" />
     <ProjectReference Include="../../src/Rune.Core/Rune.Core.csproj" />
     <ProjectReference Include="../../src/Rune.Runtime/Rune.Runtime.csproj" />
   </ItemGroup>
