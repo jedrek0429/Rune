@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+pub const MAX_ARTIFACT_BYTES: u64 = 16 * 1024 * 1024;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum RuneLanguage {
     #[serde(rename = "javaScript")]
@@ -36,6 +38,13 @@ impl InvocationRuntime {
             Self::Native => "native",
             Self::Python => "python",
             Self::Ruby => "ruby",
+        }
+    }
+
+    pub const fn memory_mib(self) -> usize {
+        match self {
+            Self::Native => 192,
+            Self::Python | Self::Ruby => 256,
         }
     }
 }
@@ -106,6 +115,7 @@ pub struct BuiltRuneArtifact {
     pub id: String,
     pub digest: String,
     pub entrypoint: String,
+    pub size_bytes: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,24 +133,17 @@ pub struct InvocationEnvelope {
     pub enqueued_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct HostAction {
-    pub method: String,
-    pub arguments: Value,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GuestResult {
-    #[serde(default)]
-    pub actions: Vec<HostAction>,
-    pub error: Option<String>,
-    #[serde(default)]
-    pub duration_micros: i64,
-}
-
 impl InvocationEnvelope {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.artifact.size_bytes > MAX_ARTIFACT_BYTES {
+            return Err("Rune artifact exceeds the invocation artifact limit");
+        }
+        if self.artifact.id.is_empty() || self.artifact.digest.is_empty() || self.artifact.entrypoint.is_empty() {
+            return Err("Rune artifact descriptor is incomplete");
+        }
+        Ok(())
+    }
+
     pub fn complete(&self, guest: GuestResult) -> OwnedResultEnvelope {
         OwnedResultEnvelope {
             execution_id: self.execution_id.clone(),
@@ -172,6 +175,23 @@ impl InvocationEnvelope {
             duration_micros: 0,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HostAction {
+    pub method: String,
+    pub arguments: Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GuestResult {
+    #[serde(default)]
+    pub actions: Vec<HostAction>,
+    pub error: Option<String>,
+    #[serde(default)]
+    pub duration_micros: i64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -211,5 +231,28 @@ mod tests {
     #[test]
     fn csharp_builds_with_native_aot() {
         assert_eq!(RuneLanguage::Csharp.build_pool(), "dotnet-aot");
+    }
+
+    #[test]
+    fn oversized_artifact_is_rejected() {
+        let envelope = InvocationEnvelope {
+            execution_id: "e".into(),
+            invocation_id: "i".into(),
+            rune_id: "r".into(),
+            rune_name: "name".into(),
+            guild_id: 1,
+            language: RuneLanguage::Rust,
+            event_type: RuneEventType::MessageCreate,
+            artifact: BuiltRuneArtifact {
+                id: "a".into(),
+                digest: "sha256:x".into(),
+                entrypoint: "rune".into(),
+                size_bytes: MAX_ARTIFACT_BYTES + 1,
+            },
+            payload: Value::Null,
+            enqueued_at: "now".into(),
+        };
+
+        assert!(envelope.validate().is_err());
     }
 }
