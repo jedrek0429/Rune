@@ -15,5 +15,13 @@ RUN apt-get update && case "$POOL" in \
       python|ruby) true ;; \
       *) exit 2 ;; \
     esac && rm -rf /var/lib/apt/lists/*
+ENV NUGET_PACKAGES=/opt/rune/nuget
+RUN if [ "$POOL" = dotnet-aot ]; then \
+      mkdir -p /tmp/rune-aot /opt/rune/nuget && \
+      printf '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><PublishAot>true</PublishAot></PropertyGroup></Project>' > /tmp/rune-aot/Rune.csproj && \
+      printf 'System.Console.WriteLine();' > /tmp/rune-aot/Program.cs && \
+      dotnet publish /tmp/rune-aot/Rune.csproj -c Release -p:PublishAot=true -o /tmp/rune-aot/out >/dev/null && \
+      rm -rf /tmp/rune-aot; \
+    fi
 RUN mkdir -p /proc /dev /work /input
 COPY --from=guest-builder /build/target/release/rune-firecracker-build-guest /sbin/rune-build-guest
