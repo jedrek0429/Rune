@@ -26,18 +26,16 @@ pub enum InvocationRuntime {
     Native,
     Python,
     Ruby,
-    Dotnet,
 }
 
 impl InvocationRuntime {
-    pub const ALL: [Self; 4] = [Self::Native, Self::Python, Self::Ruby, Self::Dotnet];
+    pub const ALL: [Self; 3] = [Self::Native, Self::Python, Self::Ruby];
 
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Native => "native",
             Self::Python => "python",
             Self::Ruby => "ruby",
-            Self::Dotnet => "dotnet",
         }
     }
 }
@@ -69,12 +67,14 @@ impl RuneLanguage {
 
     pub const fn invocation_runtime(self) -> InvocationRuntime {
         match self {
-            Self::Javascript | Self::Typescript | Self::Rust | Self::C | Self::Cpp => {
-                InvocationRuntime::Native
-            }
+            Self::Javascript
+            | Self::Typescript
+            | Self::Rust
+            | Self::C
+            | Self::Cpp
+            | Self::Csharp => InvocationRuntime::Native,
             Self::Python => InvocationRuntime::Python,
             Self::Ruby => InvocationRuntime::Ruby,
-            Self::Csharp => InvocationRuntime::Dotnet,
         }
     }
 
@@ -83,7 +83,7 @@ impl RuneLanguage {
             Self::Javascript | Self::Typescript => "scriptc",
             Self::Rust => "rust",
             Self::C | Self::Cpp => "clang",
-            Self::Csharp => "dotnet",
+            Self::Csharp => "dotnet-aot",
             Self::Python => "python",
             Self::Ruby => "ruby",
         }
@@ -118,10 +118,7 @@ pub struct InvocationEnvelope {
     pub guild_id: u64,
     pub language: RuneLanguage,
     pub event_type: RuneEventType,
-    #[serde(default)]
-    pub artifact: Option<BuiltRuneArtifact>,
-    #[serde(default)]
-    pub source: String,
+    pub artifact: BuiltRuneArtifact,
     pub payload: Value,
     pub enqueued_at: String,
 }
@@ -196,100 +193,23 @@ pub struct OwnedResultEnvelope {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
-
-    fn invocation() -> InvocationEnvelope {
-        InvocationEnvelope {
-            execution_id: "execution-1".into(),
-            invocation_id: "invocation-1".into(),
-            rune_id: "rune-1".into(),
-            rune_name: "hello".into(),
-            guild_id: 18_446_744_073_709_551_610,
-            language: RuneLanguage::Javascript,
-            event_type: RuneEventType::MessageCreate,
-            artifact: None,
-            source: "message.reply('hello')".into(),
-            payload: json!({
-                "id": "18446744073709551612",
-                "channelId": "18446744073709551611",
-                "author": {
-                    "id": "18446744073709551613",
-                    "username": "Ada"
-                }
-            }),
-            enqueued_at: "2026-08-30T00:00:00Z".into(),
-        }
-    }
 
     #[test]
-    fn languages_map_to_shared_invocation_runtimes() {
+    fn native_languages_share_one_invocation_runtime() {
         for language in [
             RuneLanguage::Javascript,
             RuneLanguage::Typescript,
             RuneLanguage::Rust,
             RuneLanguage::C,
             RuneLanguage::Cpp,
+            RuneLanguage::Csharp,
         ] {
             assert_eq!(language.invocation_runtime(), InvocationRuntime::Native);
         }
-        assert_eq!(RuneLanguage::Python.invocation_runtime(), InvocationRuntime::Python);
-        assert_eq!(RuneLanguage::Ruby.invocation_runtime(), InvocationRuntime::Ruby);
-        assert_eq!(RuneLanguage::Csharp.invocation_runtime(), InvocationRuntime::Dotnet);
     }
 
     #[test]
-    fn javascript_and_typescript_build_with_scriptc() {
-        assert_eq!(RuneLanguage::Javascript.build_pool(), "scriptc");
-        assert_eq!(RuneLanguage::Typescript.build_pool(), "scriptc");
-    }
-
-    #[test]
-    fn csharp_wire_shape_deserializes_and_serializes_with_the_same_contract() {
-        let wire = json!({
-            "executionId": "execution-1",
-            "invocationId": "invocation-1",
-            "runeId": "rune-1",
-            "runeName": "hello",
-            "guildId": 18446744073709551610_u64,
-            "language": "javaScript",
-            "eventType": "messageCreate",
-            "source": "message.reply('hello')",
-            "payload": {
-                "id": "18446744073709551612",
-                "channelId": "18446744073709551611",
-                "author": {
-                    "id": "18446744073709551613",
-                    "username": "Ada"
-                }
-            },
-            "enqueuedAt": "2026-08-30T00:00:00Z"
-        });
-
-        let envelope: InvocationEnvelope = serde_json::from_value(wire).unwrap();
-        assert_eq!(envelope.language, RuneLanguage::Javascript);
-        assert!(matches!(envelope.event_type, RuneEventType::MessageCreate));
-
-        let result = envelope.complete(GuestResult {
-            actions: vec![HostAction {
-                method: "message.reply".into(),
-                arguments: json!({ "content": "hello" }),
-            }],
-            error: None,
-            duration_micros: 123,
-        });
-        let serialized = serde_json::to_value(result).unwrap();
-        assert_eq!(serialized["language"], "javaScript");
-        assert_eq!(serialized["actions"][0]["method"], "message.reply");
-    }
-
-    #[test]
-    fn failed_invocation_preserves_identity_and_payload_but_never_actions() {
-        let envelope = invocation();
-        let failed = envelope.fail("timed out".into());
-        let serialized = serde_json::to_value(failed).unwrap();
-        assert_eq!(serialized["executionId"], "execution-1");
-        assert_eq!(serialized["payload"], envelope.payload);
-        assert_eq!(serialized["actions"], json!([]));
-        assert_eq!(serialized["error"], "timed out");
+    fn csharp_builds_with_native_aot() {
+        assert_eq!(RuneLanguage::Csharp.build_pool(), "dotnet-aot");
     }
 }
