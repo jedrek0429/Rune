@@ -155,6 +155,7 @@ fn run_build(policy: &BuildPolicy) -> Result<()> {
         .env("PATH", "/usr/local/bin:/usr/bin:/bin")
         .env("HOME", "/work")
         .env("TMPDIR", "/work/tmp")
+        .env("NUGET_PACKAGES", "/opt/rune/nuget")
         .current_dir("/work")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
