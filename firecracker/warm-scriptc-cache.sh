@@ -52,6 +52,7 @@ api_put /machine-config '{"vcpu_count":2,"mem_size_mib":512,"smt":false}'
 api_put /boot-source "{\"kernel_image_path\":$(json_string "$kernel"),\"boot_args\":\"console=ttyS0 reboot=k panic=1 pci=off root=/dev/vda ro init=/sbin/rune-build-guest rune.cache_warm=scriptc rune.pid_limit=128 rune.fd_limit=256 rune.wall_seconds=120\"}"
 api_put /drives/rootfs "{\"drive_id\":\"rootfs\",\"path_on_host\":$(json_string "$rootfs"),\"is_root_device\":true,\"is_read_only\":true}"
 api_put /drives/cache "{\"drive_id\":\"cache\",\"path_on_host\":$(json_string "$cache"),\"is_root_device\":false,\"is_read_only\":false}"
+api_put /entropy '{}'
 # Deliberately no network interface.
 api_put /actions '{"action_type":"InstanceStart"}'
 
