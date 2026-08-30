@@ -9,14 +9,13 @@ FROM ${BASE_IMAGE}
 ARG POOL
 ARG MICROPYTHON_VERSION=v1.29.0
 ENV NUGET_PACKAGES=/opt/rune/nuget
-ENV SCRIPTC_CACHE_DIR=/opt/rune/scriptc-cache
 COPY firecracker/build-tools/scriptc.sh /usr/local/bin/rune-build-scriptc
 COPY firecracker/build-tools/python.sh /usr/local/bin/rune-build-python
 COPY firecracker/build-tools/ruby.sh /usr/local/bin/rune-build-ruby
 RUN chmod 0755 /usr/local/bin/rune-build-scriptc /usr/local/bin/rune-build-python /usr/local/bin/rune-build-ruby \
     && apt-get update \
     && case "$POOL" in \
-      scriptc) mkdir -p "$SCRIPTC_CACHE_DIR" && chmod 0700 "$SCRIPTC_CACHE_DIR" && apt-get install -y --no-install-recommends clang ca-certificates && npm install -g --allow-scripts=scriptc scriptc && env -i PATH=/usr/local/bin:/usr/bin:/bin SCRIPTC_CACHE_DIR="$SCRIPTC_CACHE_DIR" scriptc cache warm dynamic && chmod -R a+rX "$SCRIPTC_CACHE_DIR" ;; \
+      scriptc) apt-get install -y --no-install-recommends clang ca-certificates && npm install -g --allow-scripts=scriptc scriptc ;; \
       clang) apt-get install -y --no-install-recommends clang g++ ;; \
       rust) true ;; \
       dotnet-aot) apt-get install -y --no-install-recommends clang zlib1g-dev ;; \
@@ -32,5 +31,5 @@ RUN if [ "$POOL" = dotnet-aot ]; then \
       dotnet publish /tmp/rune-aot/Rune.csproj -c Release -p:PublishAot=true -o /tmp/rune-aot/out >/dev/null && \
       rm -rf /tmp/rune-aot; \
     fi
-RUN mkdir -p /proc /dev /work /input
+RUN mkdir -p /proc /dev /work /input /cache-seed
 COPY --from=guest-builder /build/target/release/rune-firecracker-build-guest /sbin/rune-build-guest
