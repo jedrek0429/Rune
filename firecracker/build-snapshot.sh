@@ -97,7 +97,7 @@ api_put /machine-config "{\"vcpu_count\":$vcpu,\"mem_size_mib\":$mem_mib,\"smt\"
 api_put /boot-source "{\"kernel_image_path\":$(json_string "$kernel"),\"boot_args\":\"console=ttyS0 reboot=k panic=1 pci=off root=/dev/vda ro init=/sbin/rune-guest\"}"
 api_put /drives/rootfs "{\"drive_id\":\"rootfs\",\"path_on_host\":$(json_string "$rootfs"),\"is_root_device\":true,\"is_read_only\":true}"
 api_put /vsock "{\"guest_cid\":3,\"uds_path\":$(json_string "$vsock_sock")}"
-# Intentionally no /network-interfaces request: Rune invocation VMs have no NIC.
+# No NIC is configured for Rune invocation VMs.
 api_put /actions '{"action_type":"InstanceStart"}'
 
 ready=0
