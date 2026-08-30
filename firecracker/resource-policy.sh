@@ -10,7 +10,7 @@ rune_invocation_profile() {
 
 rune_build_profile() {
   case "${1:-}" in
-    scriptc) echo "1 512 512 60 128 256" ;;
+    scriptc) echo "1 512 512 30 128 256" ;;
     clang) echo "1 512 512 20 128 256" ;;
     rust) echo "2 1024 512 45 128 256" ;;
     dotnet-aot) echo "2 2048 768 60 128 256" ;;
