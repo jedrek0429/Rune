@@ -273,5 +273,7 @@ mod tests {
         assert_eq!(CPU_LIMIT_SECONDS, 3);
         assert_eq!(WRITABLE_TMPFS_MIB, 32);
         assert_eq!(MAX_RESPONSE_BYTES, 256 * 1024);
+        assert_ne!(WORKER_UID, 0);
+        assert_ne!(WORKER_GID, 0);
     }
 }
