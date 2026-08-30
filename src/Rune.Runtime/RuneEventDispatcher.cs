@@ -20,6 +20,12 @@ public sealed class RuneEventDispatcher(
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            if (rune.Artifact is null)
+            {
+                failures.Add(new RuneFailure(rune.Name, "The rune has not been built yet."));
+                continue;
+            }
+
             try
             {
                 await transport.EnqueueAsync(
@@ -31,10 +37,9 @@ public sealed class RuneEventDispatcher(
                         invocation.GuildId,
                         rune.Language,
                         rune.EventType,
-                        rune.Source,
+                        rune.Artifact,
                         payload,
-                        DateTimeOffset.UtcNow,
-                        rune.Artifact),
+                        DateTimeOffset.UtcNow),
                     cancellationToken);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
