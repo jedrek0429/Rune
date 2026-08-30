@@ -240,9 +240,7 @@ fn drop_privileges() -> Result<()> {
 }
 
 fn mount_guest_filesystems() -> Result<()> {
-    fs::create_dir_all("/dev")?;
     fs::create_dir_all("/proc")?;
-    mount("devtmpfs", "/dev", "devtmpfs", libc::MS_NOSUID, "mode=0755")?;
     mount(
         "proc",
         "/proc",
