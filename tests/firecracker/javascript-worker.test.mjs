@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import readline from "node:readline";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
-const workerPath = new URL("../../firecracker/guest/javascript/worker.mjs", import.meta.url);
+const workerPath = fileURLToPath(
+    new URL("../../firecracker/guest/javascript/worker.mjs", import.meta.url),
+);
 
 async function withWorker(run) {
     const child = spawn(process.execPath, [workerPath], {
