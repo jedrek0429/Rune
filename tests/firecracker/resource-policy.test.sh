@@ -44,6 +44,9 @@ if grep -R -q '/network-interfaces' "$repo_root/firecracker" --include='*.sh'; t
   echo "Firecracker Rune VMs must not configure a network interface" >&2
   exit 1
 fi
+for launcher in "$snapshot" "$builder" "$scriptc_warmer"; do
+  grep -q 'api_put /entropy' "$launcher" || { echo "every Rune VM must attach a Firecracker entropy device" >&2; exit 1; }
+done
 
 grep -q 'timeout .*wall_seconds' "$builder" || { echo "build VM launcher must enforce host wall time" >&2; exit 1; }
 grep -q 'truncate -s .*disk_mib.*scratch' "$builder" || { echo "build VM launcher must bound scratch disk" >&2; exit 1; }
@@ -91,6 +94,9 @@ if grep -Eq 'python3|ruby|rune-runtime|RUNTIME' "$invocation_dockerfile"; then
   echo "invocation image must be language-agnostic" >&2
   exit 1
 fi
+
+ci="$repo_root/.github/workflows/ci.yml"
+grep -q 'firecracker-ci/' "$ci" && grep -q 'vmlinux-6\.1' "$ci" || { echo "Firecracker smoke must use a current supported 6.1 guest kernel" >&2; exit 1; }
 
 e2e="$repo_root/tests/firecracker/e2e.sh"
 [[ -x "$e2e" ]] || { echo "eight-language Firecracker e2e harness is missing" >&2; exit 1; }
