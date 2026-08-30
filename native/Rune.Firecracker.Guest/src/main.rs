@@ -57,6 +57,7 @@ fn main() -> Result<()> {
 }
 
 fn apply_resource_limits() -> Result<()> {
+    set_limit(libc::RLIMIT_CPU, CPU_LIMIT_SECONDS).context("failed to set CPU limit")?;
     set_limit(libc::RLIMIT_NPROC, PID_LIMIT).context("failed to set process limit")?;
     set_limit(libc::RLIMIT_NOFILE, FD_LIMIT).context("failed to set file descriptor limit")?;
     Ok(())
