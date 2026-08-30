@@ -6,9 +6,11 @@
 
 <p align="center">A small, sandboxed scripting platform for Discord.</p>
 
-Rune lets guilds upload event scripts through Discord. Registration builds each script in a disposable Firecracker microVM; invocations run the resulting immutable artifact in a fresh microVM restored from a warm snapshot.
+Rune lets guilds upload event scripts through Discord. Registration builds each script in a disposable Firecracker microVM; invocations run the resulting immutable executable in a fresh microVM restored from one warm snapshot.
 
-Supported languages are JavaScript, TypeScript, Python, Ruby, Rust, C, C++ and C#. JavaScript and TypeScript compile with ScriptC, C# uses .NET Native AOT, and all native outputs share one invocation pool. Python and Ruby use their own interpreter pools.
+Supported languages are JavaScript, TypeScript, Python, Ruby, Rust, C, C++ and C#. JavaScript and TypeScript use ScriptC, C# uses .NET Native AOT, Python packages precompiled MicroPython bytecode into an executable, and Ruby packages mruby bytecode into an executable.
+
+Every build therefore ends at the same boundary: a self-contained Linux executable implementing the Rune execution ABI. The execution plane does not know which language produced it.
 
 Rune.API is a deliberately selected subset of NetCord. Guest VMs have no general network access; host-backed Discord operations cross a narrow Rune.API boundary.
 
@@ -16,10 +18,10 @@ Rune.API is a deliberately selected subset of NetCord. Guest VMs have no general
 
 ```text
 source
-  -> isolated build VM
-  -> content-addressed artifact
-  -> Redis invocation
-  -> native | python | ruby warm pool
+  -> language-specific isolated build VM
+  -> content-addressed executable
+  -> rune:invocations
+  -> one autoscaled warm Firecracker pool
   -> disposable invocation VM
 ```
 
@@ -27,7 +29,7 @@ The Discord token and NetCord client remain on the host. Source is limited to 64
 
 ## Development
 
-The bot requires .NET 10 and Redis. Firecracker runners require Linux with KVM. Docker is used to build the compiler and invocation root filesystems.
+The bot requires .NET 10 and Redis. Firecracker runners require Linux with KVM. Docker is used to build compiler and invocation root filesystems.
 
 ```sh
 ./firecracker/check-host.sh
@@ -36,4 +38,4 @@ dotnet run --project src/Rune.Bot
 cargo run --release --manifest-path native/Rune.Firecracker.Runner/Cargo.toml
 ```
 
-The Firecracker integration is experimental. GitHub CI covers the managed and Rust contracts and resource-policy tests; full microVM smoke tests require a Linux runner with `/dev/kvm`.
+GitHub CI runs the managed, Rust, resource-policy and real KVM end-to-end checks for all eight languages.
