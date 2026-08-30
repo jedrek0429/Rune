@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::{
     config::Config,
-    protocol::{GuestResult, InvocationEnvelope, RuneLanguage},
+    protocol::{GuestResult, InvocationEnvelope, InvocationRuntime},
 };
 
 const GUEST_VSOCK_PORT: u32 = 5000;
@@ -27,13 +27,12 @@ pub struct WarmVm {
 }
 
 impl WarmVm {
-    pub async fn restore(language: RuneLanguage, config: Arc<Config>) -> Result<Self> {
+    pub async fn restore(runtime: InvocationRuntime, config: Arc<Config>) -> Result<Self> {
         fs::create_dir_all(config.runtime_root()).await?;
 
-        let runtime_dir =
-            config
-                .runtime_root()
-                .join(format!("{}-{}", language.as_str(), Uuid::new_v4()));
+        let runtime_dir = config
+            .runtime_root()
+            .join(format!("{}-{}", runtime.as_str(), Uuid::new_v4()));
         fs::create_dir_all(&runtime_dir).await?;
 
         let api_path = runtime_dir.join("firecracker.sock");
@@ -56,10 +55,10 @@ impl WarmVm {
         }
 
         let request = json!({
-            "snapshot_path": config.snapshot_path(language),
+            "snapshot_path": config.snapshot_path(runtime),
             "mem_backend": {
                 "backend_type": "File",
-                "backend_path": config.memory_path(language)
+                "backend_path": config.memory_path(runtime)
             },
             "resume_vm": true,
             "vsock_override": {
@@ -67,14 +66,7 @@ impl WarmVm {
             }
         });
 
-        if let Err(error) = api_put(
-            &api_path,
-            "/snapshot/load",
-            &request,
-            config.restore_timeout,
-        )
-        .await
-        {
+        if let Err(error) = api_put(&api_path, "/snapshot/load", &request, config.restore_timeout).await {
             let _ = child.kill().await;
             let _ = fs::remove_dir_all(&runtime_dir).await;
             return Err(error);
@@ -162,12 +154,7 @@ async fn wait_for_path(path: &PathBuf, timeout: Duration) -> Result<()> {
     Ok(())
 }
 
-async fn api_put(
-    socket_path: &PathBuf,
-    route: &str,
-    body: &serde_json::Value,
-    timeout: Duration,
-) -> Result<()> {
+async fn api_put(socket_path: &PathBuf, route: &str, body: &serde_json::Value, timeout: Duration) -> Result<()> {
     tokio::time::timeout(timeout, async {
         let mut stream = UnixStream::connect(socket_path)
             .await
@@ -198,19 +185,12 @@ async fn api_put(
 
         if !succeeded {
             let mut remainder = Vec::new();
-            let _ = reader
-                .take(MAX_API_ERROR_RESPONSE)
-                .read_to_end(&mut remainder)
-                .await;
+            let _ = reader.take(MAX_API_ERROR_RESPONSE).read_to_end(&mut remainder).await;
             let detail = String::from_utf8_lossy(&remainder);
             bail!(
                 "Firecracker API {route} failed: {}{}",
                 status_line.trim(),
-                if detail.is_empty() {
-                    String::new()
-                } else {
-                    format!("\n{}", detail.trim())
-                }
+                if detail.is_empty() { String::new() } else { format!("\n{}", detail.trim()) }
             );
         }
 
@@ -253,14 +233,9 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(250)).await;
         });
 
-        api_put(
-            &socket,
-            "/snapshot/load",
-            &json!({ "resume_vm": true }),
-            Duration::from_millis(100),
-        )
-        .await
-        .unwrap();
+        api_put(&socket, "/snapshot/load", &json!({ "resume_vm": true }), Duration::from_millis(100))
+            .await
+            .unwrap();
 
         server.await.unwrap();
         fs::remove_dir_all(&dir).await.unwrap();
@@ -283,15 +258,10 @@ mod tests {
                 .unwrap();
         });
 
-        let error = api_put(
-            &socket,
-            "/snapshot/load",
-            &json!({ "resume_vm": true }),
-            Duration::from_millis(500),
-        )
-        .await
-        .unwrap_err()
-        .to_string();
+        let error = api_put(&socket, "/snapshot/load", &json!({ "resume_vm": true }), Duration::from_millis(500))
+            .await
+            .unwrap_err()
+            .to_string();
 
         assert!(error.contains("400 Bad Request"));
         assert!(error.contains("invalid snapshot"));
