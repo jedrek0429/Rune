@@ -87,14 +87,8 @@ fn build_command(pool: &str, language: &str) -> Result<(&'static str, Vec<String
                 "-p:RestoreIgnoreFailedSources=true",
             ],
         ),
-        ("python", "python") => (
-            "rune-build-python",
-            vec!["/input/source.py", output],
-        ),
-        ("ruby", "ruby") => (
-            "rune-build-ruby",
-            vec!["/input/source.rb", output],
-        ),
+        ("python", "python") => ("rune-build-python", vec!["/input/source.py", output]),
+        ("ruby", "ruby") => ("rune-build-ruby", vec!["/input/source.rb", output]),
         _ => bail!("unsupported build pool/language pair {pool}/{language}"),
     };
 
@@ -106,8 +100,8 @@ fn build_command(pool: &str, language: &str) -> Result<(&'static str, Vec<String
 
 fn main() -> Result<()> {
     mount_guest_filesystems()?;
-    let cmdline = fs::read_to_string("/proc/cmdline")
-        .context("failed to read kernel command line")?;
+    let cmdline =
+        fs::read_to_string("/proc/cmdline").context("failed to read kernel command line")?;
     let policy = parse_policy(&cmdline)?;
 
     for path in ["/work", "/input"] {
@@ -335,7 +329,10 @@ mod tests {
         assert_eq!(build_command("clang", "c").unwrap().0, "clang");
         assert_eq!(build_command("clang", "cpp").unwrap().0, "clang++");
         assert_eq!(build_command("dotnet-aot", "csharp").unwrap().0, "dotnet");
-        assert_eq!(build_command("python", "python").unwrap().0, "rune-build-python");
+        assert_eq!(
+            build_command("python", "python").unwrap().0,
+            "rune-build-python"
+        );
         assert_eq!(build_command("ruby", "ruby").unwrap().0, "rune-build-ruby");
         assert!(build_command("scriptc", "python").is_err());
     }
