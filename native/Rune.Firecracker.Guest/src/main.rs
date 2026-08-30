@@ -27,24 +27,19 @@ fn main() -> Result<()> {
     mount_guest_filesystems()?;
     chown("/tmp", WORKER_UID, WORKER_GID)?;
     apply_resource_limits()?;
-    let runtime = fs::read_to_string("/etc/rune-runtime")
-        .context("missing /etc/rune-runtime")?
-        .trim()
-        .to_owned();
-    runtime_command(&runtime)?;
     drop_privileges()?;
 
     let listener = VsockListener::bind(VSOCK_PORT)?;
-    println!("RUNE_READY {runtime}");
+    println!("RUNE_READY");
 
     let mut connection = listener.accept()?;
-    if let Err(error) = invoke(&runtime, &mut connection) {
+    if let Err(error) = invoke(&mut connection) {
         write_error(&mut connection, &error.to_string())?;
     }
     Ok(())
 }
 
-fn invoke(runtime: &str, connection: &mut File) -> Result<()> {
+fn invoke(connection: &mut File) -> Result<()> {
     let artifact_len = read_u64(connection)? as usize;
     if artifact_len == 0 || artifact_len > MAX_ARTIFACT_BYTES {
         bail!("artifact exceeded guest limit");
@@ -63,9 +58,7 @@ fn invoke(runtime: &str, connection: &mut File) -> Result<()> {
     fs::set_permissions(ARTIFACT_PATH, fs::Permissions::from_mode(0o500))?;
 
     let started = Instant::now();
-    let (program, args) = runtime_command(runtime)?;
-    let mut child = Command::new(program)
-        .args(args)
+    let mut child = Command::new(ARTIFACT_PATH)
         .env_clear()
         .env("PATH", "/usr/local/bin:/usr/bin:/bin")
         .env("HOME", "/tmp")
@@ -111,15 +104,6 @@ fn invoke(runtime: &str, connection: &mut File) -> Result<()> {
     Ok(())
 }
 
-fn runtime_command(runtime: &str) -> Result<(&'static str, Vec<&'static str>)> {
-    match runtime {
-        "native" => Ok((ARTIFACT_PATH, vec![])),
-        "python" => Ok(("python3", vec![ARTIFACT_PATH])),
-        "ruby" => Ok(("ruby", vec![ARTIFACT_PATH])),
-        other => bail!("unsupported invocation runtime {other}"),
-    }
-}
-
 fn read_u64(reader: &mut impl Read) -> Result<u64> {
     let mut bytes = [0; 8];
     reader.read_exact(&mut bytes)?;
@@ -139,10 +123,7 @@ fn apply_resource_limits() -> Result<()> {
 }
 
 fn set_limit(resource: libc::__rlimit_resource_t, value: libc::rlim_t) -> Result<()> {
-    let limit = libc::rlimit {
-        rlim_cur: value,
-        rlim_max: value,
-    };
+    let limit = libc::rlimit { rlim_cur: value, rlim_max: value };
     if unsafe { libc::setrlimit(resource, &limit) } != 0 {
         return Err(std::io::Error::last_os_error()).context("setrlimit failed");
     }
@@ -175,9 +156,7 @@ fn write_error(connection: &mut File, message: &str) -> Result<()> {
     Ok(())
 }
 
-struct VsockListener {
-    fd: i32,
-}
+struct VsockListener { fd: i32 }
 
 impl VsockListener {
     fn bind(port: u32) -> Result<Self> {
@@ -198,8 +177,7 @@ impl VsockListener {
                 &address as *const libc::sockaddr_vm as *const libc::sockaddr,
                 size_of::<libc::sockaddr_vm>() as libc::socklen_t,
             )
-        } != 0
-        {
+        } != 0 {
             let error = std::io::Error::last_os_error();
             unsafe { libc::close(fd) };
             return Err(error).context("bind(AF_VSOCK) failed");
@@ -237,13 +215,7 @@ impl Drop for VsockListener {
 fn mount_guest_filesystems() -> Result<()> {
     fs::create_dir_all("/proc")?;
     fs::create_dir_all("/tmp")?;
-    mount(
-        "proc",
-        "/proc",
-        "proc",
-        libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC,
-        "",
-    )?;
+    mount("proc", "/proc", "proc", libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC, "")?;
     mount(
         "tmpfs",
         "/tmp",
@@ -266,8 +238,7 @@ fn mount(source: &str, target: &str, fstype: &str, flags: libc::c_ulong, data: &
             flags,
             data.as_ptr().cast(),
         )
-    } != 0
-    {
+    } != 0 {
         return Err(std::io::Error::last_os_error()).context("mount failed");
     }
     Ok(())
@@ -295,14 +266,5 @@ mod tests {
         assert_eq!(MAX_RESPONSE_BYTES, 256 * 1024);
         assert_ne!(WORKER_UID, 0);
         assert_ne!(WORKER_GID, 0);
-    }
-
-    #[test]
-    fn only_three_invocation_runtimes_exist() {
-        assert_eq!(runtime_command("native").unwrap().0, ARTIFACT_PATH);
-        assert_eq!(runtime_command("python").unwrap().0, "python3");
-        assert_eq!(runtime_command("ruby").unwrap().0, "ruby");
-        assert!(runtime_command("javascript").is_err());
-        assert!(runtime_command("dotnet").is_err());
     }
 }
