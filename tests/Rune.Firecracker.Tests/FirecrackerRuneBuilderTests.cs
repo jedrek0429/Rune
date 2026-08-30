@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using Rune.Core.Runes;
 using Rune.Runtime;
 
@@ -23,6 +24,7 @@ public sealed class FirecrackerRuneBuilderTests
     }
 
     [Fact]
+    [SupportedOSPlatform("linux")]
     public async Task BuilderParsesOpaqueArtifactDescriptor()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"rune-build-test-{Guid.NewGuid():N}");
