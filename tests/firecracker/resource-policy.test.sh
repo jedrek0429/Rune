@@ -33,6 +33,7 @@ assert_eq "2 1024 512 45 128 256" "$(bash "$builder" --print-profile rust)" "Rus
 assert_eq "2 2048 768 60 128 256" "$(bash "$builder" --print-profile dotnet-aot)" ".NET AOT build launcher profile"
 
 grep -q 'rune.fd_limit=512' "$scriptc_warmer" || { echo "ScriptC cache warm must allow its parallel dependency rechecks without hitting EMFILE" >&2; exit 1; }
+grep -q 'e2fsck -p "$cache"' "$scriptc_warmer" || { echo "ScriptC cache seed must replay and clear its journal before read-only reuse" >&2; exit 1; }
 
 if bash "$snapshot" python >/dev/null 2>&1; then
   echo "execution snapshots must not be language-specific" >&2
