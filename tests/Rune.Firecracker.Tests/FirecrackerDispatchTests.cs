@@ -7,7 +7,7 @@ namespace Rune.Firecracker.Tests;
 public sealed class FirecrackerDispatchTests
 {
     [Fact]
-    public async Task DispatchQueuesOnlyEnabledRunesForTheSameGuildAndEvent()
+    public async Task DispatchQueuesOnlyEnabledBuiltRunesForTheSameGuildAndEvent()
     {
         var registry = new RuneRegistry();
         var matching = CreateRune(
@@ -15,24 +15,27 @@ public sealed class FirecrackerDispatchTests
             guildId: 42,
             RuneEventType.MessageCreate,
             enabled: true,
-            source: "message.reply('pong')");
+            artifact: BuiltArtifact("matching"));
 
         registry.Add(matching);
         registry.Add(CreateRune(
             "disabled",
             guildId: 42,
             RuneEventType.MessageCreate,
-            enabled: false));
+            enabled: false,
+            artifact: BuiltArtifact("disabled")));
         registry.Add(CreateRune(
             "other-event",
             guildId: 42,
             RuneEventType.MessageDelete,
-            enabled: true));
+            enabled: true,
+            artifact: BuiltArtifact("other-event")));
         registry.Add(CreateRune(
             "other-guild",
             guildId: 99,
             RuneEventType.MessageCreate,
-            enabled: true));
+            enabled: true,
+            artifact: BuiltArtifact("other-guild")));
 
         var transport = new RecordingTransport();
         var dispatcher = new RuneEventDispatcher(registry, transport);
@@ -53,7 +56,7 @@ public sealed class FirecrackerDispatchTests
         Assert.Equal(invocation.InvocationId, envelope.InvocationId);
         Assert.Equal(matching.Id, envelope.RuneId);
         Assert.Equal(matching.Name, envelope.RuneName);
-        Assert.Equal(matching.Source, envelope.Source);
+        Assert.Equal(matching.Artifact, envelope.Artifact);
         Assert.Equal(RuneLanguage.JavaScript, envelope.Language);
         Assert.Equal(RuneEventType.MessageCreate, envelope.EventType);
         Assert.Equal("200", envelope.Payload.GetProperty("id").GetString());
@@ -72,12 +75,14 @@ public sealed class FirecrackerDispatchTests
             "failed",
             guildId: 42,
             RuneEventType.MessageCreate,
-            enabled: true);
+            enabled: true,
+            artifact: BuiltArtifact("failed"));
         var healthy = CreateRune(
             "healthy",
             guildId: 42,
             RuneEventType.MessageCreate,
-            enabled: true);
+            enabled: true,
+            artifact: BuiltArtifact("healthy"));
         registry.Add(failed);
         registry.Add(healthy);
 
@@ -110,6 +115,7 @@ public sealed class FirecrackerDispatchTests
         ulong guildId,
         RuneEventType eventType,
         bool enabled,
+        BuiltRuneArtifact? artifact = null,
         string source = "source") =>
         new(
             Guid.NewGuid(),
@@ -118,8 +124,11 @@ public sealed class FirecrackerDispatchTests
             RuneLanguage.JavaScript,
             eventType,
             source,
-            [],
-            enabled);
+            enabled,
+            artifact);
+
+    private static BuiltRuneArtifact BuiltArtifact(string name) =>
+        new($"artifact-{name}", $"sha256:{name}", "rune");
 
     private sealed class RecordingTransport : IRuneTransport
     {
