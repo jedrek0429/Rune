@@ -26,6 +26,15 @@ assert_eq "2 2048 768 60 128 256" "$(rune_build_profile dotnet-aot)" ".NET AOT b
 assert_eq "1 512 256 20 128 256" "$(rune_build_profile python)" "Python build profile"
 assert_eq "1 512 256 20 128 256" "$(rune_build_profile ruby)" "Ruby build profile"
 
+assert_eq "1 192" "$($repo_root/firecracker/build-snapshot.sh --print-profile native)" "native snapshot profile"
+assert_eq "1 256" "$($repo_root/firecracker/build-snapshot.sh --print-profile python)" "python snapshot profile"
+assert_eq "1 256" "$($repo_root/firecracker/build-snapshot.sh --print-profile ruby)" "ruby snapshot profile"
+
+if "$repo_root/firecracker/build-snapshot.sh" --print-profile javascript >/dev/null 2>&1; then
+  echo "javascript must not have a language-specific invocation snapshot" >&2
+  exit 1
+fi
+
 if rune_invocation_profile dotnet >/dev/null 2>&1; then
   echo "dotnet must not be a separate invocation runtime" >&2
   exit 1
