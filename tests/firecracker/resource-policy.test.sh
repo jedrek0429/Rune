@@ -94,6 +94,7 @@ grep -q 'SCRIPTC_CACHE_DIR=/work/scriptc-cache' "$scriptc_builder" || { echo "Sc
 grep -q 'MICROPY_PERSISTENT_CODE_LOAD' "$dockerfile" || { echo "MicroPython embed must load precompiled bytecode" >&2; exit 1; }
 grep -q 'rune-build-python' "$build_guest" || { echo "Python builds must use the executable MicroPython packager" >&2; exit 1; }
 grep -q 'rune-build-ruby' "$build_guest" || { echo "Ruby builds must use the executable mruby packager" >&2; exit 1; }
+grep -q 'libunwind8' "$invocation_dockerfile" || { echo "execution image must include the Native AOT unwind runtime" >&2; exit 1; }
 if grep -Eq 'python3|ruby|rune-runtime|RUNTIME' "$invocation_dockerfile"; then
   echo "invocation image must be language-agnostic" >&2
   exit 1
