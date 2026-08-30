@@ -63,14 +63,8 @@ fn parse_positive(values: &HashMap<&str, &str>, key: &str) -> Result<u64> {
 fn build_command(pool: &str, language: &str) -> Result<(&'static str, Vec<String>)> {
     let output = "/work/artifact";
     let command = match (pool, language) {
-        ("scriptc", "javascript") => (
-            "rune-build-scriptc",
-            vec!["/input/source.js", output],
-        ),
-        ("scriptc", "typescript") => (
-            "rune-build-scriptc",
-            vec!["/input/source.ts", output],
-        ),
+        ("scriptc", "javascript") => ("rune-build-scriptc", vec!["/input/source.js", output]),
+        ("scriptc", "typescript") => ("rune-build-scriptc", vec!["/input/source.ts", output]),
         ("rust", "rust") => ("rustc", vec!["/input/source.rs", "-O", "-o", output]),
         ("clang", "c") => ("clang", vec!["/input/source.c", "-O2", "-o", output]),
         ("clang", "cpp") => ("clang++", vec!["/input/source.cpp", "-O2", "-o", output]),
