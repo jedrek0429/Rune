@@ -54,13 +54,25 @@ if grep -R -q '/network-interfaces' "$repo_root/firecracker" --include='*.sh'; t
   exit 1
 fi
 
-if ! grep -q 'timeout .*wall_seconds' "$repo_root/firecracker/run-build-vm.sh"; then
+launcher="$repo_root/firecracker/run-build-vm.sh"
+if ! grep -q 'timeout .*wall_seconds' "$launcher"; then
   echo "build VM launcher must enforce a host-side wall timeout" >&2
   exit 1
 fi
-
-if ! grep -q 'scratch.*disk_mib' "$repo_root/firecracker/run-build-vm.sh"; then
+if ! grep -q 'scratch.*disk_mib' "$launcher"; then
   echo "build VM launcher must create a bounded scratch disk" >&2
+  exit 1
+fi
+if ! grep -q 'rune.language=' "$launcher"; then
+  echo "build VM must receive the source language" >&2
+  exit 1
+fi
+if ! grep -q 'is_read_only.*true' "$launcher" || ! grep -q 'drive_id.*input' "$launcher"; then
+  echo "build input must be attached read-only" >&2
+  exit 1
+fi
+if ! grep -q 'artifact_disk_mib=16' "$launcher"; then
+  echo "build output must be capped by a 16 MiB artifact disk" >&2
   exit 1
 fi
 
