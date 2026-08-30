@@ -113,9 +113,22 @@ json_string() {
 }
 
 api_put() {
-  curl --fail --silent --show-error --unix-socket "$api_sock" \
-    -X PUT -H 'Content-Type: application/json' -d "$2" \
-    "http://localhost$1" >/dev/null
+  local endpoint="$1"
+  local response="$tmp/api-response"
+  local status
+  status="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
+    --unix-socket "$api_sock" -X PUT -H 'Content-Type: application/json' -d "$2" \
+    "http://localhost$endpoint")" || {
+      echo "Firecracker API request failed: PUT $endpoint" >&2
+      cat "$response" >&2 2>/dev/null || true
+      return 1
+    }
+  if [[ "$status" -lt 200 || "$status" -ge 300 ]]; then
+    echo "Firecracker API request failed: PUT $endpoint returned HTTP $status" >&2
+    cat "$response" >&2 2>/dev/null || true
+    echo >&2
+    return 1
+  fi
 }
 
 api_put /machine-config "{\"vcpu_count\":$vcpu,\"mem_size_mib\":$mem_mib,\"smt\":false}"
