@@ -41,4 +41,53 @@ public sealed class RuneInvocationReceiverRegistryTests
         Assert.Throws<InvalidOperationException>(
             () => registry.Register(invocationId, new object()));
     }
+
+    [Fact]
+    public void ReceiverStaysAliveUntilEveryQueuedExecutionCompletes()
+    {
+        var registry = new RuneInvocationReceiverRegistry();
+        var invocationId = Guid.NewGuid();
+        var receiver = new object();
+        using var lease = registry.Register(invocationId, receiver);
+
+        registry.Seal(invocationId, expectedExecutions: 2);
+        registry.CompleteExecution(invocationId);
+
+        Assert.Same(receiver, registry.GetRequired<object>(invocationId));
+
+        registry.CompleteExecution(invocationId);
+
+        Assert.Throws<InvalidOperationException>(
+            () => registry.GetRequired<object>(invocationId));
+    }
+
+    [Fact]
+    public void CompletionBeforeSealIsAccountedForWithoutDroppingTheReceiverEarly()
+    {
+        var registry = new RuneInvocationReceiverRegistry();
+        var invocationId = Guid.NewGuid();
+        var receiver = new object();
+        using var lease = registry.Register(invocationId, receiver);
+
+        registry.CompleteExecution(invocationId);
+        Assert.Same(receiver, registry.GetRequired<object>(invocationId));
+
+        registry.Seal(invocationId, expectedExecutions: 1);
+
+        Assert.Throws<InvalidOperationException>(
+            () => registry.GetRequired<object>(invocationId));
+    }
+
+    [Fact]
+    public void SealingAnInvocationWithNoQueuedExecutionsRemovesItImmediately()
+    {
+        var registry = new RuneInvocationReceiverRegistry();
+        var invocationId = Guid.NewGuid();
+        using var lease = registry.Register(invocationId, new object());
+
+        registry.Seal(invocationId, expectedExecutions: 0);
+
+        Assert.Throws<InvalidOperationException>(
+            () => registry.GetRequired<object>(invocationId));
+    }
 }
