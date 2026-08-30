@@ -168,10 +168,7 @@ mod tests {
 
         assert_eq!(envelope.language, RuneLanguage::Javascript);
         assert!(matches!(envelope.event_type, RuneEventType::MessageCreate));
-        assert_eq!(
-            envelope.payload["author"]["id"],
-            "18446744073709551613"
-        );
+        assert_eq!(envelope.payload["author"]["id"], "18446744073709551613");
 
         let result = envelope.complete(GuestResult {
             actions: vec![HostAction {
