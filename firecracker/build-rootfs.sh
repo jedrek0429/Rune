@@ -9,15 +9,13 @@ fi
 kind="$1"
 profile="$2"
 case "$kind/$profile" in
-  invocation/native) base=debian:bookworm-slim; size=256; dir=images/native; arg=RUNTIME ;;
-  invocation/python) base=python:3.13-slim-bookworm; size=384; dir=images/python; arg=RUNTIME ;;
-  invocation/ruby) base=ruby:3.4-slim-bookworm; size=384; dir=images/ruby; arg=RUNTIME ;;
+  invocation/rune) base=debian:bookworm-slim; size=256; dir=images/rune; arg=RUNTIME ;;
   build/scriptc) base=node:24-bookworm; size=1536; dir=build-images/scriptc; arg=POOL ;;
   build/clang) base=debian:bookworm-slim; size=768; dir=build-images/clang; arg=POOL ;;
   build/rust) base=rust:1-bookworm; size=1536; dir=build-images/rust; arg=POOL ;;
   build/dotnet-aot) base=mcr.microsoft.com/dotnet/sdk:10.0-bookworm-slim; size=3072; dir=build-images/dotnet-aot; arg=POOL ;;
-  build/python) base=python:3.13-slim-bookworm; size=512; dir=build-images/python; arg=POOL ;;
-  build/ruby) base=ruby:3.4-slim-bookworm; size=512; dir=build-images/ruby; arg=POOL ;;
+  build/python) base=debian:bookworm-slim; size=1024; dir=build-images/python; arg=POOL ;;
+  build/ruby) base=debian:bookworm-slim; size=768; dir=build-images/ruby; arg=POOL ;;
   *) echo "unsupported rootfs profile: $kind/$profile" >&2; exit 2 ;;
 esac
 
