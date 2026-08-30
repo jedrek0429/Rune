@@ -30,12 +30,13 @@ public sealed class FirecrackerRuneBuilder(
         try
         {
             await File.WriteAllTextAsync(sourcePath, source, cancellationToken);
-            var start = new ProcessStartInfo(scriptPath)
+            var start = new ProcessStartInfo("bash")
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false
             };
+            start.ArgumentList.Add(scriptPath);
             start.ArgumentList.Add(pool);
             start.ArgumentList.Add(wireLanguage);
             start.ArgumentList.Add(sourcePath);
