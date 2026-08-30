@@ -62,6 +62,7 @@ dockerfile="$repo_root/firecracker/images/Dockerfile.build"
 grep -q 'dotnet publish.*PublishAot=true' "$dockerfile" || { echo ".NET build image must prewarm Native AOT assets before network is removed" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES=/opt/rune/nuget' "$dockerfile" || { echo ".NET build image must expose its prewarmed packages outside root home" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES.*opt/rune/nuget' "$repo_root/native/Rune.Firecracker.BuildGuest/src/main.rs" || { echo "build guest must use the prewarmed NuGet cache" >&2; exit 1; }
+grep -q 'allow-scripts=scriptc' "$dockerfile" || { echo "ScriptC build image must prewarm its compiler cache" >&2; exit 1; }
 
 e2e="$repo_root/tests/firecracker/e2e.sh"
 [[ -x "$e2e" ]] || { echo "eight-language Firecracker e2e harness is missing" >&2; exit 1; }
