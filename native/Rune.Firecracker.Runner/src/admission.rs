@@ -1,32 +1,82 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore};
 
 use crate::protocol::InvocationEnvelope;
 
+const RATE_WINDOW: Duration = Duration::from_secs(1);
+
 pub struct AdmissionController {
     per_rune: usize,
     per_guild: usize,
+    per_rune_rate: usize,
+    per_guild_rate: usize,
     runes: Mutex<HashMap<String, Arc<Semaphore>>>,
     guilds: Mutex<HashMap<u64, Arc<Semaphore>>>,
+    rune_windows: Mutex<HashMap<String, VecDeque<Instant>>>,
+    guild_windows: Mutex<HashMap<u64, VecDeque<Instant>>>,
 }
 
+#[derive(Debug)]
 pub struct AdmissionPermit {
     _rune: OwnedSemaphorePermit,
     _guild: OwnedSemaphorePermit,
 }
 
 impl AdmissionController {
-    pub fn new(per_rune: usize, per_guild: usize) -> Self {
+    pub fn new(
+        per_rune: usize,
+        per_guild: usize,
+        per_rune_rate: usize,
+        per_guild_rate: usize,
+    ) -> Self {
+        Self::with_rates(per_rune, per_guild, per_rune_rate, per_guild_rate)
+    }
+
+    pub fn with_rates(
+        per_rune: usize,
+        per_guild: usize,
+        per_rune_rate: usize,
+        per_guild_rate: usize,
+    ) -> Self {
         Self {
             per_rune,
             per_guild,
+            per_rune_rate,
+            per_guild_rate,
             runes: Mutex::new(HashMap::new()),
             guilds: Mutex::new(HashMap::new()),
+            rune_windows: Mutex::new(HashMap::new()),
+            guild_windows: Mutex::new(HashMap::new()),
         }
     }
 
-    pub async fn acquire(&self, envelope: &InvocationEnvelope) -> AdmissionPermit {
+    pub async fn acquire(
+        &self,
+        envelope: &InvocationEnvelope,
+    ) -> Result<AdmissionPermit, &'static str> {
+        let now = Instant::now();
+        if !consume_rate_slot(
+            &mut self.rune_windows.lock().await,
+            envelope.rune_id.clone(),
+            self.per_rune_rate,
+            now,
+        ) {
+            return Err("Rune invocation rate limit exceeded");
+        }
+        if !consume_rate_slot(
+            &mut self.guild_windows.lock().await,
+            envelope.guild_id,
+            self.per_guild_rate,
+            now,
+        ) {
+            return Err("Guild invocation rate limit exceeded");
+        }
+
         let rune = {
             let mut runes = self.runes.lock().await;
             runes
@@ -43,11 +93,34 @@ impl AdmissionController {
         };
         let guild_permit = guild.acquire_owned().await.expect("guild semaphore closed");
         let rune_permit = rune.acquire_owned().await.expect("rune semaphore closed");
-        AdmissionPermit {
+        Ok(AdmissionPermit {
             _rune: rune_permit,
             _guild: guild_permit,
-        }
+        })
     }
+}
+
+fn consume_rate_slot<K>(
+    windows: &mut HashMap<K, VecDeque<Instant>>,
+    key: K,
+    limit: usize,
+    now: Instant,
+) -> bool
+where
+    K: std::hash::Hash + Eq,
+{
+    let window = windows.entry(key).or_default();
+    while window
+        .front()
+        .is_some_and(|timestamp| now.duration_since(*timestamp) >= RATE_WINDOW)
+    {
+        window.pop_front();
+    }
+    if window.len() >= limit {
+        return false;
+    }
+    window.push_back(now);
+    true
 }
 
 #[cfg(test)]
