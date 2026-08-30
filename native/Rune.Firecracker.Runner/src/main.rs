@@ -109,7 +109,9 @@ async fn consume(
                 .await
                 {
                     Ok(artifact) => artifact,
-                    Err(error) => return queue.finish(job, &envelope.fail(error.to_string())).await,
+                    Err(error) => {
+                        return queue.finish(job, &envelope.fail(error.to_string())).await;
+                    }
                 };
 
                 let _admission = match admission.acquire(&envelope).await {
