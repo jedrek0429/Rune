@@ -28,10 +28,8 @@ public sealed class RedisRuneTransport : IRuneTransport, IAsyncDisposable
         cancellationToken.ThrowIfCancellationRequested();
 
         var json = JsonSerializer.Serialize(envelope, SerializerOptions);
-        var stream = _options.GetInvocationStream(envelope.Language);
-
         await _database.StreamAddAsync(
-            stream,
+            _options.InvocationStream,
             [new NameValueEntry("json", json)]);
     }
 
