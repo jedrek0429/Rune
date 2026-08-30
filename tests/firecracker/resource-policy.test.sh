@@ -59,10 +59,15 @@ grep -q 'size <= 16777216' "$builder" || { echo "artifact must be capped at 16 M
 grep -q 'sha256sum' "$builder" || { echo "artifact store must be content-addressed" >&2; exit 1; }
 
 dockerfile="$repo_root/firecracker/images/Dockerfile.build"
+build_guest="$repo_root/native/Rune.Firecracker.BuildGuest/src/main.rs"
 grep -q 'dotnet publish.*PublishAot=true' "$dockerfile" || { echo ".NET build image must prewarm Native AOT assets before network is removed" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES=/opt/rune/nuget' "$dockerfile" || { echo ".NET build image must expose its prewarmed packages outside root home" >&2; exit 1; }
-grep -q 'NUGET_PACKAGES.*opt/rune/nuget' "$repo_root/native/Rune.Firecracker.BuildGuest/src/main.rs" || { echo "build guest must use the prewarmed NuGet cache" >&2; exit 1; }
-grep -q 'allow-scripts=scriptc' "$dockerfile" || { echo "ScriptC build image must prewarm its compiler cache" >&2; exit 1; }
+grep -q 'NUGET_PACKAGES.*opt/rune/nuget' "$build_guest" || { echo "build guest must use the prewarmed NuGet cache" >&2; exit 1; }
+grep -q 'allow-scripts=scriptc' "$dockerfile" || { echo "ScriptC build image must run its cache-warming install hook" >&2; exit 1; }
+grep -q 'SCRIPTC_CACHE_DIR=/opt/rune/scriptc-cache' "$dockerfile" || { echo "ScriptC build image must use an explicit compiler cache" >&2; exit 1; }
+grep -q 'chown -R 1000:1000.*SCRIPTC_CACHE_DIR' "$dockerfile" || { echo "ScriptC cache must be owned by the unprivileged build user" >&2; exit 1; }
+grep -q 'chmod 0700.*SCRIPTC_CACHE_DIR' "$dockerfile" || { echo "ScriptC cache must stay private" >&2; exit 1; }
+grep -q 'SCRIPTC_CACHE_DIR.*opt/rune/scriptc-cache' "$build_guest" || { echo "build guest must reuse the prewarmed ScriptC cache" >&2; exit 1; }
 
 e2e="$repo_root/tests/firecracker/e2e.sh"
 [[ -x "$e2e" ]] || { echo "eight-language Firecracker e2e harness is missing" >&2; exit 1; }
