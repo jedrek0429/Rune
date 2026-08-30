@@ -172,33 +172,35 @@ fn warm_scriptc_cache(cmdline: &str) -> Result<()> {
     )?;
     drop_privileges()?;
 
-    let status = Command::new("scriptc")
-        .args(["cache", "warm", "runtime", "dynamic"])
-        .env_clear()
-        .env("PATH", "/usr/local/bin:/usr/bin:/bin")
-        .env("HOME", "/work")
-        .env("TMPDIR", "/work")
-        .env("SCRIPTC_CACHE_DIR", "/work")
-        .current_dir("/work")
-        .status()
-        .context("failed to start ScriptC cache warm")?;
-    if !status.success() {
-        diagnose_scriptc_cache_warm();
-        println!("RUNE_CACHE_WARM_FAILED");
-        bail!("ScriptC cache warm exited with {status}");
+    for profile in ["runtime", "dynamic"] {
+        let status = Command::new("scriptc")
+            .args(["cache", "warm", profile])
+            .env_clear()
+            .env("PATH", "/usr/local/bin:/usr/bin:/bin")
+            .env("HOME", "/work")
+            .env("TMPDIR", "/work")
+            .env("SCRIPTC_CACHE_DIR", "/work")
+            .current_dir("/work")
+            .status()
+            .with_context(|| format!("failed to start ScriptC {profile} cache warm"))?;
+        if !status.success() {
+            diagnose_scriptc_cache_warm(profile);
+            println!("RUNE_CACHE_WARM_FAILED");
+            bail!("ScriptC {profile} cache warm exited with {status}");
+        }
     }
     println!("RUNE_CACHE_WARM_DONE");
     Ok(())
 }
 
-fn diagnose_scriptc_cache_warm() {
+fn diagnose_scriptc_cache_warm(profile: &str) {
     const DIAGNOSTIC: &str = r#"
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 const require = createRequire('/usr/local/lib/node_modules/scriptc/package.json');
 const compiler = await import(pathToFileURL(require.resolve('@scriptc/compiler')).href);
 try {
-  await compiler.warmNativeCaches({ profiles: ['runtime', 'dynamic'] });
+  await compiler.warmNativeCaches({ profiles: [process.argv[1]] });
 } catch (error) {
   let current = error;
   while (current) {
@@ -209,7 +211,7 @@ try {
 }
 "#;
     let _ = Command::new("node")
-        .args(["--input-type=module", "-e", DIAGNOSTIC])
+        .args(["--input-type=module", "-e", DIAGNOSTIC, profile])
         .env_clear()
         .env("PATH", "/usr/local/bin:/usr/bin:/bin")
         .env("HOME", "/work")
