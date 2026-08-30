@@ -217,6 +217,26 @@ pub struct OwnedResultEnvelope {
 mod tests {
     use super::*;
 
+    fn envelope(id: &str, digest: &str) -> InvocationEnvelope {
+        InvocationEnvelope {
+            execution_id: "e".into(),
+            invocation_id: "i".into(),
+            rune_id: "r".into(),
+            rune_name: "name".into(),
+            guild_id: 1,
+            language: RuneLanguage::Rust,
+            event_type: RuneEventType::MessageCreate,
+            artifact: BuiltRuneArtifact {
+                id: id.into(),
+                digest: digest.into(),
+                entrypoint: "rune".into(),
+                size_bytes: 1,
+            },
+            payload: Value::Null,
+            enqueued_at: "now".into(),
+        }
+    }
+
     #[test]
     fn native_languages_share_one_invocation_runtime() {
         for language in [
@@ -238,24 +258,24 @@ mod tests {
 
     #[test]
     fn oversized_artifact_is_rejected() {
-        let envelope = InvocationEnvelope {
-            execution_id: "e".into(),
-            invocation_id: "i".into(),
-            rune_id: "r".into(),
-            rune_name: "name".into(),
-            guild_id: 1,
-            language: RuneLanguage::Rust,
-            event_type: RuneEventType::MessageCreate,
-            artifact: BuiltRuneArtifact {
-                id: "a".into(),
-                digest: "sha256:x".into(),
-                entrypoint: "rune".into(),
-                size_bytes: MAX_ARTIFACT_BYTES + 1,
-            },
-            payload: Value::Null,
-            enqueued_at: "now".into(),
-        };
-
+        let mut envelope = envelope(
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        );
+        envelope.artifact.size_bytes = MAX_ARTIFACT_BYTES + 1;
         assert!(envelope.validate().is_err());
+    }
+
+    #[test]
+    fn artifact_identity_must_be_canonical_sha256() {
+        assert!(envelope(
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ).validate().is_ok());
+        assert!(envelope("../artifact", "sha256:abc").validate().is_err());
+        assert!(envelope(
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        ).validate().is_err());
     }
 }
