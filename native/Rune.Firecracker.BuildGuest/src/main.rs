@@ -257,4 +257,17 @@ mod tests {
         let kept = drain_bounded(input.as_slice());
         assert_eq!(kept.len(), MAX_DIAGNOSTIC_BYTES);
     }
+
+    #[test]
+    fn compiler_commands_cover_every_language() {
+        assert_eq!(build_command("scriptc", "javascript").unwrap().0, "scriptc");
+        assert_eq!(build_command("scriptc", "typescript").unwrap().0, "scriptc");
+        assert_eq!(build_command("rust", "rust").unwrap().0, "rustc");
+        assert_eq!(build_command("clang", "c").unwrap().0, "clang");
+        assert_eq!(build_command("clang", "cpp").unwrap().0, "clang++");
+        assert_eq!(build_command("dotnet-aot", "csharp").unwrap().0, "dotnet");
+        assert_eq!(build_command("python", "python").unwrap().0, "python3");
+        assert_eq!(build_command("ruby", "ruby").unwrap().0, "ruby");
+        assert!(build_command("scriptc", "python").is_err());
+    }
 }
