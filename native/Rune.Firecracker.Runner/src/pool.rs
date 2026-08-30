@@ -161,6 +161,8 @@ mod tests {
             read_batch_size: 32,
             max_concurrent_per_rune: 1,
             max_concurrent_per_guild: 4,
+            max_invocations_per_rune_per_second: 10,
+            max_invocations_per_guild_per_second: 50,
         })
     }
 
