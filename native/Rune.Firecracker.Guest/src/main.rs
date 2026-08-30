@@ -15,6 +15,7 @@ const MAX_REQUEST_BYTES: usize = 128 * 1024;
 const MAX_RESPONSE_BYTES: usize = 256 * 1024;
 const PID_LIMIT: libc::rlim_t = 32;
 const FD_LIMIT: libc::rlim_t = 128;
+const CPU_LIMIT_SECONDS: libc::rlim_t = 3;
 const WRITABLE_TMPFS_MIB: usize = 32;
 
 fn main() -> Result<()> {
@@ -268,6 +269,7 @@ mod tests {
     fn invocation_guest_policy_is_tight() {
         assert_eq!(PID_LIMIT, 32);
         assert_eq!(FD_LIMIT, 128);
+        assert_eq!(CPU_LIMIT_SECONDS, 3);
         assert_eq!(WRITABLE_TMPFS_MIB, 32);
         assert_eq!(MAX_RESPONSE_BYTES, 256 * 1024);
     }
