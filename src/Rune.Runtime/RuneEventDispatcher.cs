@@ -43,7 +43,6 @@ public sealed class RuneEventDispatcher(
                         rune.Id,
                         rune.Name,
                         invocation.GuildId,
-                        rune.Language,
                         rune.EventType,
                         rune.Artifact,
                         payload,
