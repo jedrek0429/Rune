@@ -62,6 +62,8 @@ grep -q 'rune-build-scriptc' "$build_guest" || { echo "JS/TS builds must use the
 grep -q 'scriptc build "$source" -o "$artifact"' "$scriptc_builder" || { echo "ScriptC wrapper must try static compilation first" >&2; exit 1; }
 grep -q 'scriptc coverage "$source" --dynamic' "$scriptc_builder" || { echo "ScriptC wrapper must validate dynamic fallback" >&2; exit 1; }
 grep -q 'scriptc build "$source" --dynamic -o "$artifact"' "$scriptc_builder" || { echo "ScriptC wrapper must use dynamic mode only as fallback" >&2; exit 1; }
+grep -q 'cp -a /opt/rune/scriptc-cache/. /work/scriptc-cache/' "$scriptc_builder" || { echo "ScriptC wrapper must seed its writable cache from the prewarmed image" >&2; exit 1; }
+grep -q 'SCRIPTC_CACHE_DIR=/work/scriptc-cache' "$scriptc_builder" || { echo "ScriptC builds must use writable bounded scratch for cache mutations" >&2; exit 1; }
 grep -q 'MICROPY_PERSISTENT_CODE_LOAD' "$dockerfile" || { echo "MicroPython embed must load precompiled bytecode" >&2; exit 1; }
 grep -q 'rune-build-python' "$build_guest" || { echo "Python builds must use the executable MicroPython packager" >&2; exit 1; }
 grep -q 'rune-build-ruby' "$build_guest" || { echo "Ruby builds must use the executable mruby packager" >&2; exit 1; }
