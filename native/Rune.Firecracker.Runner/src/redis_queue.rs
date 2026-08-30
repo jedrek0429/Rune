@@ -4,10 +4,7 @@ use anyhow::{Context, Result};
 use redis::{AsyncCommands, Client, FromRedisValue, RedisError, streams::StreamReadReply};
 use tracing::debug;
 
-use crate::{
-    config::Config,
-    protocol::{InvocationEnvelope, InvocationRuntime, OwnedResultEnvelope, RuneLanguage},
-};
+use crate::{config::Config, protocol::{InvocationEnvelope, OwnedResultEnvelope}};
 
 #[derive(Clone)]
 pub struct RedisQueue {
@@ -30,13 +27,12 @@ impl RedisQueue {
         Ok(Self { client, config })
     }
 
-    pub async fn ensure_group(&self, language: RuneLanguage) -> Result<()> {
-        let stream = self.config.invocation_stream(language);
+    pub async fn ensure_group(&self) -> Result<()> {
         let mut connection = self.client.get_multiplexed_async_connection().await?;
 
         let result: Result<String, RedisError> = redis::cmd("XGROUP")
             .arg("CREATE")
-            .arg(&stream)
+            .arg(&self.config.invocation_stream)
             .arg(&self.config.consumer_group)
             .arg("0-0")
             .arg("MKSTREAM")
@@ -50,8 +46,7 @@ impl RedisQueue {
         }
     }
 
-    pub async fn read(&self, language: RuneLanguage) -> Result<Vec<QueueJob>> {
-        let stream = self.config.invocation_stream(language);
+    pub async fn read(&self) -> Result<Vec<QueueJob>> {
         let mut connection = self.client.get_multiplexed_async_connection().await?;
 
         let reply: StreamReadReply = redis::cmd("XREADGROUP")
@@ -63,24 +58,21 @@ impl RedisQueue {
             .arg("BLOCK")
             .arg(1_000)
             .arg("STREAMS")
-            .arg(&stream)
+            .arg(&self.config.invocation_stream)
             .arg(">")
             .query_async(&mut connection)
             .await?;
 
         let mut jobs = Vec::new();
-
         for key in reply.keys {
             for id in key.ids {
                 let Some(value) = id.map.get("json") else {
                     continue;
                 };
-
                 let json = String::from_redis_value(value)
                     .context("Redis invocation did not contain UTF-8 JSON")?;
                 let envelope: InvocationEnvelope = serde_json::from_str(&json)
                     .context("Redis invocation envelope is malformed")?;
-
                 jobs.push(QueueJob {
                     stream: key.key.clone(),
                     id: id.id,
@@ -88,7 +80,6 @@ impl RedisQueue {
                 });
             }
         }
-
         Ok(jobs)
     }
 
@@ -113,7 +104,6 @@ impl RedisQueue {
             .arg(&job.id)
             .query_async(&mut connection)
             .await?;
-
         let _: i64 = redis::cmd("XDEL")
             .arg(&job.stream)
             .arg(&job.id)
@@ -124,20 +114,9 @@ impl RedisQueue {
         Ok(())
     }
 
-    pub async fn backlog(&self, language: RuneLanguage) -> Result<usize> {
-        let stream = self.config.invocation_stream(language);
+    pub async fn backlog(&self) -> Result<usize> {
         let mut connection = self.client.get_multiplexed_async_connection().await?;
-        let len: usize = connection.xlen(stream).await?;
+        let len: usize = connection.xlen(&self.config.invocation_stream).await?;
         Ok(len)
-    }
-
-    pub async fn backlog_for_runtime(&self, runtime: InvocationRuntime) -> Result<usize> {
-        let mut total = 0;
-        for language in RuneLanguage::ALL {
-            if language.invocation_runtime() == runtime {
-                total += self.backlog(language).await?;
-            }
-        }
-        Ok(total)
     }
 }
