@@ -126,6 +126,7 @@ api_put /drives/input "{\"drive_id\":\"input\",\"path_on_host\":$(json_string "$
 if [[ "$pool" == scriptc ]]; then
   api_put /drives/cache-seed "{\"drive_id\":\"cache-seed\",\"path_on_host\":$(json_string "$cache_seed"),\"is_root_device\":false,\"is_read_only\":true}"
 fi
+api_put /entropy '{}'
 api_put /vsock "{\"guest_cid\":3,\"uds_path\":$(json_string "$vsock_sock")}"
 # Deliberately no network interface.
 api_put /actions '{"action_type":"InstanceStart"}'
