@@ -10,39 +10,17 @@ public sealed class FirecrackerDispatchTests
     public async Task DispatchQueuesOnlyEnabledBuiltRunesForTheSameGuildAndEvent()
     {
         var registry = new RuneRegistry();
-        var matching = CreateRune(
-            "matching",
-            guildId: 42,
-            RuneEventType.MessageCreate,
-            enabled: true);
+        var matching = CreateRune("matching", 42, RuneEventType.MessageCreate, true);
 
         registry.Add(matching);
-        registry.Add(CreateRune(
-            "disabled",
-            guildId: 42,
-            RuneEventType.MessageCreate,
-            enabled: false));
-        registry.Add(CreateRune(
-            "other-event",
-            guildId: 42,
-            RuneEventType.MessageDelete,
-            enabled: true));
-        registry.Add(CreateRune(
-            "other-guild",
-            guildId: 99,
-            RuneEventType.MessageCreate,
-            enabled: true));
+        registry.Add(CreateRune("disabled", 42, RuneEventType.MessageCreate, false));
+        registry.Add(CreateRune("other-event", 42, RuneEventType.MessageDelete, true));
+        registry.Add(CreateRune("other-guild", 99, RuneEventType.MessageCreate, true));
 
         var transport = new RecordingTransport();
         var dispatcher = new RuneEventDispatcher(registry, transport);
         var invocation = new MessageCreateEventRuneInvocation(
-            Guid.NewGuid(),
-            42,
-            100,
-            200,
-            300,
-            "Ada",
-            "!ping");
+            Guid.NewGuid(), 42, 100, 200, 300, "Ada", "!ping");
 
         var failures = await dispatcher.DispatchAsync(invocation);
 
@@ -63,7 +41,9 @@ public sealed class FirecrackerDispatchTests
     public async Task UnbuiltRuneIsRejectedBeforeQueueing()
     {
         var registry = new RuneRegistry();
-        registry.Add(CreateRune("unbuilt", 42, RuneEventType.MessageCreate, true, artifact: null));
+        registry.Add(new RegisteredRune(
+            Guid.NewGuid(), 42, "unbuilt", RuneLanguage.JavaScript,
+            RuneEventType.MessageCreate, "source", true, null));
         var transport = new RecordingTransport();
         var dispatcher = new RuneEventDispatcher(registry, transport);
 
@@ -80,14 +60,9 @@ public sealed class FirecrackerDispatchTests
     {
         var registry = new RuneRegistry();
         registry.Add(CreateRune(
-            "huge",
-            42,
-            RuneEventType.MessageCreate,
-            true,
+            "huge", 42, RuneEventType.MessageCreate, true,
             new BuiltRuneArtifact(
-                "artifact-huge",
-                "sha256:test",
-                "rune",
+                "artifact-huge", "sha256:test", "rune",
                 RuneResourceLimits.MaxArtifactBytes + 1L)));
         var transport = new RecordingTransport();
         var dispatcher = new RuneEventDispatcher(registry, transport);
@@ -130,18 +105,10 @@ public sealed class FirecrackerDispatchTests
         bool enabled,
         BuiltRuneArtifact? artifact = null) =>
         new(
-            Guid.NewGuid(),
-            guildId,
-            name,
-            RuneLanguage.JavaScript,
-            eventType,
-            "message.reply('pong')",
-            enabled,
+            Guid.NewGuid(), guildId, name, RuneLanguage.JavaScript,
+            eventType, "message.reply('pong')", enabled,
             artifact ?? new BuiltRuneArtifact(
-                $"artifact-{name}",
-                "sha256:test",
-                "rune",
-                1024));
+                $"artifact-{name}", "sha256:test", "rune", 1024));
 
     private sealed class RecordingTransport : IRuneTransport
     {
