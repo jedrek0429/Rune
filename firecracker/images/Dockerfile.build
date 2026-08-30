@@ -7,15 +7,16 @@ RUN cargo build --release
 
 FROM ${BASE_IMAGE}
 ARG POOL
+ENV NUGET_PACKAGES=/opt/rune/nuget
+ENV SCRIPTC_CACHE_DIR=/opt/rune/scriptc-cache
 RUN apt-get update && case "$POOL" in \
-      scriptc) apt-get install -y --no-install-recommends clang ca-certificates && npm install -g --allow-scripts=scriptc scriptc ;; \
+      scriptc) mkdir -p "$SCRIPTC_CACHE_DIR" && chmod 0700 "$SCRIPTC_CACHE_DIR" && apt-get install -y --no-install-recommends clang ca-certificates && npm install -g --allow-scripts=scriptc scriptc && chown -R 1000:1000 "$SCRIPTC_CACHE_DIR" ;; \
       clang) apt-get install -y --no-install-recommends clang g++ ;; \
       rust) true ;; \
       dotnet-aot) apt-get install -y --no-install-recommends clang zlib1g-dev ;; \
       python|ruby) true ;; \
       *) exit 2 ;; \
     esac && rm -rf /var/lib/apt/lists/*
-ENV NUGET_PACKAGES=/opt/rune/nuget
 RUN if [ "$POOL" = dotnet-aot ]; then \
       mkdir -p /tmp/rune-aot /opt/rune/nuget && \
       printf '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><PublishAot>true</PublishAot></PropertyGroup></Project>' > /tmp/rune-aot/Rune.csproj && \
