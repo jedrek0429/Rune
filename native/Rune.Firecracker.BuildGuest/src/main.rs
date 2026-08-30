@@ -78,7 +78,7 @@ fn build_command(pool: &str, language: &str) -> Result<(&'static str, Vec<String
             "dotnet",
             vec![
                 "publish",
-                "/input/Rune.csproj",
+                "/work/project/Rune.csproj",
                 "-c",
                 "Release",
                 "-o",
@@ -87,7 +87,13 @@ fn build_command(pool: &str, language: &str) -> Result<(&'static str, Vec<String
                 "-p:RestoreIgnoreFailedSources=true",
             ],
         ),
-        ("python", "python") => ("python3", vec!["-m", "py_compile", "/input/source.py"]),
+        ("python", "python") => (
+            "python3",
+            vec![
+                "-c",
+                "compile(open('/input/source.py','rb').read(), '/input/source.py', 'exec')",
+            ],
+        ),
         ("ruby", "ruby") => ("ruby", vec!["-c", "/input/source.rb"]),
         _ => bail!("unsupported build pool/language pair {pool}/{language}"),
     };
@@ -135,6 +141,12 @@ fn main() -> Result<()> {
 
 fn run_build(policy: &BuildPolicy) -> Result<()> {
     fs::create_dir_all("/work/tmp")?;
+    if policy.language == "csharp" {
+        fs::create_dir_all("/work/project")?;
+        fs::copy("/input/Program.cs", "/work/project/Program.cs")?;
+        fs::copy("/input/Rune.csproj", "/work/project/Rune.csproj")?;
+    }
+
     let (program, args) = build_command(&policy.pool, &policy.language)?;
     let mut child = Command::new(program)
         .args(args)
