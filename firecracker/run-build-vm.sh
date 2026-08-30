@@ -19,11 +19,11 @@ fi
 pool="$1"
 language="$2"
 source_path="$3"
-read -r vcpu mem_mib disk_mib wall_seconds pid_limit fd_limit \
-  <<<"$(rune_build_profile "$pool")" || {
-    echo "unsupported build pool: $pool" >&2
-    exit 2
-  }
+profile="$(rune_build_profile "$pool")" || {
+  echo "unsupported build pool: $pool" >&2
+  exit 2
+}
+read -r vcpu mem_mib disk_mib wall_seconds pid_limit fd_limit <<<"$profile"
 [[ -f "$source_path" ]] || { echo "source file is missing" >&2; exit 2; }
 (( $(wc -c <"$source_path") <= 65536 )) || { echo "Rune source exceeds 64 KiB" >&2; exit 2; }
 
