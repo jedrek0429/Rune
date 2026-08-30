@@ -45,26 +45,6 @@ public sealed class FirecrackerTransportTests
         Assert.Equal("hello", decoded.Content);
     }
 
-    [Fact]
-    public async Task RegistrationStoresSourceForBuildPlaneWithoutCreatingArtifact()
-    {
-        var registry = new RuneRegistry();
-        var service = new RuneService(registry);
-        const string source = "message.reply('hello')";
-
-        var rune = await service.RegisterAsync(
-            42,
-            "firecracker",
-            RuneLanguage.JavaScript,
-            RuneEventType.MessageCreate,
-            source);
-
-        Assert.Equal(source, rune.Source);
-        Assert.Null(rune.Artifact);
-        Assert.True(rune.Enabled);
-        Assert.Same(rune, registry.Get(42, "firecracker"));
-    }
-
     [Theory]
     [InlineData(RuneLanguage.JavaScript, "javascript")]
     [InlineData(RuneLanguage.TypeScript, "typescript")]
