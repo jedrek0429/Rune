@@ -33,6 +33,9 @@ jobs:
       - name: Test workspace
         run: cargo test --workspace
 
+      - name: Test Firecracker resource policy
+        run: bash tests/firecracker/resource-policy.test.sh
+
   dotnet:
     runs-on: ubuntu-latest
 
