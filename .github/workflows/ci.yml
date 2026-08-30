@@ -63,7 +63,7 @@ jobs:
   firecracker-smoke:
     runs-on: ubuntu-latest
     env:
-      RUNE_FIRECRACKER_ROOT: ${{ runner.temp }}/rune-firecracker
+      RUNE_FIRECRACKER_ROOT: /tmp/rune-firecracker
 
     steps:
       - name: Checkout
