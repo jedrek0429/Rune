@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use admission::AdmissionController;
 use anyhow::Result;
+use firecracker::load_artifact;
 use pool::VmPool;
 use protocol::{InvocationRuntime, RuneLanguage};
 use redis_queue::RedisQueue;
@@ -117,22 +118,26 @@ async fn consume(
                 }
                 if envelope.language.invocation_runtime() != pool.runtime() {
                     return queue
-                        .finish(
-                            job,
-                            &envelope
-                                .fail("Rune was routed to the wrong invocation runtime".into()),
-                        )
+                        .finish(job, &envelope.fail("Rune was routed to the wrong invocation runtime".into()))
                         .await;
                 }
 
+                let artifact = match load_artifact(
+                    &pool.config().state_root.join("artifacts"),
+                    &envelope.artifact,
+                )
+                .await
+                {
+                    Ok(artifact) => artifact,
+                    Err(error) => return queue.finish(job, &envelope.fail(error.to_string())).await,
+                };
+
                 let _admission = match admission.acquire(&envelope).await {
                     Ok(permit) => permit,
-                    Err(message) => {
-                        return queue.finish(job, &envelope.fail(message.into())).await;
-                    }
+                    Err(message) => return queue.finish(job, &envelope.fail(message.into())).await,
                 };
                 let mut vm = pool.acquire().await?;
-                let result = vm.invoke(&envelope).await;
+                let result = vm.invoke(&envelope, &artifact).await;
                 vm.destroy().await;
                 pool.complete_invocation();
 
@@ -164,9 +169,7 @@ async fn autoscale(runtime: InvocationRuntime, pool: Arc<VmPool>, queue: Arc<Red
                 let target = pool.target_for_backlog(backlog);
                 pool.set_target(target);
             }
-            Err(error) => {
-                error!(?runtime, %error, "failed to measure Redis backlog");
-            }
+            Err(error) => error!(?runtime, %error, "failed to measure Redis backlog"),
         }
 
         tokio::time::sleep(interval).await;
