@@ -60,22 +60,27 @@ impl AdmissionController {
         envelope: &InvocationEnvelope,
     ) -> Result<AdmissionPermit, &'static str> {
         let now = Instant::now();
+        let mut rune_windows = self.rune_windows.lock().await;
         if !consume_rate_slot(
-            &mut self.rune_windows.lock().await,
+            &mut *rune_windows,
             envelope.rune_id.clone(),
             self.per_rune_rate,
             now,
         ) {
             return Err("Rune invocation rate limit exceeded");
         }
+        drop(rune_windows);
+
+        let mut guild_windows = self.guild_windows.lock().await;
         if !consume_rate_slot(
-            &mut self.guild_windows.lock().await,
+            &mut *guild_windows,
             envelope.guild_id,
             self.per_guild_rate,
             now,
         ) {
             return Err("Guild invocation rate limit exceeded");
         }
+        drop(guild_windows);
 
         let rune = {
             let mut runes = self.runes.lock().await;
