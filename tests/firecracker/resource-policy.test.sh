@@ -52,7 +52,7 @@ if grep -R -q '/network-interfaces' "$repo_root/firecracker" --include='*.sh'; t
 fi
 
 grep -q 'timeout .*wall_seconds' "$builder" || { echo "build VM launcher must enforce host wall time" >&2; exit 1; }
-grep -q 'scratch.*disk_mib' "$builder" || { echo "build VM launcher must bound scratch disk" >&2; exit 1; }
+grep -q 'truncate -s .*disk_mib.*scratch' "$builder" || { echo "build VM launcher must bound scratch disk" >&2; exit 1; }
 grep -q 'rune.language=' "$builder" || { echo "build VM must receive language" >&2; exit 1; }
 grep -q 'drive_id.*input' "$builder" && grep -q 'is_read_only.*true' "$builder" || { echo "build input must be read-only" >&2; exit 1; }
 grep -q 'size <= 16777216' "$builder" || { echo "artifact must be capped at 16 MiB" >&2; exit 1; }
