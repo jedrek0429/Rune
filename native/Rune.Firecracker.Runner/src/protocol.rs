@@ -138,7 +138,10 @@ impl InvocationEnvelope {
         if self.artifact.size_bytes > MAX_ARTIFACT_BYTES {
             return Err("Rune artifact exceeds the invocation artifact limit");
         }
-        if self.artifact.id.is_empty() || self.artifact.digest.is_empty() || self.artifact.entrypoint.is_empty() {
+        if self.artifact.id.is_empty()
+            || self.artifact.digest.is_empty()
+            || self.artifact.entrypoint.is_empty()
+        {
             return Err("Rune artifact descriptor is incomplete");
         }
         Ok(())
