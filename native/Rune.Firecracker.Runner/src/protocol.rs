@@ -3,84 +3,6 @@ use serde_json::Value;
 
 pub const MAX_ARTIFACT_BYTES: u64 = 16 * 1024 * 1024;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum RuneLanguage {
-    #[serde(rename = "javaScript")]
-    Javascript,
-    #[serde(rename = "typeScript")]
-    Typescript,
-    #[serde(rename = "python")]
-    Python,
-    #[serde(rename = "ruby")]
-    Ruby,
-    #[serde(rename = "rust")]
-    Rust,
-    #[serde(rename = "c")]
-    C,
-    #[serde(rename = "cpp")]
-    Cpp,
-    #[serde(rename = "cSharp")]
-    Csharp,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum InvocationRuntime {
-    Native,
-    Python,
-    Ruby,
-}
-
-impl InvocationRuntime {
-    pub const ALL: [Self; 3] = [Self::Native, Self::Python, Self::Ruby];
-
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Native => "native",
-            Self::Python => "python",
-            Self::Ruby => "ruby",
-        }
-    }
-}
-
-impl RuneLanguage {
-    pub const ALL: [Self; 8] = [
-        Self::Javascript,
-        Self::Typescript,
-        Self::Python,
-        Self::Ruby,
-        Self::Rust,
-        Self::C,
-        Self::Cpp,
-        Self::Csharp,
-    ];
-
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Javascript => "javascript",
-            Self::Typescript => "typescript",
-            Self::Python => "python",
-            Self::Ruby => "ruby",
-            Self::Rust => "rust",
-            Self::C => "c",
-            Self::Cpp => "cpp",
-            Self::Csharp => "csharp",
-        }
-    }
-
-    pub const fn invocation_runtime(self) -> InvocationRuntime {
-        match self {
-            Self::Javascript
-            | Self::Typescript
-            | Self::Rust
-            | Self::C
-            | Self::Cpp
-            | Self::Csharp => InvocationRuntime::Native,
-            Self::Python => InvocationRuntime::Python,
-            Self::Ruby => InvocationRuntime::Ruby,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(clippy::enum_variant_names)]
@@ -108,7 +30,6 @@ pub struct InvocationEnvelope {
     pub rune_id: String,
     pub rune_name: String,
     pub guild_id: u64,
-    pub language: RuneLanguage,
     pub event_type: RuneEventType,
     pub artifact: BuiltRuneArtifact,
     pub payload: Value,
@@ -136,7 +57,6 @@ impl InvocationEnvelope {
             rune_id: self.rune_id.clone(),
             rune_name: self.rune_name.clone(),
             guild_id: self.guild_id,
-            language: self.language,
             event_type: self.event_type,
             payload: self.payload.clone(),
             actions: guest.actions,
@@ -152,7 +72,6 @@ impl InvocationEnvelope {
             rune_id: self.rune_id.clone(),
             rune_name: self.rune_name.clone(),
             guild_id: self.guild_id,
-            language: self.language,
             event_type: self.event_type,
             payload: self.payload.clone(),
             actions: Vec::new(),
@@ -197,7 +116,6 @@ pub struct OwnedResultEnvelope {
     pub rune_id: String,
     pub rune_name: String,
     pub guild_id: u64,
-    pub language: RuneLanguage,
     pub event_type: RuneEventType,
     pub payload: Value,
     pub actions: Vec<HostAction>,
@@ -216,7 +134,6 @@ mod tests {
             rune_id: "r".into(),
             rune_name: "name".into(),
             guild_id: 1,
-            language: RuneLanguage::Rust,
             event_type: RuneEventType::MessageCreate,
             artifact: BuiltRuneArtifact {
                 id: id.into(),
@@ -226,20 +143,6 @@ mod tests {
             },
             payload: Value::Null,
             enqueued_at: "now".into(),
-        }
-    }
-
-    #[test]
-    fn native_languages_share_one_invocation_runtime() {
-        for language in [
-            RuneLanguage::Javascript,
-            RuneLanguage::Typescript,
-            RuneLanguage::Rust,
-            RuneLanguage::C,
-            RuneLanguage::Cpp,
-            RuneLanguage::Csharp,
-        ] {
-            assert_eq!(language.invocation_runtime(), InvocationRuntime::Native);
         }
     }
 
