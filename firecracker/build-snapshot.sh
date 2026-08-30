@@ -7,7 +7,8 @@ source "$script_dir/resource-policy.sh"
 
 if [[ "${1:-}" == "--print-profile" ]]; then
   [[ $# -eq 2 ]] || exit 2
-  read -r vcpu mem_mib _ <<<"$(rune_invocation_profile "$2")" || exit 2
+  profile="$(rune_invocation_profile "$2")" || exit 2
+  read -r vcpu mem_mib _ <<<"$profile"
   echo "$vcpu $mem_mib"
   exit 0
 fi
@@ -18,11 +19,11 @@ if [[ $# -ne 1 ]]; then
 fi
 
 runtime="$1"
-read -r vcpu default_mem_mib _tmp_mib _cpu_seconds _pid_limit _fd_limit \
-  <<<"$(rune_invocation_profile "$runtime")" || {
-    echo "unsupported invocation runtime: $runtime" >&2
-    exit 2
-  }
+profile="$(rune_invocation_profile "$runtime")" || {
+  echo "unsupported invocation runtime: $runtime" >&2
+  exit 2
+}
+read -r vcpu default_mem_mib _tmp_mib _cpu_seconds _pid_limit _fd_limit <<<"$profile"
 
 root="${RUNE_FIRECRACKER_ROOT:-/var/lib/rune/firecracker}"
 firecracker="${RUNE_FIRECRACKER:-firecracker}"
