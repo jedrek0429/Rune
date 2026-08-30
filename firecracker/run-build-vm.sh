@@ -43,6 +43,7 @@ root="${RUNE_FIRECRACKER_ROOT:-/var/lib/rune/firecracker}"
 firecracker="${RUNE_FIRECRACKER:-firecracker}"
 kernel="${RUNE_KERNEL:-$root/vmlinux}"
 rootfs="$root/build-images/$pool/rootfs.ext4"
+cache_seed="$root/build-images/scriptc/cache.ext4"
 artifacts="$root/artifacts"
 tmp="$(mktemp -d)"
 api_sock="$tmp/firecracker.sock"
@@ -71,6 +72,10 @@ for dependency in curl python3 truncate mkfs.ext4 debugfs sha256sum "$firecracke
 done
 [[ -r "$kernel" ]] || { echo "missing kernel: $kernel" >&2; exit 1; }
 [[ -r "$rootfs" ]] || { echo "missing build rootfs: $rootfs" >&2; exit 1; }
+if [[ "$pool" == scriptc && ! -r "$cache_seed" ]]; then
+  echo "missing ScriptC cache seed: $cache_seed" >&2
+  exit 1
+fi
 
 mkdir -p "$input_dir"
 cp "$source_path" "$input_dir/$input_name"
@@ -118,6 +123,9 @@ api_put /boot-source "{\"kernel_image_path\":$(json_string "$kernel"),\"boot_arg
 api_put /drives/rootfs "{\"drive_id\":\"rootfs\",\"path_on_host\":$(json_string "$rootfs"),\"is_root_device\":true,\"is_read_only\":true}"
 api_put /drives/scratch "{\"drive_id\":\"scratch\",\"path_on_host\":$(json_string "$scratch"),\"is_root_device\":false,\"is_read_only\":false}"
 api_put /drives/input "{\"drive_id\":\"input\",\"path_on_host\":$(json_string "$input"),\"is_root_device\":false,\"is_read_only\":true}"
+if [[ "$pool" == scriptc ]]; then
+  api_put /drives/cache-seed "{\"drive_id\":\"cache-seed\",\"path_on_host\":$(json_string "$cache_seed"),\"is_root_device\":false,\"is_read_only\":true}"
+fi
 api_put /vsock "{\"guest_cid\":3,\"uds_path\":$(json_string "$vsock_sock")}"
 # Deliberately no network interface.
 api_put /actions '{"action_type":"InstanceStart"}'
