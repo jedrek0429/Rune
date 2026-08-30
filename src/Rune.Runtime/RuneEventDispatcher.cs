@@ -26,6 +26,14 @@ public sealed class RuneEventDispatcher(
                 continue;
             }
 
+            if (rune.Artifact.SizeBytes > RuneResourceLimits.MaxArtifactBytes)
+            {
+                failures.Add(new RuneFailure(
+                    rune.Name,
+                    "The built rune artifact exceeds the 16 MiB limit."));
+                continue;
+            }
+
             try
             {
                 await transport.EnqueueAsync(
