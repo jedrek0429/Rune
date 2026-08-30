@@ -40,13 +40,6 @@ impl InvocationRuntime {
             Self::Ruby => "ruby",
         }
     }
-
-    pub const fn memory_mib(self) -> usize {
-        match self {
-            Self::Native => 192,
-            Self::Python | Self::Ruby => 256,
-        }
-    }
 }
 
 impl RuneLanguage {
@@ -84,17 +77,6 @@ impl RuneLanguage {
             | Self::Csharp => InvocationRuntime::Native,
             Self::Python => InvocationRuntime::Python,
             Self::Ruby => InvocationRuntime::Ruby,
-        }
-    }
-
-    pub const fn build_pool(self) -> &'static str {
-        match self {
-            Self::Javascript | Self::Typescript => "scriptc",
-            Self::Rust => "rust",
-            Self::C | Self::Cpp => "clang",
-            Self::Csharp => "dotnet-aot",
-            Self::Python => "python",
-            Self::Ruby => "ruby",
         }
     }
 }
@@ -259,11 +241,6 @@ mod tests {
         ] {
             assert_eq!(language.invocation_runtime(), InvocationRuntime::Native);
         }
-    }
-
-    #[test]
-    fn csharp_builds_with_native_aot() {
-        assert_eq!(RuneLanguage::Csharp.build_pool(), "dotnet-aot");
     }
 
     #[test]
