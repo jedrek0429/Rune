@@ -1,5 +1,11 @@
 namespace Rune.Core.Runes;
 
+public sealed record BuiltRuneArtifact(
+    string Id,
+    string Digest,
+    string Entrypoint
+);
+
 public sealed record RegisteredRune(
     Guid Id,
     ulong GuildId,
@@ -8,7 +14,8 @@ public sealed record RegisteredRune(
     RuneEventType EventType,
     string Source,
     byte[] Wasm,
-    bool Enabled
+    bool Enabled,
+    BuiltRuneArtifact? Artifact = null
 );
 
 public sealed record CompiledRune(
