@@ -67,6 +67,7 @@ grep -q 'scriptc).*build-essential.*clang' "$dockerfile" || { echo "ScriptC buil
 grep -q 'dotnet publish.*PublishAot=true' "$dockerfile" || { echo ".NET build image must prewarm Native AOT assets before network is removed" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES=/opt/rune/nuget' "$dockerfile" || { echo ".NET build image must expose its prewarmed packages outside root home" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES.*opt/rune/nuget' "$build_guest" || { echo "build guest must use the prewarmed NuGet cache" >&2; exit 1; }
+grep -q 'setgroups(0' "$build_guest" || { echo "build guest must clear supplementary groups before dropping privileges" >&2; exit 1; }
 if grep -q 'mount("devtmpfs", "/dev"' "$build_guest"; then
   echo "build guest must use the kernel-provided /dev mount" >&2
   exit 1
@@ -76,11 +77,8 @@ if grep -q 'scriptc cache warm' "$dockerfile"; then
   exit 1
 fi
 [[ -f "$scriptc_warmer" ]] || { echo "final-rootfs ScriptC cache warmer is missing" >&2; exit 1; }
-grep -Fq '.args(["cache", "warm", "dynamic"])' "$build_guest" || { echo "build guest must warm the expensive ScriptC dynamic-engine cache" >&2; exit 1; }
-if grep -Fq '.args(["cache", "warm", "runtime", "dynamic"])' "$build_guest"; then
-  echo "ScriptC cache preparation must not precompile the ordinary runtime family" >&2
-  exit 1
-fi
+grep -Fq '.args(["cache", "warm", "runtime", "dynamic"])' "$build_guest" || { echo "build guest must prewarm ScriptC runtime objects and dynamic engine" >&2; exit 1; }
+grep -Fq "profiles: ['runtime', 'dynamic']" "$build_guest" || { echo "ScriptC cache diagnostics must match the warmed profiles" >&2; exit 1; }
 grep -q 'rune.cache_warm=scriptc' "$scriptc_warmer" || { echo "ScriptC warmer must boot the final build rootfs in cache-warm mode" >&2; exit 1; }
 grep -q 'chmod 0444.*cache' "$scriptc_warmer" || { echo "ScriptC cache seed must be frozen after warming" >&2; exit 1; }
 grep -q 'warm-scriptc-cache.sh' "$rootfs_builder" || { echo "ScriptC rootfs build must warm its final cache seed" >&2; exit 1; }
