@@ -4,7 +4,10 @@ use anyhow::{Context, Result};
 use redis::{AsyncCommands, Client, FromRedisValue, RedisError, streams::StreamReadReply};
 use tracing::debug;
 
-use crate::{config::Config, protocol::{InvocationEnvelope, OwnedResultEnvelope}};
+use crate::{
+    config::Config,
+    protocol::{InvocationEnvelope, OwnedResultEnvelope},
+};
 
 #[derive(Clone)]
 pub struct RedisQueue {
