@@ -33,6 +33,8 @@ async fn main() -> Result<()> {
     let admission = Arc::new(AdmissionController::new(
         config.max_concurrent_per_rune,
         config.max_concurrent_per_guild,
+        config.max_invocations_per_rune_per_second,
+        config.max_invocations_per_guild_per_second,
     ));
     let mut tasks = JoinSet::new();
 
@@ -123,7 +125,12 @@ async fn consume(
                         .await;
                 }
 
-                let _admission = admission.acquire(&envelope).await;
+                let _admission = match admission.acquire(&envelope).await {
+                    Ok(permit) => permit,
+                    Err(message) => {
+                        return queue.finish(job, &envelope.fail(message.into())).await;
+                    }
+                };
                 let mut vm = pool.acquire().await?;
                 let result = vm.invoke(&envelope).await;
                 vm.destroy().await;
