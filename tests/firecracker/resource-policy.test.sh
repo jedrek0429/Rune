@@ -57,10 +57,9 @@ grep -q 'dotnet publish.*PublishAot=true' "$dockerfile" || { echo ".NET build im
 grep -q 'NUGET_PACKAGES=/opt/rune/nuget' "$dockerfile" || { echo ".NET build image must expose its prewarmed packages outside root home" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES.*opt/rune/nuget' "$build_guest" || { echo "build guest must use the prewarmed NuGet cache" >&2; exit 1; }
 grep -q 'scriptc cache warm dynamic' "$dockerfile" || { echo "ScriptC dynamic cache must be prewarmed" >&2; exit 1; }
-grep -q 'micropython' "$dockerfile" || { echo "Python build image must contain MicroPython tooling" >&2; exit 1; }
-grep -q 'mruby' "$dockerfile" || { echo "Ruby build image must contain mruby tooling" >&2; exit 1; }
-grep -q 'python.*artifact' "$build_guest" || { echo "Python builds must emit executable artifacts" >&2; exit 1; }
-grep -q 'ruby.*artifact' "$build_guest" || { echo "Ruby builds must emit executable artifacts" >&2; exit 1; }
+grep -q 'MICROPY_PERSISTENT_CODE_LOAD' "$dockerfile" || { echo "MicroPython embed must load precompiled bytecode" >&2; exit 1; }
+grep -q 'rune-build-python' "$build_guest" || { echo "Python builds must use the executable MicroPython packager" >&2; exit 1; }
+grep -q 'rune-build-ruby' "$build_guest" || { echo "Ruby builds must use the executable mruby packager" >&2; exit 1; }
 if grep -Eq 'python3|ruby|rune-runtime|RUNTIME' "$invocation_dockerfile"; then
   echo "invocation image must be language-agnostic" >&2
   exit 1
