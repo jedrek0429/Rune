@@ -15,7 +15,7 @@ COPY firecracker/build-tools/ruby.sh /usr/local/bin/rune-build-ruby
 RUN chmod 0755 /usr/local/bin/rune-build-scriptc /usr/local/bin/rune-build-python /usr/local/bin/rune-build-ruby \
     && apt-get update \
     && case "$POOL" in \
-      scriptc) apt-get install -y --no-install-recommends clang ca-certificates && npm install -g --allow-scripts=scriptc scriptc ;; \
+      scriptc) apt-get install -y --no-install-recommends build-essential clang ca-certificates && npm install -g --allow-scripts=scriptc scriptc ;; \
       clang) apt-get install -y --no-install-recommends clang g++ ;; \
       rust) true ;; \
       dotnet-aot) apt-get install -y --no-install-recommends clang zlib1g-dev ;; \
