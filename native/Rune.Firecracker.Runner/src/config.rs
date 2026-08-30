@@ -101,10 +101,18 @@ impl Config {
             let memory = self.memory_path(runtime);
 
             if !snapshot.is_file() {
-                bail!("missing {} snapshot: {}", runtime.as_str(), snapshot.display());
+                bail!(
+                    "missing {} snapshot: {}",
+                    runtime.as_str(),
+                    snapshot.display()
+                );
             }
             if !memory.is_file() {
-                bail!("missing {} memory image: {}", runtime.as_str(), memory.display());
+                bail!(
+                    "missing {} memory image: {}",
+                    runtime.as_str(),
+                    memory.display()
+                );
             }
         }
 
