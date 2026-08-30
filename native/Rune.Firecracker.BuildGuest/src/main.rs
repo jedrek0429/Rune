@@ -203,10 +203,7 @@ fn run_build(policy: &BuildPolicy) -> Result<()> {
 fn drain_bounded(mut reader: impl Read) -> Vec<u8> {
     let mut kept = Vec::with_capacity(MAX_DIAGNOSTIC_BYTES);
     let mut buffer = [0_u8; 8192];
-    loop {
-        let Ok(read) = reader.read(&mut buffer) else {
-            break;
-        };
+    while let Ok(read) = reader.read(&mut buffer) {
         if read == 0 {
             break;
         }
