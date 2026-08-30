@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "native/Rune.Firecracker.BuildGuest",
     "native/Rune.Firecracker.Guest",
     "native/Rune.Firecracker.Runner",
 ]
