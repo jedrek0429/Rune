@@ -4,94 +4,36 @@
 
 <h1 align="center">Rune</h1>
 
-<p align="center">
-  A small, sandboxed scripting platform for Discord.
-</p>
+<p align="center">A small, sandboxed scripting platform for Discord.</p>
 
-Rune lets you upload scripts directly through Discord and run them as isolated WebAssembly Components.
+Rune lets guilds upload event scripts through Discord. Registration builds each script in a disposable Firecracker microVM; invocations run the resulting immutable artifact in a fresh microVM restored from a warm snapshot.
 
-Runes are written in languages such as JavaScript and Python, while Rune provides a common Discord-facing API.
+Supported languages are JavaScript, TypeScript, Python, Ruby, Rust, C, C++ and C#. JavaScript and TypeScript compile with ScriptC, C# uses .NET Native AOT, and all native outputs share one invocation pool. Python and Ruby use their own interpreter pools.
 
-The goal is to support as many languages as possible.
+Rune.API is a deliberately selected subset of NetCord. Guest VMs have no general network access; host-backed Discord operations cross a narrow Rune.API boundary.
 
-## Discord API
+## Runtime
 
-Rune.API is a strict subset of
-[NetCord](https://github.com/NetCordDev/NetCord), projected into each supported
-language. It can omit NetCord members but does not define a separate Discord
-object model.
-
-An event rune is registered for one of these NetCord gateway events:
-
-- `MessageCreate`;
-- `MessageDelete`;
-- `MessageReactionAdd`; or
-- `MessageReactionRemove`.
-
-For example, a `MessageCreate` rune receives a selected subset of NetCord's
-`Message` and `User` types.
-
-JavaScript:
-
-```javascript
-message.id
-message.channelId
-message.content
-
-message.author.id
-message.author.username
+```text
+source
+  -> isolated build VM
+  -> content-addressed artifact
+  -> Redis invocation
+  -> native | python | ruby warm pool
+  -> disposable invocation VM
 ```
 
-Python:
+The Discord token and NetCord client remain on the host. Source is limited to 64 KiB and never travels to invocation VMs. Artifacts are limited to 16 MiB and verified by SHA-256 before execution.
 
-```python
-message.id
-message.channel_id
-message.content
+## Development
 
-message.author.id
-message.author.username
-```
-
-Rust:
-
-```rust
-fn rune(message: Message) -> FnResult<()> {
-    message.id;
-    message.channel_id;
-    message.content;
-
-    message.author.id;
-    message.author.username;
-
-    Ok(())
-}
-```
-
-Delete and reaction runes receive `MessageDeleteEventArgs`,
-`MessageReactionAddEventArgs` or `MessageReactionRemoveEventArgs` respectively.
-
-## Running locally
-
-Install the Component toolchains:
+The bot requires .NET 10 and Redis. Firecracker runners require Linux with KVM. Docker is used to build the compiler and invocation root filesystems.
 
 ```sh
-npm install --global @bytecodealliance/jco@1.32.1
-python3 -m pip install componentize-py==0.25.0
-rustup target add wasm32-wasip2
-```
-
-Rune also requires .NET 10 and Cargo. Start it from the repository root:
-
-```sh
+./firecracker/check-host.sh
+sudo ./firecracker/build-all.sh
 dotnet run --project src/Rune.Bot
+cargo run --release --manifest-path native/Rune.Firecracker.Runner/Cargo.toml
 ```
 
-## Status
-
-Rune is under active development. JavaScript, Python and Rust event runes compile to Components and execute through the embedded Rust/Wasmtime runtime.
-
-The files in `examples/` are native-runtime smoke tests. Register one for
-`MessageCreate`, then send `!native-test`; a successful invocation is silent,
-while a failed projection is reported by the bot. Host-backed NetCord methods
-such as `message.reply(...)` are the next implementation slice.
+The Firecracker integration is experimental. GitHub CI covers the managed and Rust contracts and resource-policy tests; full microVM smoke tests require a Linux runner with `/dev/kvm`.
