@@ -77,8 +77,13 @@ if grep -q 'scriptc cache warm' "$dockerfile"; then
   exit 1
 fi
 [[ -f "$scriptc_warmer" ]] || { echo "final-rootfs ScriptC cache warmer is missing" >&2; exit 1; }
-grep -Fq '.args(["cache", "warm", "runtime", "dynamic"])' "$build_guest" || { echo "build guest must prewarm ScriptC runtime objects and dynamic engine" >&2; exit 1; }
-grep -Fq "profiles: ['runtime', 'dynamic']" "$build_guest" || { echo "ScriptC cache diagnostics must match the warmed profiles" >&2; exit 1; }
+grep -Fq 'for profile in ["runtime", "dynamic"]' "$build_guest" || { echo "build guest must prewarm ScriptC runtime and dynamic profiles serially" >&2; exit 1; }
+grep -Fq '.args(["cache", "warm", profile])' "$build_guest" || { echo "ScriptC warm profiles must run as independent processes" >&2; exit 1; }
+if grep -Fq '.args(["cache", "warm", "runtime", "dynamic"])' "$build_guest"; then
+  echo "ScriptC profiles must not share one concurrent warm workspace" >&2
+  exit 1
+fi
+grep -Fq 'profiles: [process.argv[1]]' "$build_guest" || { echo "ScriptC cache diagnostics must diagnose only the failed profile" >&2; exit 1; }
 grep -q 'rune.cache_warm=scriptc' "$scriptc_warmer" || { echo "ScriptC warmer must boot the final build rootfs in cache-warm mode" >&2; exit 1; }
 grep -q 'chmod 0444.*cache' "$scriptc_warmer" || { echo "ScriptC cache seed must be frozen after warming" >&2; exit 1; }
 grep -q 'warm-scriptc-cache.sh' "$rootfs_builder" || { echo "ScriptC rootfs build must warm its final cache seed" >&2; exit 1; }
