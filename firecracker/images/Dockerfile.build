@@ -8,6 +8,7 @@ RUN cargo build --release
 FROM ${BASE_IMAGE}
 ARG POOL
 ARG MICROPYTHON_VERSION=v1.29.0
+ARG NODE_VERSION=24.15.0
 ARG SCRIPTC_VERSION=0.0.35
 ENV NUGET_PACKAGES=/opt/rune/nuget
 COPY firecracker/build-tools/scriptc.sh /usr/local/bin/rune-build-scriptc
@@ -16,7 +17,16 @@ COPY firecracker/build-tools/ruby.sh /usr/local/bin/rune-build-ruby
 RUN chmod 0755 /usr/local/bin/rune-build-scriptc /usr/local/bin/rune-build-python /usr/local/bin/rune-build-ruby \
     && apt-get update \
     && case "$POOL" in \
-      scriptc) apt-get install -y --no-install-recommends build-essential clang ca-certificates && npm install -g --allow-scripts=scriptc "scriptc@$SCRIPTC_VERSION" ;; \
+      scriptc) \
+        apt-get install -y --no-install-recommends build-essential clang ca-certificates curl xz-utils && \
+        case "$(dpkg --print-architecture)" in amd64) node_arch=x64 ;; arm64) node_arch=arm64 ;; *) exit 2 ;; esac && \
+        curl -fsSL -o /tmp/node.tar.xz "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" && \
+        curl -fsSL -o /tmp/SHASUMS256.txt "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" && \
+        grep " node-v${NODE_VERSION}-linux-${node_arch}.tar.xz$" /tmp/SHASUMS256.txt | sed "s#node-v[^ ]*-linux-${node_arch}.tar.xz#/tmp/node.tar.xz#" | sha256sum --check --strict - && \
+        tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 && \
+        rm /tmp/node.tar.xz /tmp/SHASUMS256.txt && \
+        npm install -g --allow-scripts=scriptc "scriptc@$SCRIPTC_VERSION" \
+        ;; \
       clang) apt-get install -y --no-install-recommends clang g++ ;; \
       rust) true ;; \
       dotnet-aot) apt-get install -y --no-install-recommends clang zlib1g-dev ;; \
