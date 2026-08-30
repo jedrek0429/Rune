@@ -1,3 +1,4 @@
+mod admission;
 mod config;
 mod firecracker;
 mod pool;
@@ -6,6 +7,7 @@ mod redis_queue;
 
 use std::sync::Arc;
 
+use admission::AdmissionController;
 use anyhow::Result;
 use pool::VmPool;
 use protocol::{InvocationRuntime, RuneLanguage};
@@ -28,6 +30,10 @@ async fn main() -> Result<()> {
     config.validate_host()?;
 
     let queue = Arc::new(RedisQueue::connect(config.clone()).await?);
+    let admission = Arc::new(AdmissionController::new(
+        config.max_concurrent_per_rune,
+        config.max_concurrent_per_guild,
+    ));
     let mut tasks = JoinSet::new();
 
     for runtime in InvocationRuntime::ALL {
@@ -54,7 +60,8 @@ async fn main() -> Result<()> {
         for language in languages_for_runtime(runtime) {
             let pool = pool.clone();
             let queue = queue.clone();
-            tasks.spawn(async move { consume(language, pool, queue).await });
+            let admission = admission.clone();
+            tasks.spawn(async move { consume(language, pool, queue, admission).await });
         }
     }
 
@@ -80,7 +87,12 @@ fn languages_for_runtime(runtime: InvocationRuntime) -> impl Iterator<Item = Run
         .filter(move |language| language.invocation_runtime() == runtime)
 }
 
-async fn consume(language: RuneLanguage, pool: Arc<VmPool>, queue: Arc<RedisQueue>) -> Result<()> {
+async fn consume(
+    language: RuneLanguage,
+    pool: Arc<VmPool>,
+    queue: Arc<RedisQueue>,
+    admission: Arc<AdmissionController>,
+) -> Result<()> {
     queue.ensure_group(language).await?;
 
     loop {
@@ -94,9 +106,13 @@ async fn consume(language: RuneLanguage, pool: Arc<VmPool>, queue: Arc<RedisQueu
         for job in jobs {
             let pool = pool.clone();
             let queue = queue.clone();
+            let admission = admission.clone();
 
             invocations.spawn(async move {
                 let envelope = job.envelope.clone();
+                if let Err(message) = envelope.validate() {
+                    return queue.finish(job, &envelope.fail(message.into())).await;
+                }
                 if envelope.language.invocation_runtime() != pool.runtime() {
                     return queue
                         .finish(
@@ -106,6 +122,7 @@ async fn consume(language: RuneLanguage, pool: Arc<VmPool>, queue: Arc<RedisQueu
                         .await;
                 }
 
+                let _admission = admission.acquire(&envelope).await;
                 let mut vm = pool.acquire().await?;
                 let result = vm.invoke(&envelope).await;
                 vm.destroy().await;
@@ -163,6 +180,7 @@ mod tests {
                 RuneLanguage::Rust,
                 RuneLanguage::C,
                 RuneLanguage::Cpp,
+                RuneLanguage::Csharp,
             ]
         );
     }
