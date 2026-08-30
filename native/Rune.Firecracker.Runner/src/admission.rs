@@ -79,9 +79,9 @@ mod tests {
 
     #[tokio::test]
     async fn second_invocation_of_same_rune_waits_for_first() {
-        let controller = AdmissionController::new(1, 4);
+        let controller = AdmissionController::with_rates(1, 4, 100, 100);
         let invocation = envelope("rune-a", 42);
-        let first = controller.acquire(&invocation).await;
+        let first = controller.acquire(&invocation).await.unwrap();
         assert!(
             tokio::time::timeout(Duration::from_millis(20), controller.acquire(&invocation))
                 .await
@@ -90,14 +90,15 @@ mod tests {
         drop(first);
         tokio::time::timeout(Duration::from_millis(100), controller.acquire(&invocation))
             .await
-            .expect("permit should become available");
+            .expect("permit should become available")
+            .unwrap();
     }
 
     #[tokio::test]
-    async fn guild_limit_applies_across_different_runes() {
-        let controller = AdmissionController::new(1, 2);
-        let _a = controller.acquire(&envelope("a", 42)).await;
-        let _b = controller.acquire(&envelope("b", 42)).await;
+    async fn guild_concurrency_limit_applies_across_different_runes() {
+        let controller = AdmissionController::with_rates(1, 2, 100, 100);
+        let _a = controller.acquire(&envelope("a", 42)).await.unwrap();
+        let _b = controller.acquire(&envelope("b", 42)).await.unwrap();
         assert!(
             tokio::time::timeout(
                 Duration::from_millis(20),
@@ -106,5 +107,28 @@ mod tests {
             .await
             .is_err()
         );
+    }
+
+    #[tokio::test]
+    async fn per_rune_rate_limit_rejects_excess_burst() {
+        let controller = AdmissionController::with_rates(1, 4, 2, 100);
+        let invocation = envelope("rune-a", 42);
+
+        drop(controller.acquire(&invocation).await.unwrap());
+        drop(controller.acquire(&invocation).await.unwrap());
+        let error = controller.acquire(&invocation).await.unwrap_err();
+
+        assert_eq!(error, "Rune invocation rate limit exceeded");
+    }
+
+    #[tokio::test]
+    async fn per_guild_rate_limit_is_shared_across_runes() {
+        let controller = AdmissionController::with_rates(1, 4, 100, 2);
+
+        drop(controller.acquire(&envelope("a", 42)).await.unwrap());
+        drop(controller.acquire(&envelope("b", 42)).await.unwrap());
+        let error = controller.acquire(&envelope("c", 42)).await.unwrap_err();
+
+        assert_eq!(error, "Guild invocation rate limit exceeded");
     }
 }
