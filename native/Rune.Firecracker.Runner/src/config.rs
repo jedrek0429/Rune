@@ -2,12 +2,10 @@ use std::{env, path::PathBuf, time::Duration};
 
 use anyhow::{Context, Result, bail};
 
-use crate::protocol::{InvocationRuntime, RuneLanguage};
-
 #[derive(Debug)]
 pub struct Config {
     pub redis_url: String,
-    pub invocation_stream_prefix: String,
+    pub invocation_stream: String,
     pub result_stream: String,
     pub consumer_group: String,
     pub consumer_name: String,
@@ -35,7 +33,7 @@ impl Config {
         let config = Self {
             redis_url: env::var("RUNE_REDIS_URL")
                 .unwrap_or_else(|_| "redis://127.0.0.1:6379/".into()),
-            invocation_stream_prefix: env::var("RUNE_INVOCATION_STREAM_PREFIX")
+            invocation_stream: env::var("RUNE_INVOCATION_STREAM")
                 .unwrap_or_else(|_| "rune:invocations".into()),
             result_stream: env::var("RUNE_RESULT_STREAM").unwrap_or_else(|_| "rune:results".into()),
             consumer_group: env::var("RUNE_RUNNER_GROUP").unwrap_or_else(|_| "rune-runners".into()),
@@ -106,7 +104,13 @@ impl Config {
             bail!("/dev/kvm is not a KVM character device");
         }
 
-        self.validate_snapshots()
+        for path in [self.snapshot_path(), self.memory_path()] {
+            if !path.is_file() {
+                bail!("missing Rune snapshot file: {}", path.display());
+            }
+        }
+
+        Ok(())
     }
 
     #[cfg(not(target_os = "linux"))]
@@ -114,46 +118,12 @@ impl Config {
         bail!("Firecracker runners require Linux with KVM")
     }
 
-    fn validate_snapshots(&self) -> Result<()> {
-        for runtime in InvocationRuntime::ALL {
-            let snapshot = self.snapshot_path(runtime);
-            let memory = self.memory_path(runtime);
-
-            if !snapshot.is_file() {
-                bail!(
-                    "missing {} snapshot: {}",
-                    runtime.as_str(),
-                    snapshot.display()
-                );
-            }
-            if !memory.is_file() {
-                bail!(
-                    "missing {} memory image: {}",
-                    runtime.as_str(),
-                    memory.display()
-                );
-            }
-        }
-
-        Ok(())
+    pub fn snapshot_path(&self) -> PathBuf {
+        self.state_root.join("snapshot").join("vmstate")
     }
 
-    pub fn invocation_stream(&self, language: RuneLanguage) -> String {
-        format!("{}:{}", self.invocation_stream_prefix, language.as_str())
-    }
-
-    pub fn snapshot_path(&self, runtime: InvocationRuntime) -> PathBuf {
-        self.state_root
-            .join("snapshots")
-            .join(runtime.as_str())
-            .join("vmstate")
-    }
-
-    pub fn memory_path(&self, runtime: InvocationRuntime) -> PathBuf {
-        self.state_root
-            .join("snapshots")
-            .join(runtime.as_str())
-            .join("memory")
+    pub fn memory_path(&self) -> PathBuf {
+        self.state_root.join("snapshot").join("memory")
     }
 
     pub fn runtime_root(&self) -> PathBuf {
