@@ -47,7 +47,11 @@ impl VmPool {
             self.idle.lock().await.push_back(vm);
         }
 
-        info!(runtime = self.runtime.as_str(), count = self.config.min_vms, "warm Firecracker pool primed");
+        info!(
+            runtime = self.runtime.as_str(),
+            count = self.config.min_vms,
+            "warm Firecracker pool primed"
+        );
         Ok(())
     }
 
@@ -73,7 +77,10 @@ impl VmPool {
         let target = target.clamp(self.config.min_vms, self.config.max_vms);
         let previous = self.target.swap(target, Ordering::AcqRel);
         if previous != target {
-            info!(runtime = self.runtime.as_str(), previous, target, "warm Firecracker pool target changed");
+            info!(
+                runtime = self.runtime.as_str(),
+                previous, target, "warm Firecracker pool target changed"
+            );
             self.changed.notify_one();
         }
     }
@@ -147,11 +154,13 @@ mod tests {
             min_vms,
             max_vms,
             backlog_per_vm,
-            invocation_timeout: Duration::from_secs(6),
+            invocation_timeout: Duration::from_secs(3),
             restore_timeout: Duration::from_secs(2),
             autoscale_interval: Duration::from_millis(250),
             result_stream_max_len: 10_000,
             read_batch_size: 32,
+            max_concurrent_per_rune: 1,
+            max_concurrent_per_guild: 4,
         })
     }
 
