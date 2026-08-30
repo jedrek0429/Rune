@@ -71,18 +71,9 @@ fn build_command(pool: &str, language: &str) -> Result<(&'static str, Vec<String
             "scriptc",
             vec!["build", "/input/source.ts", "--dynamic", "-o", output],
         ),
-        ("rust", "rust") => (
-            "rustc",
-            vec!["/input/source.rs", "-O", "-o", output],
-        ),
-        ("clang", "c") => (
-            "clang",
-            vec!["/input/source.c", "-O2", "-o", output],
-        ),
-        ("clang", "cpp") => (
-            "clang++",
-            vec!["/input/source.cpp", "-O2", "-o", output],
-        ),
+        ("rust", "rust") => ("rustc", vec!["/input/source.rs", "-O", "-o", output]),
+        ("clang", "c") => ("clang", vec!["/input/source.c", "-O2", "-o", output]),
+        ("clang", "cpp") => ("clang++", vec!["/input/source.cpp", "-O2", "-o", output]),
         ("dotnet-aot", "csharp") => (
             "dotnet",
             vec![
@@ -96,10 +87,7 @@ fn build_command(pool: &str, language: &str) -> Result<(&'static str, Vec<String
                 "-p:RestoreIgnoreFailedSources=true",
             ],
         ),
-        ("python", "python") => (
-            "python3",
-            vec!["-m", "py_compile", "/input/source.py"],
-        ),
+        ("python", "python") => ("python3", vec!["-m", "py_compile", "/input/source.py"]),
         ("ruby", "ruby") => ("ruby", vec!["-c", "/input/source.rb"]),
         _ => bail!("unsupported build pool/language pair {pool}/{language}"),
     };
@@ -318,8 +306,10 @@ mod tests {
             .is_err()
         );
         assert!(
-            parse_policy("rune.build_pool=rust rune.language=rust rune.pid_limit=128 rune.wall_seconds=45")
-                .is_err()
+            parse_policy(
+                "rune.build_pool=rust rune.language=rust rune.pid_limit=128 rune.wall_seconds=45"
+            )
+            .is_err()
         );
     }
 
@@ -341,5 +331,15 @@ mod tests {
         assert_eq!(build_command("python", "python").unwrap().0, "python3");
         assert_eq!(build_command("ruby", "ruby").unwrap().0, "ruby");
         assert!(build_command("scriptc", "python").is_err());
+    }
+
+    #[test]
+    fn read_only_inputs_are_never_compiler_working_directories() {
+        let (_, python) = build_command("python", "python").unwrap();
+        assert!(!python.iter().any(|arg| arg == "py_compile"));
+
+        let (_, csharp) = build_command("dotnet-aot", "csharp").unwrap();
+        assert!(csharp.iter().any(|arg| arg == "/work/project/Rune.csproj"));
+        assert!(!csharp.iter().any(|arg| arg == "/input/Rune.csproj"));
     }
 }
