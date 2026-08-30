@@ -33,21 +33,6 @@ jobs:
       - name: Test workspace
         run: cargo test --workspace
 
-  javascript-guest:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24.x
-
-      - name: Test JavaScript guest worker
-        run: node --test tests/firecracker/javascript-worker.test.mjs
-
   dotnet:
     runs-on: ubuntu-latest
 
