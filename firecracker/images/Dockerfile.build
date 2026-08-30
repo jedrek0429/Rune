@@ -1,0 +1,19 @@
+ARG BASE_IMAGE=debian:bookworm-slim
+FROM rust:1-bookworm AS guest-builder
+WORKDIR /build
+COPY native/Rune.Firecracker.BuildGuest/Cargo.toml Cargo.toml
+COPY native/Rune.Firecracker.BuildGuest/src src
+RUN cargo build --release
+
+FROM ${BASE_IMAGE}
+ARG POOL
+RUN apt-get update && case "$POOL" in \
+      scriptc) apt-get install -y --no-install-recommends clang ca-certificates && npm install -g scriptc ;; \
+      clang) apt-get install -y --no-install-recommends clang g++ ;; \
+      rust) true ;; \
+      dotnet-aot) apt-get install -y --no-install-recommends clang zlib1g-dev ;; \
+      python|ruby) true ;; \
+      *) exit 2 ;; \
+    esac && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /proc /dev /work /input
+COPY --from=guest-builder /build/target/release/rune-firecracker-build-guest /sbin/rune-build-guest
