@@ -8,7 +8,8 @@ public sealed record RegisteredRune(
     RuneEventType EventType,
     string Source,
     byte[] Wasm,
-    bool Enabled
+    bool Enabled,
+    BuiltRuneArtifact? Artifact = null
 );
 
 public sealed record CompiledRune(
