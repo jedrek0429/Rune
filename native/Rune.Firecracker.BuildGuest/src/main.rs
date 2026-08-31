@@ -185,10 +185,12 @@ fn warm_scriptc_cache(cmdline: &str) -> Result<()> {
             .with_context(|| format!("failed to start ScriptC {profile} cache warm"))?;
         if !status.success() {
             diagnose_scriptc_cache_warm(profile);
+            unsafe { libc::sync() };
             println!("RUNE_CACHE_WARM_FAILED");
             bail!("ScriptC {profile} cache warm exited with {status}");
         }
     }
+    unsafe { libc::sync() };
     println!("RUNE_CACHE_WARM_DONE");
     Ok(())
 }
@@ -256,6 +258,7 @@ fn run_build(policy: &BuildPolicy) -> Result<()> {
     fs::write("/work/diagnostics.txt", &diagnostics)?;
 
     if !status.success() {
+        unsafe { libc::sync() };
         if !diagnostics.is_empty() {
             eprintln!("{}", String::from_utf8_lossy(&diagnostics));
         }
@@ -272,6 +275,7 @@ fn run_build(policy: &BuildPolicy) -> Result<()> {
         bail!("compiler produced an empty artifact");
     }
 
+    unsafe { libc::sync() };
     println!("RUNE_BUILD_DONE");
     Ok(())
 }
