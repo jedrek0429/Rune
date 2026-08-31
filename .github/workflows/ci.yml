@@ -75,3 +75,41 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build --configuration Release
+
+      - name: Test Firecracker invocation contract
+        run: bash tests/firecracker/invocation-feature.test.sh
+
+  firecracker-smoke:
+    runs-on: ubuntu-latest
+    env:
+      RUNE_FIRECRACKER_ROOT: /tmp/rune-firecracker
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y e2fsprogs
+          test -e /dev/kvm
+          sudo chmod a+rw /dev/kvm
+
+      - name: Install Firecracker and kernel
+        env:
+          FIRECRACKER_VERSION: v1.16.1
+        run: |
+          arch="$(uname -m)"
+          curl -fsSL "https://github.com/firecracker-microvm/firecracker/releases/download/${FIRECRACKER_VERSION}/firecracker-${FIRECRACKER_VERSION}-${arch}.tgz" | tar -xz
+          mkdir -p "$RUNNER_TEMP/bin" "$RUNE_FIRECRACKER_ROOT"
+          install "release-${FIRECRACKER_VERSION}-${arch}/firecracker-${FIRECRACKER_VERSION}-${arch}" "$RUNNER_TEMP/bin/firecracker"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+          s3="https://s3.amazonaws.com/spec.ccfc.min"
+          ci_prefix="$(curl -fsSL "$s3?list-type=2&prefix=firecracker-ci/&delimiter=/" | grep -oP '(?<=<Prefix>)firecracker-ci/[0-9]{8}-[^/]+/(?=</Prefix>)' | sort | tail -1)"
+          kernel_key="$(curl -fsSL "$s3?list-type=2&prefix=${ci_prefix}${arch}/vmlinux-6.1" | grep -oP "(?<=<Key>)${ci_prefix}${arch}/vmlinux-6\\.1\\.[0-9]+(?=</Key>)" | sort -V | tail -1)"
+          test -n "$kernel_key"
+          curl -fsSL -o "$RUNE_FIRECRACKER_ROOT/vmlinux" "$s3/$kernel_key"
+
+      - name: Execute prebuilt ELF in Firecracker
+        run: bash tests/firecracker/invocation-e2e.sh
