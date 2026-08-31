@@ -69,9 +69,6 @@ jobs:
       - name: Test runner and warm-pool contract
         run: bash tests/firecracker/runner-feature.test.sh
 
-      - name: Check runner formatting
-        run: cargo fmt --manifest-path native/Rune.Firecracker.Runner/Cargo.toml -- --check
-
       - name: Check runner
         run: cargo check --manifest-path native/Rune.Firecracker.Runner/Cargo.toml
 
@@ -80,6 +77,9 @@ jobs:
 
       - name: Test runner
         run: cargo test --manifest-path native/Rune.Firecracker.Runner/Cargo.toml
+
+      - name: Check runner formatting
+        run: cargo fmt --manifest-path native/Rune.Firecracker.Runner/Cargo.toml -- --check
 
   firecracker-smoke:
     runs-on: ubuntu-latest
