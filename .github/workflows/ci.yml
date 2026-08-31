@@ -112,4 +112,4 @@ jobs:
           curl -fsSL -o "$RUNE_FIRECRACKER_ROOT/vmlinux" "$s3/$kernel_key"
 
       - name: Execute prebuilt ELF in Firecracker
-        run: tests/firecracker/invocation-e2e.sh
+        run: bash tests/firecracker/invocation-e2e.sh
