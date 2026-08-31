@@ -1,4 +1,5 @@
 using Rune.Core.Runes;
+using Xunit;
 
 namespace Rune.Core.Tests;
 
