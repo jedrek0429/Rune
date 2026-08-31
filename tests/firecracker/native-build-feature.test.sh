@@ -26,8 +26,8 @@ grep -q 'setgid' "$guest"
 
 grep -q '64 \* 1024' "$launcher"
 grep -q '16 \* 1024 \* 1024' "$launcher"
-grep -q 'build/rust' "$rootfs"
-grep -q 'build/clang' "$rootfs"
+grep -q 'rust)' "$rootfs"
+grep -q 'clang)' "$rootfs"
 
 if grep -q '/network-interfaces' "$launcher"; then
   echo 'build VMs must not configure networking' >&2
