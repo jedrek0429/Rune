@@ -39,6 +39,7 @@ docker export "$cid" | tar -C "$tmp/rootfs" -xf -
 used_mib="$(du -sm "$tmp/rootfs" | cut -f1)"
 needed_mib=$((used_mib + used_mib / 4 + 64))
 (( needed_mib > size )) && size="$needed_mib"
+rm -f "$rootfs"
 truncate -s "${size}M" "$rootfs"
 mkfs.ext4 -q -F -d "$tmp/rootfs" "$rootfs"
 chmod 0444 "$rootfs"

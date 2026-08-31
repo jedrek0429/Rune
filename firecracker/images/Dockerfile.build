@@ -8,7 +8,7 @@ RUN cargo build --release
 FROM ${BASE_IMAGE}
 ARG POOL
 RUN case "$POOL" in \
-      clang) apt-get update && apt-get install -y --no-install-recommends clang && rm -rf /var/lib/apt/lists/* ;; \
+      clang) apt-get update && apt-get install -y --no-install-recommends clang g++ && rm -rf /var/lib/apt/lists/* ;; \
       rust) rustc --version ;; \
       *) exit 2 ;; \
     esac
