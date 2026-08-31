@@ -1,5 +1,4 @@
 using Rune.Core.Invocations;
-using Rune.Core.Runes;
 using Rune.Runtime;
 
 namespace Rune.Firecracker.Tests;
@@ -35,7 +34,7 @@ public sealed class FirecrackerTransportTests
             RuneEventCodec.FromPayload(
                 invocation.InvocationId,
                 guildId,
-                RuneEventType.MessageCreate,
+                Rune.Core.Runes.RuneEventType.MessageCreate,
                 payload));
 
         Assert.Equal(channelId, decoded.ChannelId);
@@ -46,41 +45,20 @@ public sealed class FirecrackerTransportTests
     }
 
     [Fact]
-    public async Task RegistrationStoresSourceWithoutCompilingWasm()
-    {
-        var registry = new RuneRegistry();
-        var service = new RuneService(registry);
-        const string source = "message.reply('hello')";
-
-        var rune = await service.RegisterAsync(
-            42,
-            "firecracker",
-            RuneLanguage.JavaScript,
-            RuneEventType.MessageCreate,
-            source);
-
-        Assert.Equal(source, rune.Source);
-        Assert.Empty(rune.Wasm);
-        Assert.True(rune.Enabled);
-        Assert.Same(rune, registry.Get(42, "firecracker"));
-    }
-
-    [Fact]
-    public void InvocationStreamIsPartitionedByLanguage()
+    public void InvocationStreamIsLanguageAgnostic()
     {
         var options = new RuneRedisOptions
         {
-            InvocationStreamPrefix = "test:invocations"
+            InvocationStream = "test:invocations"
         };
 
-        Assert.Equal(
-            "test:invocations:javascript",
-            options.GetInvocationStream(RuneLanguage.JavaScript));
-        Assert.Equal(
-            "test:invocations:python",
-            options.GetInvocationStream(RuneLanguage.Python));
-        Assert.Equal(
-            "test:invocations:rust",
-            options.GetInvocationStream(RuneLanguage.Rust));
+        Assert.Equal("test:invocations", options.InvocationStream);
+    }
+
+    [Fact]
+    public void ExecutionEnvelopesDoNotExposeSourceLanguage()
+    {
+        Assert.Null(typeof(RuneInvocationEnvelope).GetProperty("Language"));
+        Assert.Null(typeof(RuneResultEnvelope).GetProperty("Language"));
     }
 }

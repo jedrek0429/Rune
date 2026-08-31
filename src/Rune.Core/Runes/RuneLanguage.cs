@@ -3,6 +3,11 @@ namespace Rune.Core.Runes;
 public enum RuneLanguage
 {
     JavaScript,
+    TypeScript,
     Python,
-    Rust
+    Ruby,
+    Rust,
+    C,
+    Cpp,
+    CSharp
 }

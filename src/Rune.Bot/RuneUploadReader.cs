@@ -9,14 +9,11 @@ namespace Rune.Bot;
 public sealed class RuneUploadReader(
     IHttpClientFactory httpClientFactory)
 {
-    private const int MaxSourceSize =
-        64 * 1024;
-
     public async ValueTask<RuneUpload> ReadAsync(
         Attachment file,
         CancellationToken cancellationToken = default)
     {
-        if (file.Size > MaxSourceSize)
+        if (file.Size > RuneResourceLimits.MaxSourceBytes)
         {
             return RuneUpload.Fail(
                 "Rune source may not exceed 64 KiB.");
@@ -28,7 +25,7 @@ public sealed class RuneUploadReader(
         if (language is null)
         {
             return RuneUpload.Fail(
-                "Supported files are `.js`, `.mjs`, `.py`, and `.rs`.");
+                "Supported files are `.js`, `.mjs`, `.ts`, `.mts`, `.py`, `.rb`, `.rs`, `.c`, `.cc`, `.cpp`, `.cxx`, and `.cs`.");
         }
 
         try
@@ -48,7 +45,7 @@ public sealed class RuneUploadReader(
                     .ReadAsByteArrayAsync(
                         cancellationToken);
 
-            if (bytes.Length > MaxSourceSize)
+            if (bytes.Length > RuneResourceLimits.MaxSourceBytes)
             {
                 return RuneUpload.Fail(
                     "Rune source may not exceed 64 KiB.");
@@ -73,15 +70,14 @@ public sealed class RuneUploadReader(
             .ToLowerInvariant()
             switch
         {
-            ".js" or ".mjs" =>
-                RuneLanguage.JavaScript,
-
-            ".py" =>
-                RuneLanguage.Python,
-
-            ".rs" =>
-                RuneLanguage.Rust,
-
+            ".js" or ".mjs" => RuneLanguage.JavaScript,
+            ".ts" or ".mts" => RuneLanguage.TypeScript,
+            ".py" => RuneLanguage.Python,
+            ".rb" => RuneLanguage.Ruby,
+            ".rs" => RuneLanguage.Rust,
+            ".c" => RuneLanguage.C,
+            ".cc" or ".cpp" or ".cxx" => RuneLanguage.Cpp,
+            ".cs" => RuneLanguage.CSharp,
             _ => null
         };
     }

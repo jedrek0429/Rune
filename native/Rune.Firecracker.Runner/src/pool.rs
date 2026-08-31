@@ -10,10 +10,9 @@ use anyhow::Result;
 use tokio::sync::{Mutex, Notify};
 use tracing::{error, info};
 
-use crate::{config::Config, firecracker::WarmVm, protocol::RuneLanguage};
+use crate::{config::Config, firecracker::WarmVm};
 
 pub struct VmPool {
-    language: RuneLanguage,
     config: Arc<Config>,
     idle: Mutex<VecDeque<WarmVm>>,
     in_flight: AtomicUsize,
@@ -22,9 +21,8 @@ pub struct VmPool {
 }
 
 impl VmPool {
-    pub fn new(language: RuneLanguage, config: Arc<Config>) -> Self {
+    pub fn new(config: Arc<Config>) -> Self {
         Self {
-            language,
             target: AtomicUsize::new(config.min_vms),
             config,
             idle: Mutex::new(VecDeque::new()),
@@ -39,16 +37,12 @@ impl VmPool {
 
     pub async fn prime(&self) -> Result<()> {
         for _ in 0..self.config.min_vms {
-            let vm = WarmVm::restore(self.language, self.config.clone()).await?;
-            self.idle.lock().await.push_back(vm);
+            self.idle
+                .lock()
+                .await
+                .push_back(WarmVm::restore(self.config.clone()).await?);
         }
-
-        info!(
-            language = self.language.as_str(),
-            count = self.config.min_vms,
-            "warm Firecracker pool primed"
-        );
-
+        info!(count = self.config.min_vms, "warm Rune pool primed");
         Ok(())
     }
 
@@ -59,7 +53,6 @@ impl VmPool {
                 self.changed.notify_one();
                 return Ok(vm);
             }
-
             self.changed.notify_one();
             self.changed.notified().await;
         }
@@ -74,10 +67,7 @@ impl VmPool {
         let target = target.clamp(self.config.min_vms, self.config.max_vms);
         let previous = self.target.swap(target, Ordering::AcqRel);
         if previous != target {
-            info!(
-                language = self.language.as_str(),
-                previous, target, "warm Firecracker pool target changed"
-            );
+            info!(previous, target, "warm Rune pool target changed");
             self.changed.notify_one();
         }
     }
@@ -86,7 +76,6 @@ impl VmPool {
         if backlog == 0 {
             return self.config.min_vms;
         }
-
         backlog
             .div_ceil(self.config.backlog_per_vm)
             .clamp(self.config.min_vms, self.config.max_vms)
@@ -100,19 +89,14 @@ impl VmPool {
             let total = idle_count + in_flight;
 
             if total < target {
-                let missing = target - total;
-                for _ in 0..missing {
-                    match WarmVm::restore(self.language, self.config.clone()).await {
+                for _ in 0..(target - total) {
+                    match WarmVm::restore(self.config.clone()).await {
                         Ok(vm) => {
                             self.idle.lock().await.push_back(vm);
                             self.changed.notify_waiters();
                         }
                         Err(error) => {
-                            error!(
-                                language = self.language.as_str(),
-                                %error,
-                                "failed to restore warm Firecracker VM"
-                            );
+                            error!(%error, "failed to restore warm Rune VM");
                             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
                             break;
                         }
@@ -122,10 +106,8 @@ impl VmPool {
             }
 
             if total > target && idle_count > 0 {
-                let excess = (total - target).min(idle_count);
-                for _ in 0..excess {
-                    let vm = self.idle.lock().await.pop_back();
-                    if let Some(vm) = vm {
+                for _ in 0..(total - target).min(idle_count) {
+                    if let Some(vm) = self.idle.lock().await.pop_back() {
                         vm.destroy().await;
                     }
                 }
@@ -139,14 +121,13 @@ impl VmPool {
 
 #[cfg(test)]
 mod tests {
-    use std::{path::PathBuf, time::Duration};
-
     use super::*;
+    use std::{path::PathBuf, time::Duration};
 
     fn config(min_vms: usize, max_vms: usize, backlog_per_vm: usize) -> Arc<Config> {
         Arc::new(Config {
             redis_url: "redis://127.0.0.1:6379/".into(),
-            invocation_stream_prefix: "rune:invocations".into(),
+            invocation_stream: "rune:invocations".into(),
             result_stream: "rune:results".into(),
             consumer_group: "rune-runners".into(),
             consumer_name: "test".into(),
@@ -155,18 +136,21 @@ mod tests {
             min_vms,
             max_vms,
             backlog_per_vm,
-            invocation_timeout: Duration::from_secs(6),
+            invocation_timeout: Duration::from_secs(3),
             restore_timeout: Duration::from_secs(2),
             autoscale_interval: Duration::from_millis(250),
             result_stream_max_len: 10_000,
             read_batch_size: 32,
+            max_concurrent_per_rune: 1,
+            max_concurrent_per_guild: 4,
+            max_invocations_per_rune_per_second: 10,
+            max_invocations_per_guild_per_second: 50,
         })
     }
 
     #[test]
     fn backlog_target_uses_ceiling_and_respects_pool_bounds() {
-        let pool = VmPool::new(RuneLanguage::Javascript, config(2, 5, 4));
-
+        let pool = VmPool::new(config(2, 5, 4));
         assert_eq!(pool.target_for_backlog(0), 2);
         assert_eq!(pool.target_for_backlog(1), 2);
         assert_eq!(pool.target_for_backlog(8), 2);

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-for language in javascript python rust; do
-  ./firecracker/build-rootfs.sh "$language"
-  ./firecracker/build-snapshot.sh "$language"
+./firecracker/build-rootfs.sh invocation rune
+./firecracker/build-snapshot.sh
+
+for pool in scriptc clang rust dotnet-aot python ruby; do
+  ./firecracker/build-rootfs.sh build "$pool"
 done

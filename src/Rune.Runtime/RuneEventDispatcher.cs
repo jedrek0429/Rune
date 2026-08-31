@@ -20,6 +20,20 @@ public sealed class RuneEventDispatcher(
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            if (rune.Artifact is null)
+            {
+                failures.Add(new RuneFailure(rune.Name, "The rune has not been built yet."));
+                continue;
+            }
+
+            if (rune.Artifact.SizeBytes > RuneResourceLimits.MaxArtifactBytes)
+            {
+                failures.Add(new RuneFailure(
+                    rune.Name,
+                    "The built rune artifact exceeds the 16 MiB limit."));
+                continue;
+            }
+
             try
             {
                 await transport.EnqueueAsync(
@@ -29,9 +43,8 @@ public sealed class RuneEventDispatcher(
                         rune.Id,
                         rune.Name,
                         invocation.GuildId,
-                        rune.Language,
                         rune.EventType,
-                        rune.Source,
+                        rune.Artifact,
                         payload,
                         DateTimeOffset.UtcNow),
                     cancellationToken);

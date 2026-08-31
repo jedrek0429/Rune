@@ -35,8 +35,8 @@ builder.Services
             Environment.GetEnvironmentVariable("RUNE_REDIS") ??
             "localhost:6379";
 
-        options.InvocationStreamPrefix =
-            Environment.GetEnvironmentVariable("RUNE_INVOCATION_STREAM_PREFIX") ??
+        options.InvocationStream =
+            Environment.GetEnvironmentVariable("RUNE_INVOCATION_STREAM") ??
             "rune:invocations";
 
         options.ResultStream =

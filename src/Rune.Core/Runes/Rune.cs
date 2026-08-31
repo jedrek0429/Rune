@@ -1,5 +1,12 @@
 namespace Rune.Core.Runes;
 
+public sealed record BuiltRuneArtifact(
+    string Id,
+    string Digest,
+    string Entrypoint,
+    long SizeBytes
+);
+
 public sealed record RegisteredRune(
     Guid Id,
     ulong GuildId,
@@ -7,13 +14,6 @@ public sealed record RegisteredRune(
     RuneLanguage Language,
     RuneEventType EventType,
     string Source,
-    byte[] Wasm,
-    bool Enabled
-);
-
-public sealed record CompiledRune(
-    byte[] Wasm,
-    IReadOnlyList<string> Diagnostics,
-    RuneEventType EventType = RuneEventType.MessageCreate,
-    string ApiFingerprint = ""
+    bool Enabled,
+    BuiltRuneArtifact? Artifact = null
 );

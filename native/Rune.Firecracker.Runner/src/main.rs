@@ -1,3 +1,4 @@
+mod admission;
 mod config;
 mod firecracker;
 mod pool;
@@ -6,9 +7,10 @@ mod redis_queue;
 
 use std::sync::Arc;
 
+use admission::AdmissionController;
 use anyhow::Result;
+use firecracker::load_artifact;
 use pool::VmPool;
-use protocol::RuneLanguage;
 use redis_queue::RedisQueue;
 use tokio::task::JoinSet;
 use tracing::{error, info};
@@ -28,34 +30,37 @@ async fn main() -> Result<()> {
     config.validate_host()?;
 
     let queue = Arc::new(RedisQueue::connect(config.clone()).await?);
+    queue.ensure_group().await?;
+    let admission = Arc::new(AdmissionController::new(
+        config.max_concurrent_per_rune,
+        config.max_concurrent_per_guild,
+        config.max_invocations_per_rune_per_second,
+        config.max_invocations_per_guild_per_second,
+    ));
+    let pool = Arc::new(VmPool::new(config.clone()));
+    pool.prime().await?;
+
     let mut tasks = JoinSet::new();
-
-    for language in RuneLanguage::ALL {
-        let pool = Arc::new(VmPool::new(language, config.clone()));
-        pool.prime().await?;
-
-        {
-            let pool = pool.clone();
-            tasks.spawn(async move {
-                pool.maintain().await;
-                Ok::<(), anyhow::Error>(())
-            });
-        }
-
-        {
-            let pool = pool.clone();
-            let queue = queue.clone();
-            tasks.spawn(async move {
-                autoscale(language, pool, queue).await;
-                Ok::<(), anyhow::Error>(())
-            });
-        }
-
-        {
-            let pool = pool.clone();
-            let queue = queue.clone();
-            tasks.spawn(async move { consume(language, pool, queue).await });
-        }
+    {
+        let pool = pool.clone();
+        tasks.spawn(async move {
+            pool.maintain().await;
+            Ok::<(), anyhow::Error>(())
+        });
+    }
+    {
+        let pool = pool.clone();
+        let queue = queue.clone();
+        tasks.spawn(async move {
+            autoscale(pool, queue).await;
+            Ok::<(), anyhow::Error>(())
+        });
+    }
+    {
+        let pool = pool.clone();
+        let queue = queue.clone();
+        let admission = admission.clone();
+        tasks.spawn(async move { consume(pool, queue, admission).await });
     }
 
     info!("Rune Firecracker runner is ready");
@@ -67,35 +72,54 @@ async fn main() -> Result<()> {
                 error!(%error, "runner task failed");
                 return Err(error);
             }
-            Err(error) => {
-                return Err(error.into());
-            }
+            Err(error) => return Err(error.into()),
         }
     }
 
     Ok(())
 }
 
-async fn consume(language: RuneLanguage, pool: Arc<VmPool>, queue: Arc<RedisQueue>) -> Result<()> {
-    queue.ensure_group(language).await?;
-
+async fn consume(
+    pool: Arc<VmPool>,
+    queue: Arc<RedisQueue>,
+    admission: Arc<AdmissionController>,
+) -> Result<()> {
     loop {
-        let jobs = queue.read(language).await?;
+        let jobs = queue.read().await?;
         if jobs.is_empty() {
             continue;
         }
 
         let mut invocations = JoinSet::new();
-
         for job in jobs {
             let pool = pool.clone();
             let queue = queue.clone();
+            let admission = admission.clone();
 
             invocations.spawn(async move {
                 let envelope = job.envelope.clone();
-                let mut vm = pool.acquire().await?;
+                if let Err(message) = envelope.validate() {
+                    return queue.finish(job, &envelope.fail(message.into())).await;
+                }
 
-                let result = vm.invoke(&envelope).await;
+                let artifact = match load_artifact(
+                    &pool.config().state_root.join("artifacts"),
+                    &envelope.artifact,
+                )
+                .await
+                {
+                    Ok(artifact) => artifact,
+                    Err(error) => {
+                        return queue.finish(job, &envelope.fail(error.to_string())).await;
+                    }
+                };
+
+                let _admission = match admission.acquire(&envelope).await {
+                    Ok(permit) => permit,
+                    Err(message) => return queue.finish(job, &envelope.fail(message.into())).await,
+                };
+                let mut vm = pool.acquire().await?;
+                let result = vm.invoke(&envelope, &artifact).await;
                 vm.destroy().await;
                 pool.complete_invocation();
 
@@ -118,20 +142,13 @@ async fn consume(language: RuneLanguage, pool: Arc<VmPool>, queue: Arc<RedisQueu
     }
 }
 
-async fn autoscale(language: RuneLanguage, pool: Arc<VmPool>, queue: Arc<RedisQueue>) {
+async fn autoscale(pool: Arc<VmPool>, queue: Arc<RedisQueue>) {
     let interval = pool.config().autoscale_interval;
-
     loop {
-        match queue.backlog(language).await {
-            Ok(backlog) => {
-                let target = pool.target_for_backlog(backlog);
-                pool.set_target(target);
-            }
-            Err(error) => {
-                error!(?language, %error, "failed to measure Redis backlog");
-            }
+        match queue.backlog().await {
+            Ok(backlog) => pool.set_target(pool.target_for_backlog(backlog)),
+            Err(error) => error!(%error, "failed to measure Redis backlog"),
         }
-
         tokio::time::sleep(interval).await;
     }
 }

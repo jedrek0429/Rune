@@ -9,9 +9,8 @@ public sealed record RuneInvocationEnvelope(
     Guid RuneId,
     string RuneName,
     ulong GuildId,
-    RuneLanguage Language,
     RuneEventType EventType,
-    string Source,
+    BuiltRuneArtifact Artifact,
     JsonElement Payload,
     DateTimeOffset EnqueuedAt);
 
@@ -25,7 +24,6 @@ public sealed record RuneResultEnvelope(
     Guid RuneId,
     string RuneName,
     ulong GuildId,
-    RuneLanguage Language,
     RuneEventType EventType,
     JsonElement Payload,
     IReadOnlyList<RuneHostActionEnvelope> Actions,

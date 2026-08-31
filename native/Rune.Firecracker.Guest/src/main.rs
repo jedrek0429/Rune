@@ -1,58 +1,149 @@
 use std::{
     ffi::CString,
-    fs::File,
-    io::{BufRead, BufReader, Read, Write},
+    fs::{self, File},
+    io::{Read, Write},
     mem::size_of,
-    os::fd::FromRawFd,
-    process::{Child, ChildStdin, ChildStdout, Command, Stdio},
+    os::{fd::FromRawFd, unix::fs::PermissionsExt},
+    process::{Command, Stdio},
+    time::Instant,
 };
 
 use anyhow::{Context, Result, bail};
 
 const VSOCK_PORT: u32 = 5000;
 const VMADDR_CID_ANY: u32 = u32::MAX;
+const MAX_ARTIFACT_BYTES: usize = 16 * 1024 * 1024;
 const MAX_REQUEST_BYTES: usize = 128 * 1024;
 const MAX_RESPONSE_BYTES: usize = 256 * 1024;
+const PID_LIMIT: libc::rlim_t = 32;
+const FD_LIMIT: libc::rlim_t = 128;
+const CPU_LIMIT_SECONDS: libc::rlim_t = 3;
+const WRITABLE_TMPFS_MIB: usize = 32;
+const WORKER_UID: libc::uid_t = 1000;
+const WORKER_GID: libc::gid_t = 1000;
+const ARTIFACT_PATH: &str = "/tmp/rune-artifact";
 
 fn main() -> Result<()> {
-    mount_guest_filesystems();
+    mount_guest_filesystems()?;
+    chown("/tmp", WORKER_UID, WORKER_GID)?;
+    apply_resource_limits()?;
+    drop_privileges()?;
 
-    let language = std::fs::read_to_string("/etc/rune-language")
-        .context("missing /etc/rune-language")?
-        .trim()
-        .to_owned();
-
-    let mut worker = Worker::start(&language)?;
     let listener = VsockListener::bind(VSOCK_PORT)?;
+    println!("RUNE_READY");
 
-    println!("RUNE_READY {language}");
-
-    loop {
-        let mut connection = listener.accept()?;
-        let mut request = String::new();
-
-        BufReader::new(connection.try_clone()?)
-            .take(MAX_REQUEST_BYTES as u64 + 1)
-            .read_line(&mut request)?;
-
-        if request.len() > MAX_REQUEST_BYTES {
-            write_error(&mut connection, "invocation envelope exceeded guest limit")?;
-            continue;
-        }
-
-        match worker.invoke(&request) {
-            Ok(response) if response.len() <= MAX_RESPONSE_BYTES => {
-                connection.write_all(response.as_bytes())?;
-                connection.write_all(b"\n")?;
-            }
-            Ok(_) => {
-                write_error(&mut connection, "worker response exceeded guest limit")?;
-            }
-            Err(error) => {
-                write_error(&mut connection, &format!("guest worker failed: {error}"))?;
-            }
-        }
+    let mut connection = listener.accept()?;
+    if let Err(error) = invoke(&mut connection) {
+        write_error(&mut connection, &error.to_string())?;
     }
+    Ok(())
+}
+
+fn invoke(connection: &mut File) -> Result<()> {
+    let artifact_len = read_u64(connection)? as usize;
+    if artifact_len == 0 || artifact_len > MAX_ARTIFACT_BYTES {
+        bail!("artifact exceeded guest limit");
+    }
+    let mut artifact = vec![0; artifact_len];
+    connection.read_exact(&mut artifact)?;
+
+    let request_len = read_u32(connection)? as usize;
+    if request_len == 0 || request_len > MAX_REQUEST_BYTES {
+        bail!("invocation envelope exceeded guest limit");
+    }
+    let mut request = vec![0; request_len];
+    connection.read_exact(&mut request)?;
+
+    fs::write(ARTIFACT_PATH, artifact)?;
+    fs::set_permissions(ARTIFACT_PATH, fs::Permissions::from_mode(0o500))?;
+
+    let started = Instant::now();
+    let mut child = Command::new(ARTIFACT_PATH)
+        .env_clear()
+        .env("PATH", "/usr/local/bin:/usr/bin:/bin")
+        .env("HOME", "/tmp")
+        .env("TMPDIR", "/tmp")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .context("failed to start Rune artifact")?;
+
+    child
+        .stdin
+        .take()
+        .context("artifact stdin was not piped")?
+        .write_all(&request)?;
+    let mut response = Vec::new();
+    child
+        .stdout
+        .take()
+        .context("artifact stdout was not piped")?
+        .take((MAX_RESPONSE_BYTES + 1) as u64)
+        .read_to_end(&mut response)?;
+    let status = child.wait()?;
+
+    if response.len() > MAX_RESPONSE_BYTES {
+        bail!("Rune response exceeded guest limit");
+    }
+    if !status.success() {
+        bail!("Rune artifact exited with {status}");
+    }
+    if response.is_empty() {
+        response = format!(
+            "{{\"actions\":[],\"error\":null,\"durationMicros\":{}}}",
+            started.elapsed().as_micros()
+        )
+        .into_bytes();
+    }
+
+    connection.write_all(&response)?;
+    if !response.ends_with(b"\n") {
+        connection.write_all(b"\n")?;
+    }
+    Ok(())
+}
+
+fn read_u64(reader: &mut impl Read) -> Result<u64> {
+    let mut bytes = [0; 8];
+    reader.read_exact(&mut bytes)?;
+    Ok(u64::from_be_bytes(bytes))
+}
+
+fn read_u32(reader: &mut impl Read) -> Result<u32> {
+    let mut bytes = [0; 4];
+    reader.read_exact(&mut bytes)?;
+    Ok(u32::from_be_bytes(bytes))
+}
+
+fn apply_resource_limits() -> Result<()> {
+    set_limit(libc::RLIMIT_CPU, CPU_LIMIT_SECONDS)?;
+    set_limit(libc::RLIMIT_NPROC, PID_LIMIT)?;
+    set_limit(libc::RLIMIT_NOFILE, FD_LIMIT)
+}
+
+fn set_limit(resource: libc::__rlimit_resource_t, value: libc::rlim_t) -> Result<()> {
+    let limit = libc::rlimit {
+        rlim_cur: value,
+        rlim_max: value,
+    };
+    if unsafe { libc::setrlimit(resource, &limit) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("setrlimit failed");
+    }
+    Ok(())
+}
+
+fn drop_privileges() -> Result<()> {
+    if unsafe { libc::setgroups(0, std::ptr::null()) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("setgroups failed");
+    }
+    if unsafe { libc::setgid(WORKER_GID) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("setgid failed");
+    }
+    if unsafe { libc::setuid(WORKER_UID) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("setuid failed");
+    }
+    Ok(())
 }
 
 fn write_error(connection: &mut File, message: &str) -> Result<()> {
@@ -68,88 +159,6 @@ fn write_error(connection: &mut File, message: &str) -> Result<()> {
     Ok(())
 }
 
-struct Worker {
-    _child: Child,
-    stdin: ChildStdin,
-    stdout: BufReader<ChildStdout>,
-}
-
-impl Worker {
-    fn start(language: &str) -> Result<Self> {
-        let mut command = match language {
-            "javascript" => {
-                let mut command = Command::new("node");
-                command.arg("/opt/rune/worker.mjs");
-                command
-            }
-            "python" => {
-                let mut command = Command::new("python3");
-                command.arg("-u").arg("/opt/rune/worker.py");
-                command
-            }
-            "rust" => {
-                let mut command = Command::new("python3");
-                command.arg("-u").arg("/opt/rune/worker-rust.py");
-                command
-            }
-            other => bail!("unsupported guest language {other}"),
-        };
-
-        command
-            .env(
-                "PATH",
-                "/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-            )
-            .env("HOME", "/root")
-            .env("TMPDIR", "/tmp")
-            .env("RUSTUP_HOME", "/usr/local/rustup")
-            .env("CARGO_HOME", "/usr/local/cargo");
-
-        let mut child = command
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
-            .spawn()
-            .context("failed to start language worker")?;
-
-        let stdin = child.stdin.take().context("worker stdin was not piped")?;
-        let stdout = child.stdout.take().context("worker stdout was not piped")?;
-        let mut stdout = BufReader::new(stdout);
-        let mut ready = String::new();
-        stdout.read_line(&mut ready)?;
-
-        if ready.trim() != "{\"ready\":true}" {
-            bail!("language worker did not become ready: {}", ready.trim());
-        }
-
-        Ok(Self {
-            _child: child,
-            stdin,
-            stdout,
-        })
-    }
-
-    fn invoke(&mut self, request: &str) -> Result<String> {
-        self.stdin.write_all(request.as_bytes())?;
-        if !request.ends_with('\n') {
-            self.stdin.write_all(b"\n")?;
-        }
-        self.stdin.flush()?;
-
-        let mut response = String::new();
-        self.stdout
-            .by_ref()
-            .take(MAX_RESPONSE_BYTES as u64 + 1)
-            .read_line(&mut response)?;
-
-        if response.len() > MAX_RESPONSE_BYTES {
-            bail!("worker response exceeded limit");
-        }
-
-        Ok(response.trim_end_matches(['\r', '\n']).to_owned())
-    }
-}
-
 struct VsockListener {
     fd: i32,
 }
@@ -160,7 +169,6 @@ impl VsockListener {
         if fd < 0 {
             return Err(std::io::Error::last_os_error()).context("socket(AF_VSOCK) failed");
         }
-
         let address = libc::sockaddr_vm {
             svm_family: libc::AF_VSOCK as libc::sa_family_t,
             svm_reserved1: 0,
@@ -168,27 +176,23 @@ impl VsockListener {
             svm_cid: VMADDR_CID_ANY,
             svm_zero: [0; 4],
         };
-
-        let result = unsafe {
+        if unsafe {
             libc::bind(
                 fd,
                 &address as *const libc::sockaddr_vm as *const libc::sockaddr,
                 size_of::<libc::sockaddr_vm>() as libc::socklen_t,
             )
-        };
-
-        if result != 0 {
+        } != 0
+        {
             let error = std::io::Error::last_os_error();
             unsafe { libc::close(fd) };
             return Err(error).context("bind(AF_VSOCK) failed");
         }
-
-        if unsafe { libc::listen(fd, 16) } != 0 {
+        if unsafe { libc::listen(fd, 1) } != 0 {
             let error = std::io::Error::last_os_error();
             unsafe { libc::close(fd) };
             return Err(error).context("listen(AF_VSOCK) failed");
         }
-
         Ok(Self { fd })
     }
 
@@ -201,11 +205,9 @@ impl VsockListener {
                 libc::SOCK_CLOEXEC,
             )
         };
-
         if fd < 0 {
             return Err(std::io::Error::last_os_error()).context("accept(AF_VSOCK) failed");
         }
-
         Ok(unsafe { File::from_raw_fd(fd) })
     }
 }
@@ -216,22 +218,23 @@ impl Drop for VsockListener {
     }
 }
 
-fn mount_guest_filesystems() {
-    let _ = mount("devtmpfs", "/dev", "devtmpfs", libc::MS_NOSUID, "mode=0755");
-    let _ = mount(
+fn mount_guest_filesystems() -> Result<()> {
+    fs::create_dir_all("/proc")?;
+    fs::create_dir_all("/tmp")?;
+    mount(
         "proc",
         "/proc",
         "proc",
         libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC,
         "",
-    );
-    let _ = mount(
+    )?;
+    mount(
         "tmpfs",
         "/tmp",
         "tmpfs",
         libc::MS_NOSUID | libc::MS_NODEV,
-        "size=384m",
-    );
+        &format!("size={WRITABLE_TMPFS_MIB}m,mode=0700"),
+    )
 }
 
 fn mount(source: &str, target: &str, fstype: &str, flags: libc::c_ulong, data: &str) -> Result<()> {
@@ -239,8 +242,7 @@ fn mount(source: &str, target: &str, fstype: &str, flags: libc::c_ulong, data: &
     let target = CString::new(target)?;
     let fstype = CString::new(fstype)?;
     let data = CString::new(data)?;
-
-    let result = unsafe {
+    if unsafe {
         libc::mount(
             source.as_ptr(),
             target.as_ptr(),
@@ -248,11 +250,34 @@ fn mount(source: &str, target: &str, fstype: &str, flags: libc::c_ulong, data: &
             flags,
             data.as_ptr().cast(),
         )
-    };
-
-    if result != 0 {
+    } != 0
+    {
         return Err(std::io::Error::last_os_error()).context("mount failed");
     }
-
     Ok(())
+}
+
+fn chown(path: &str, uid: libc::uid_t, gid: libc::gid_t) -> Result<()> {
+    let path = CString::new(path)?;
+    if unsafe { libc::chown(path.as_ptr(), uid, gid) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("chown failed");
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invocation_guest_policy_is_tight() {
+        assert_eq!(PID_LIMIT, 32);
+        assert_eq!(FD_LIMIT, 128);
+        assert_eq!(CPU_LIMIT_SECONDS, 3);
+        assert_eq!(WRITABLE_TMPFS_MIB, 32);
+        assert_eq!(MAX_ARTIFACT_BYTES, 16 * 1024 * 1024);
+        assert_eq!(MAX_RESPONSE_BYTES, 256 * 1024);
+        assert_ne!(WORKER_UID, 0);
+        assert_ne!(WORKER_GID, 0);
+    }
 }
