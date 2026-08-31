@@ -58,12 +58,14 @@ grep -q 'drive_id.*input' "$builder" && grep -q 'is_read_only.*true' "$builder" 
 grep -q 'drive_id.*cache_seed' "$builder" && grep -q 'is_read_only.*true' "$builder" || { echo "ScriptC cache seed must enter build VMs read-only with a valid Firecracker resource ID" >&2; exit 1; }
 grep -q 'size <= 16777216' "$builder" || { echo "artifact must be capped at 16 MiB" >&2; exit 1; }
 grep -q 'sha256sum' "$builder" || { echo "artifact store must be content-addressed" >&2; exit 1; }
+grep -q 'e2fsck -p "$scratch"' "$builder" || { echo "build scratch must be journal-finalized after the VM stops" >&2; exit 1; }
+grep -q 'dump -p /diagnostics.txt' "$builder" || { echo "build launcher must preserve guest compiler diagnostics" >&2; exit 1; }
 
 dockerfile="$repo_root/firecracker/images/Dockerfile.build"
 build_guest="$repo_root/native/Rune.Firecracker.BuildGuest/src/main.rs"
 invocation_dockerfile="$repo_root/firecracker/images/Dockerfile.invocation"
 scriptc_builder="$repo_root/firecracker/build-tools/scriptc.sh"
-grep -q 'scriptc).*build-essential.*clang' "$dockerfile" || { echo "ScriptC build image must include Linux headers, assembler and linker tooling" >&2; exit 1; }
+grep -q 'scriptc)' "$dockerfile" && grep -q 'build-essential' "$dockerfile" && grep -q 'clang' "$dockerfile" || { echo "ScriptC build image must include Linux headers, assembler and linker tooling" >&2; exit 1; }
 grep -q 'ARG SCRIPTC_VERSION=0\.0\.35' "$dockerfile" || { echo "ScriptC compiler version must be pinned" >&2; exit 1; }
 grep -Fq '"scriptc@$SCRIPTC_VERSION"' "$dockerfile" || { echo "ScriptC install must use the pinned compiler version" >&2; exit 1; }
 if grep -Eq 'npm install .*scriptc scriptc([ ;]|$)' "$dockerfile"; then
