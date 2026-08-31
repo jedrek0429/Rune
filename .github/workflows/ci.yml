@@ -21,6 +21,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
 
       - name: Verify Rust toolchain
         run: |
@@ -32,20 +33,12 @@ jobs:
         env:
           BINARYEN_VERSION: "131"
         run: |
-          curl -fsSL \
-            -o binaryen.tar.gz \
-            "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz"
-
-          echo "b5bf1f0eaf17c63ee588ff7a5954dc8f6ce2c26989051c66f24dfe9ece3e46db  binaryen.tar.gz" \
-            | sha256sum --check
-
+          curl -fsSL -o binaryen.tar.gz "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz"
+          echo "b5bf1f0eaf17c63ee588ff7a5954dc8f6ce2c26989051c66f24dfe9ece3e46db  binaryen.tar.gz" | sha256sum --check
           tar -xzf binaryen.tar.gz
-
           BINARYEN_BIN="$PWD/binaryen-version_${BINARYEN_VERSION}/bin"
-
           echo "$BINARYEN_BIN" >> "$GITHUB_PATH"
           export PATH="$BINARYEN_BIN:$PATH"
-
           wasm-opt --version
           wasm-merge --version
 
@@ -54,16 +47,10 @@ jobs:
           mkdir -p "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           export PATH="$HOME/.local/bin:$PATH"
-
-          curl -fsSLO \
-            https://raw.githubusercontent.com/extism/js-pdk/main/install.sh
+          curl -fsSLO https://raw.githubusercontent.com/extism/js-pdk/main/install.sh
           bash install.sh
           rm install.sh
-
-          curl -fsSL \
-            https://raw.githubusercontent.com/extism/python-pdk/main/install.sh \
-            | bash
-
+          curl -fsSL https://raw.githubusercontent.com/extism/python-pdk/main/install.sh | bash
           extism-js --help >/dev/null
           extism-py --help >/dev/null
 
@@ -78,6 +65,21 @@ jobs:
 
       - name: Test Firecracker invocation contract
         run: bash tests/firecracker/invocation-feature.test.sh
+
+      - name: Test runner and warm-pool contract
+        run: bash tests/firecracker/runner-feature.test.sh
+
+      - name: Check runner
+        run: cargo check --manifest-path native/Rune.Firecracker.Runner/Cargo.toml
+
+      - name: Lint runner
+        run: cargo clippy --manifest-path native/Rune.Firecracker.Runner/Cargo.toml --all-targets -- -D warnings
+
+      - name: Test runner
+        run: cargo test --manifest-path native/Rune.Firecracker.Runner/Cargo.toml
+
+      - name: Check runner formatting
+        run: cargo fmt --manifest-path native/Rune.Firecracker.Runner/Cargo.toml -- --check
 
   firecracker-smoke:
     runs-on: ubuntu-latest
@@ -104,7 +106,6 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bin" "$RUNE_FIRECRACKER_ROOT"
           install "release-${FIRECRACKER_VERSION}-${arch}/firecracker-${FIRECRACKER_VERSION}-${arch}" "$RUNNER_TEMP/bin/firecracker"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-
           s3="https://s3.amazonaws.com/spec.ccfc.min"
           ci_prefix="$(curl -fsSL "$s3?list-type=2&prefix=firecracker-ci/&delimiter=/" | grep -oP '(?<=<Prefix>)firecracker-ci/[0-9]{8}-[^/]+/(?=</Prefix>)' | sort | tail -1)"
           kernel_key="$(curl -fsSL "$s3?list-type=2&prefix=${ci_prefix}${arch}/vmlinux-6.1" | grep -oP "(?<=<Key>)${ci_prefix}${arch}/vmlinux-6\\.1\\.[0-9]+(?=</Key>)" | sort -V | tail -1)"
