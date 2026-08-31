@@ -13,7 +13,7 @@ case "$kind/$profile" in
   build/scriptc) base=ubuntu:24.04; size=1536; dir=build-images/scriptc ;;
   build/clang) base=debian:bookworm-slim; size=768; dir=build-images/clang ;;
   build/rust) base=rust:1-bookworm; size=1536; dir=build-images/rust ;;
-  build/dotnet-aot) base=mcr.microsoft.com/dotnet/sdk:10.0-bookworm-slim; size=3072; dir=build-images/dotnet-aot ;;
+  build/dotnet-aot) base=debian:bookworm-slim; size=3072; dir=build-images/dotnet-aot ;;
   build/python) base=debian:bookworm-slim; size=1024; dir=build-images/python ;;
   build/ruby) base=debian:bookworm-slim; size=768; dir=build-images/ruby ;;
   *) echo "unsupported rootfs profile: $kind/$profile" >&2; exit 2 ;;
