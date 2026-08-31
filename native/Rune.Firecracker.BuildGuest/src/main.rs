@@ -81,10 +81,7 @@ fn build_command(policy: &BuildPolicy) -> Result<(String, Vec<String>)> {
                 "/artifact",
             ],
         ),
-        "c" => (
-            "clang",
-            vec!["-O2", "/input/source.c", "-o", "/artifact"],
-        ),
+        "c" => ("clang", vec!["-O2", "/input/source.c", "-o", "/artifact"]),
         "cpp" => (
             "clang++",
             vec!["-O2", "/input/source.cpp", "-o", "/artifact"],
@@ -320,7 +317,13 @@ fn read_bounded(mut reader: impl Read) -> Result<Vec<u8>> {
 
 fn mount_guest_filesystems() -> Result<()> {
     fs::create_dir_all("/proc")?;
-    mount("proc", "/proc", "proc", libc::MS_NOSUID | libc::MS_NODEV, "")?;
+    mount(
+        "proc",
+        "/proc",
+        "proc",
+        libc::MS_NOSUID | libc::MS_NODEV,
+        "",
+    )?;
     Ok(())
 }
 
