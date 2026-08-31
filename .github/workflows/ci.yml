@@ -69,6 +69,9 @@ jobs:
       - name: Test runner and warm-pool contract
         run: bash tests/firecracker/runner-feature.test.sh
 
+      - name: Test native build contract
+        run: bash tests/firecracker/native-build-feature.test.sh
+
       - name: Check runner
         run: cargo check --manifest-path native/Rune.Firecracker.Runner/Cargo.toml
 
