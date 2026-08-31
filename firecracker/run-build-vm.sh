@@ -53,6 +53,7 @@ scratch="$tmp/scratch.ext4"
 input="$tmp/input.ext4"
 input_dir="$tmp/input"
 artifact="$tmp/artifact"
+diagnostics="$tmp/diagnostics.txt"
 pid=""
 
 cleanup() {
@@ -64,7 +65,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for dependency in curl python3 truncate mkfs.ext4 debugfs sha256sum "$firecracker"; do
+for dependency in curl python3 truncate mkfs.ext4 e2fsck debugfs sha256sum "$firecracker"; do
   command -v "$dependency" >/dev/null 2>&1 || {
     echo "missing dependency: $dependency" >&2
     exit 1
@@ -131,6 +132,28 @@ api_put() {
   fi
 }
 
+stop_vm_and_finalize_scratch() {
+  if [[ -n "$pid" ]]; then
+    kill "$pid" >/dev/null 2>&1 || true
+    wait "$pid" 2>/dev/null || true
+    pid=""
+  fi
+
+  set +e
+  e2fsck -p "$scratch" >/dev/null
+  local fsck_status=$?
+  set -e
+  if (( fsck_status > 1 )); then
+    echo "build scratch filesystem check failed with status $fsck_status" >&2
+    return "$fsck_status"
+  fi
+}
+
+show_guest_diagnostics() {
+  debugfs -R "dump -p /diagnostics.txt $diagnostics" "$scratch" >/dev/null 2>&1 || true
+  [[ ! -s "$diagnostics" ]] || cat "$diagnostics" >&2
+}
+
 api_put /machine-config "{\"vcpu_count\":$vcpu,\"mem_size_mib\":$mem_mib,\"smt\":false}"
 api_put /boot-source "{\"kernel_image_path\":$(json_string "$kernel"),\"boot_args\":\"console=ttyS0 reboot=k panic=1 pci=off root=/dev/vda ro init=/sbin/rune-build-guest rune.build_pool=$pool rune.language=$language rune.pid_limit=$pid_limit rune.fd_limit=$fd_limit rune.wall_seconds=$wall_seconds\"}"
 api_put /drives/rootfs "{\"drive_id\":\"rootfs\",\"path_on_host\":$(json_string "$rootfs"),\"is_root_device\":true,\"is_read_only\":true}"
@@ -157,16 +180,22 @@ timeout "${wall_seconds}s" bash -c '
 status=$?
 set -e
 
+stop_vm_and_finalize_scratch
+
 if [[ "$status" -ne 0 ]]; then
+  show_guest_diagnostics
   cat "$console_log" >&2 || true
   [[ "$status" -eq 124 ]] && echo "Rune build exceeded ${wall_seconds}s wall-time limit" >&2
+  [[ "$status" -eq 4 ]] && echo "build VM exited before reporting completion" >&2
   exit "$status"
 fi
 
-debugfs -R "dump -p /artifact $artifact" "$scratch" >/dev/null 2>&1 || {
-  echo "build VM produced no artifact" >&2
+if ! debugfs -R "dump -p /artifact $artifact" "$scratch" >/dev/null 2>&1 || [[ ! -f "$artifact" ]]; then
+  show_guest_diagnostics
+  cat "$console_log" >&2 || true
+  echo "build VM reported completion but produced no artifact" >&2
   exit 1
-}
+fi
 size="$(wc -c <"$artifact")"
 (( size > 0 && size <= 16777216 )) || { echo "built artifact exceeds 16 MiB" >&2; exit 1; }
 digest="$(sha256sum "$artifact" | cut -d' ' -f1)"
