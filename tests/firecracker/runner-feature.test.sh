@@ -20,6 +20,6 @@ grep -q 'WarmVm::restore' native/Rune.Firecracker.Runner/src/pool.rs
 grep -q 'vm.destroy().await' native/Rune.Firecracker.Runner/src/main.rs
 grep -q 'sha256:' native/Rune.Firecracker.Runner/src/protocol.rs
 grep -q 'resume_vm' native/Rune.Firecracker.Runner/src/firecracker.rs
-grep -q 'SnapshotType.*Full' firecracker/build-snapshot.sh
+grep -q 'snapshot_type.*Full' firecracker/build-snapshot.sh
 
 echo 'Firecracker runner and warm-pool contract OK'
