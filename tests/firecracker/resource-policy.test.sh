@@ -72,6 +72,8 @@ if grep -Eq 'npm install .*scriptc scriptc([ ;]|$)' "$dockerfile"; then
   echo "ScriptC install must not float to the latest package" >&2
   exit 1
 fi
+grep -q 'build/rust) base=rust:1-bookworm' "$rootfs_builder" || { echo "Rust build rootfs must use the pinned Rust toolchain image" >&2; exit 1; }
+grep -Fq 'RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo exec /usr/local/cargo/bin/rustc "$@"' "$dockerfile" || { echo "Rust compiler must remain reachable after the build guest sanitises its environment" >&2; exit 1; }
 grep -q 'dotnet publish.*PublishAot=true' "$dockerfile" || { echo ".NET build image must prewarm Native AOT assets before network is removed" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES=/opt/rune/nuget' "$dockerfile" || { echo ".NET build image must expose its prewarmed packages outside root home" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES.*opt/rune/nuget' "$build_guest" || { echo "build guest must use the prewarmed NuGet cache" >&2; exit 1; }

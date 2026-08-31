@@ -28,7 +28,7 @@ RUN chmod 0755 /usr/local/bin/rune-build-scriptc /usr/local/bin/rune-build-pytho
         npm install -g --allow-scripts=scriptc "scriptc@$SCRIPTC_VERSION" \
         ;; \
       clang) apt-get install -y --no-install-recommends clang g++ ;; \
-      rust) true ;; \
+      rust) printf '#!/bin/sh\nRUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo exec /usr/local/cargo/bin/rustc "$@"\n' > /usr/local/bin/rustc && chmod 0755 /usr/local/bin/rustc ;; \
       dotnet-aot) apt-get install -y --no-install-recommends clang zlib1g-dev ;; \
       python) apt-get install -y --no-install-recommends build-essential git python3 ca-certificates && git clone --depth 1 --branch "$MICROPYTHON_VERSION" https://github.com/micropython/micropython.git /opt/micropython && make -C /opt/micropython/mpy-cross -j2 && mkdir -p /tmp/micropython-embed && cp -a /opt/micropython/examples/embedding/. /tmp/micropython-embed/ && sed -i '/MICROPY_ENABLE_COMPILER/a #define MICROPY_PERSISTENT_CODE_LOAD            (1)' /tmp/micropython-embed/mpconfigport.h && make -C /tmp/micropython-embed -f micropython_embed.mk MICROPYTHON_TOP=/opt/micropython && make -C /tmp/micropython-embed && mkdir -p /opt/rune/micropython && find /tmp/micropython-embed/micropython_embed -name '*.o' -exec ar rcs /opt/rune/micropython/libmicropython_embed.a {} + && cp -a /tmp/micropython-embed/micropython_embed /opt/rune/micropython/embed && cp /opt/micropython/mpy-cross/build/mpy-cross /usr/local/bin/mpy-cross && rm -rf /opt/micropython /tmp/micropython-embed ;; \
       ruby) apt-get install -y --no-install-recommends build-essential mruby libmruby-dev && mkdir -p /opt/rune/mruby && cp "$(find /usr/lib -name libmruby.a -print -quit)" /opt/rune/mruby/libmruby.a ;; \
