@@ -76,6 +76,7 @@ grep -q 'dotnet publish.*PublishAot=true' "$dockerfile" || { echo ".NET build im
 grep -q 'NUGET_PACKAGES=/opt/rune/nuget' "$dockerfile" || { echo ".NET build image must expose its prewarmed packages outside root home" >&2; exit 1; }
 grep -q 'NUGET_PACKAGES.*opt/rune/nuget' "$build_guest" || { echo "build guest must use the prewarmed NuGet cache" >&2; exit 1; }
 grep -q 'setgroups(0' "$build_guest" || { echo "build guest must clear supplementary groups before dropping privileges" >&2; exit 1; }
+grep -q 'libc::sync()' "$build_guest" || { echo "build guest must flush scratch before reporting completion" >&2; exit 1; }
 if grep -q 'mount("devtmpfs", "/dev"' "$build_guest"; then
   echo "build guest must use the kernel-provided /dev mount" >&2
   exit 1
