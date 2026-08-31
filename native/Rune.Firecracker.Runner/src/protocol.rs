@@ -68,8 +68,13 @@ impl InvocationEnvelope {
 }
 
 fn canonical_sha256(value: &str) -> bool {
-    let Some(hex) = value.strip_prefix("sha256:") else { return false; };
-    hex.len() == 64 && hex.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    let Some(hex) = value.strip_prefix("sha256:") else {
+        return false;
+    };
+    hex.len() == 64
+        && hex
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,16 +108,30 @@ mod tests {
 
     fn envelope(id: &str) -> InvocationEnvelope {
         InvocationEnvelope {
-            execution_id: "e".into(), invocation_id: "i".into(), rune_id: "r".into(), rune_name: "n".into(), guild_id: 1,
+            execution_id: "e".into(),
+            invocation_id: "i".into(),
+            rune_id: "r".into(),
+            rune_name: "n".into(),
+            guild_id: 1,
             event_type: RuneEventType::MessageCreate,
-            artifact: BuiltRuneArtifact { id: id.into(), digest: id.into(), entrypoint: "rune".into(), size_bytes: 1 },
-            payload: Value::Null, enqueued_at: "now".into(),
+            artifact: BuiltRuneArtifact {
+                id: id.into(),
+                digest: id.into(),
+                entrypoint: "rune".into(),
+                size_bytes: 1,
+            },
+            payload: Value::Null,
+            enqueued_at: "now".into(),
         }
     }
 
     #[test]
     fn only_canonical_content_addressed_artifacts_are_accepted() {
-        assert!(envelope("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").validate().is_ok());
+        assert!(
+            envelope("sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+                .validate()
+                .is_ok()
+        );
         assert!(envelope("../rune").validate().is_err());
     }
 }
