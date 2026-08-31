@@ -75,3 +75,6 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build --configuration Release
+
+      - name: Test Firecracker invocation contract
+        run: bash tests/firecracker/invocation-feature.test.sh
