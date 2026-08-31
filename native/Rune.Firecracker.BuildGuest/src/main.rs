@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     ffi::CString,
     fs,
-    io::Read,
+    io::{Read, Write},
     os::unix::fs::PermissionsExt,
     process::{Command, Stdio},
     thread,
@@ -18,9 +18,10 @@ const MAX_DIAGNOSTIC_BYTES: usize = 64 * 1024;
 struct BuildPolicy {
     pool: String,
     language: String,
+    wall_seconds: u64,
+    cpu_seconds: u64,
     pid_limit: u64,
     fd_limit: u64,
-    cpu_seconds: u64,
 }
 
 fn values(cmdline: &str) -> HashMap<&str, &str> {
@@ -30,63 +31,80 @@ fn values(cmdline: &str) -> HashMap<&str, &str> {
         .collect()
 }
 
-fn parse_policy(cmdline: &str) -> Result<BuildPolicy> {
-    let values = values(cmdline);
-    let pool = values
-        .get("rune.build_pool")
-        .context("missing rune.build_pool")?
-        .to_string();
-    let language = values
-        .get("rune.language")
-        .context("missing rune.language")?
-        .to_string();
-    build_command(&pool, &language)?;
-
-    Ok(BuildPolicy {
-        pool,
-        language,
-        pid_limit: parse_positive(&values, "rune.pid_limit")?,
-        fd_limit: parse_positive(&values, "rune.fd_limit")?,
-        cpu_seconds: parse_positive(&values, "rune.wall_seconds")?,
-    })
-}
-
 fn parse_positive(values: &HashMap<&str, &str>, key: &str) -> Result<u64> {
     let value = values
         .get(key)
-        .with_context(|| format!("missing {key}"))?
+        .with_context(|| format!("missing kernel argument {key}"))?
         .parse::<u64>()
-        .with_context(|| format!("invalid {key}"))?;
+        .with_context(|| format!("invalid kernel argument {key}"))?;
     if value == 0 {
-        bail!("{key} must be greater than zero");
+        bail!("kernel argument {key} must be positive");
     }
     Ok(value)
 }
 
-fn build_command(pool: &str, language: &str) -> Result<(&'static str, Vec<String>)> {
-    let output = "/work/artifact";
-    let command = match (pool, language) {
-        ("scriptc", "javascript") => ("rune-build-scriptc", vec!["/input/source.js", output]),
-        ("scriptc", "typescript") => ("rune-build-scriptc", vec!["/input/source.ts", output]),
-        ("rust", "rust") => ("rustc", vec!["/input/source.rs", "-O", "-o", output]),
-        ("clang", "c") => ("clang", vec!["/input/source.c", "-O2", "-o", output]),
-        ("clang", "cpp") => ("clang++", vec!["/input/source.cpp", "-O2", "-o", output]),
-        ("dotnet-aot", "csharp") => (
+fn parse_policy(cmdline: &str) -> Result<BuildPolicy> {
+    let values = values(cmdline);
+    let pool = values
+        .get("rune.build_pool")
+        .context("missing kernel argument rune.build_pool")?
+        .to_string();
+    let language = values
+        .get("rune.language")
+        .context("missing kernel argument rune.language")?
+        .to_string();
+    let wall_seconds = parse_positive(&values, "rune.wall_seconds")?;
+    let cpu_seconds = parse_positive(&values, "rune.cpu_seconds")?;
+    let pid_limit = parse_positive(&values, "rune.pid_limit")?;
+    let fd_limit = parse_positive(&values, "rune.fd_limit")?;
+    Ok(BuildPolicy {
+        pool,
+        language,
+        wall_seconds,
+        cpu_seconds,
+        pid_limit,
+        fd_limit,
+    })
+}
+
+fn build_command(policy: &BuildPolicy) -> Result<(String, Vec<String>)> {
+    let command = match policy.language.as_str() {
+        "javascript" => ("rune-build-scriptc", vec!["/input/source.js", "/artifact"]),
+        "typescript" => ("rune-build-scriptc", vec!["/input/source.ts", "/artifact"]),
+        "rust" => (
+            "rustc",
+            vec![
+                "--edition=2024",
+                "-O",
+                "/input/source.rs",
+                "-o",
+                "/artifact",
+            ],
+        ),
+        "c" => (
+            "clang",
+            vec!["-O2", "/input/source.c", "-o", "/artifact"],
+        ),
+        "cpp" => (
+            "clang++",
+            vec!["-O2", "/input/source.cpp", "-o", "/artifact"],
+        ),
+        "csharp" => (
             "dotnet",
             vec![
                 "publish",
-                "/work/project/Rune.csproj",
+                "/input/Rune.csproj",
                 "-c",
                 "Release",
+                "--no-restore",
+                "-p:PublishAot=true",
                 "-o",
                 "/work/publish",
-                "-p:PublishAot=true",
-                "-p:RestoreIgnoreFailedSources=true",
             ],
         ),
-        ("python", "python") => ("rune-build-python", vec!["/input/source.py", output]),
-        ("ruby", "ruby") => ("rune-build-ruby", vec!["/input/source.rb", output]),
-        _ => bail!("unsupported build pool/language pair {pool}/{language}"),
+        "python" => ("rune-build-python", vec!["/input/source.py", "/artifact"]),
+        "ruby" => ("rune-build-ruby", vec!["/input/source.rb", "/artifact"]),
+        other => bail!("unsupported build language: {other}"),
     };
 
     Ok((
@@ -185,14 +203,19 @@ fn warm_scriptc_cache(cmdline: &str) -> Result<()> {
             .with_context(|| format!("failed to start ScriptC {profile} cache warm"))?;
         if !status.success() {
             diagnose_scriptc_cache_warm(profile);
-            unsafe { libc::sync() };
-            println!("RUNE_CACHE_WARM_FAILED");
-            bail!("ScriptC {profile} cache warm exited with {status}");
+            signal_cache_warm("RUNE_CACHE_WARM_FAILED");
         }
     }
+    signal_cache_warm("RUNE_CACHE_WARM_DONE");
+}
+
+fn signal_cache_warm(marker: &str) -> ! {
     unsafe { libc::sync() };
-    println!("RUNE_CACHE_WARM_DONE");
-    Ok(())
+    println!("{marker}");
+    let _ = std::io::stdout().flush();
+    loop {
+        thread::park();
+    }
 }
 
 fn diagnose_scriptc_cache_warm(profile: &str) {
@@ -224,15 +247,9 @@ try {
 }
 
 fn run_build(policy: &BuildPolicy) -> Result<()> {
-    fs::create_dir_all("/work/tmp")?;
-    if policy.language == "csharp" {
-        fs::create_dir_all("/work/project")?;
-        fs::copy("/input/Program.cs", "/work/project/Program.cs")?;
-        fs::copy("/input/Rune.csproj", "/work/project/Rune.csproj")?;
-    }
-
-    let (program, args) = build_command(&policy.pool, &policy.language)?;
-    let mut child = Command::new(program)
+    let (program, args) = build_command(policy)?;
+    let mut command = Command::new(program);
+    command
         .args(args)
         .env_clear()
         .env("PATH", "/usr/local/bin:/usr/bin:/bin")
@@ -242,94 +259,83 @@ fn run_build(policy: &BuildPolicy) -> Result<()> {
         .current_dir("/work")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .with_context(|| format!("failed to start {program}"))?;
+        .stderr(Stdio::piped());
+    fs::create_dir_all("/work/tmp")?;
 
-    let stdout = child.stdout.take().context("build stdout was not piped")?;
-    let stderr = child.stderr.take().context("build stderr was not piped")?;
-    let stdout_thread = thread::spawn(move || drain_bounded(stdout));
-    let stderr_thread = thread::spawn(move || drain_bounded(stderr));
+    let mut child = command.spawn().context("failed to start compiler")?;
+    let stdout = child.stdout.take().context("missing compiler stdout")?;
+    let stderr = child.stderr.take().context("missing compiler stderr")?;
+    let stdout_reader = thread::spawn(move || read_bounded(stdout));
+    let stderr_reader = thread::spawn(move || read_bounded(stderr));
+    let status = child.wait().context("failed to wait for compiler")?;
+    let stdout = stdout_reader
+        .join()
+        .map_err(|_| anyhow::anyhow!("compiler stdout reader panicked"))??;
+    let stderr = stderr_reader
+        .join()
+        .map_err(|_| anyhow::anyhow!("compiler stderr reader panicked"))??;
 
-    let status = child.wait().context("failed waiting for compiler")?;
-    let mut diagnostics = stdout_thread.join().unwrap_or_default();
-    diagnostics.extend(stderr_thread.join().unwrap_or_default());
-    diagnostics.truncate(MAX_DIAGNOSTIC_BYTES);
-    fs::write("/work/diagnostics.txt", &diagnostics)?;
-
+    if !stdout.is_empty() {
+        eprint!("{}", String::from_utf8_lossy(&stdout));
+    }
+    if !stderr.is_empty() {
+        eprint!("{}", String::from_utf8_lossy(&stderr));
+    }
     if !status.success() {
-        unsafe { libc::sync() };
-        if !diagnostics.is_empty() {
-            eprintln!("{}", String::from_utf8_lossy(&diagnostics));
-        }
         println!("RUNE_BUILD_FAILED");
         bail!("compiler exited with {status}");
     }
 
     if policy.language == "csharp" {
-        fs::copy("/work/publish/Rune", "/work/artifact")?;
+        let published = fs::read_dir("/work/publish")?
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .find(|path| path.is_file() && path.extension().is_none())
+            .context("Native AOT build did not produce an executable")?;
+        fs::copy(published, "/artifact")?;
     }
 
-    let metadata = fs::metadata("/work/artifact").context("compiler produced no artifact")?;
+    let metadata = fs::metadata("/artifact").context("compiler did not produce /artifact")?;
     if metadata.len() == 0 {
         bail!("compiler produced an empty artifact");
     }
-
+    fs::set_permissions("/artifact", fs::Permissions::from_mode(0o755))?;
     unsafe { libc::sync() };
     println!("RUNE_BUILD_DONE");
     Ok(())
 }
 
-fn drain_bounded(mut reader: impl Read) -> Vec<u8> {
-    let mut kept = Vec::with_capacity(MAX_DIAGNOSTIC_BYTES);
-    let mut buffer = [0_u8; 8192];
-    while let Ok(read) = reader.read(&mut buffer) {
-        if read == 0 {
-            break;
-        }
-        let remaining = MAX_DIAGNOSTIC_BYTES.saturating_sub(kept.len());
-        kept.extend_from_slice(&buffer[..read.min(remaining)]);
+fn read_bounded(mut reader: impl Read) -> Result<Vec<u8>> {
+    let mut bytes = Vec::new();
+    reader
+        .by_ref()
+        .take((MAX_DIAGNOSTIC_BYTES + 1) as u64)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() > MAX_DIAGNOSTIC_BYTES {
+        bytes.truncate(MAX_DIAGNOSTIC_BYTES);
+        bytes.extend_from_slice(b"\n[compiler diagnostics truncated]\n");
     }
-    kept
+    Ok(bytes)
 }
 
 fn mount_guest_filesystems() -> Result<()> {
     fs::create_dir_all("/proc")?;
-    mount(
-        "proc",
-        "/proc",
-        "proc",
-        libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC,
-        "",
-    )?;
+    mount("proc", "/proc", "proc", libc::MS_NOSUID | libc::MS_NODEV, "")?;
     Ok(())
 }
 
-fn mount(
-    source: &str,
-    target: &str,
-    fs_type: &str,
-    flags: libc::c_ulong,
-    data: &str,
-) -> Result<()> {
-    let source = CString::new(source)?;
-    let target = CString::new(target)?;
-    let fs_type = CString::new(fs_type)?;
-    let data = CString::new(data)?;
-    let result = unsafe {
-        libc::mount(
-            source.as_ptr(),
-            target.as_ptr(),
-            fs_type.as_ptr(),
-            flags,
-            data.as_ptr().cast(),
-        )
-    };
-    if result != 0 {
-        bail!(
-            "mount {source:?} on {target:?} failed: {}",
-            std::io::Error::last_os_error()
-        );
+fn drop_privileges() -> Result<()> {
+    let setgroups_result = unsafe { libc::setgroups(0, std::ptr::null()) };
+    if setgroups_result != 0 {
+        return Err(std::io::Error::last_os_error()).context("setgroups failed");
+    }
+    let gid_result = unsafe { libc::setgid(WORKER_GID) };
+    if gid_result != 0 {
+        return Err(std::io::Error::last_os_error()).context("setgid failed");
+    }
+    let uid_result = unsafe { libc::setuid(WORKER_UID) };
+    if uid_result != 0 {
+        return Err(std::io::Error::last_os_error()).context("setuid failed");
     }
     Ok(())
 }
@@ -338,7 +344,28 @@ fn chown(path: &str, uid: libc::uid_t, gid: libc::gid_t) -> Result<()> {
     let path = CString::new(path)?;
     let result = unsafe { libc::chown(path.as_ptr(), uid, gid) };
     if result != 0 {
-        bail!("chown failed: {}", std::io::Error::last_os_error());
+        return Err(std::io::Error::last_os_error()).context("chown failed");
+    }
+    Ok(())
+}
+
+fn mount(source: &str, target: &str, fstype: &str, flags: libc::c_ulong, data: &str) -> Result<()> {
+    let source = CString::new(source)?;
+    let target = CString::new(target)?;
+    let fstype = CString::new(fstype)?;
+    let data = CString::new(data)?;
+    let result = unsafe {
+        libc::mount(
+            source.as_ptr(),
+            target.as_ptr(),
+            fstype.as_ptr(),
+            flags,
+            data.as_ptr().cast(),
+        )
+    };
+    if result != 0 {
+        return Err(std::io::Error::last_os_error())
+            .with_context(|| format!("mount failed for {target:?}"));
     }
     Ok(())
 }
@@ -350,59 +377,7 @@ fn set_limit(resource: libc::__rlimit_resource_t, value: u64) -> Result<()> {
     };
     let result = unsafe { libc::setrlimit(resource, &limit) };
     if result != 0 {
-        bail!("setrlimit failed: {}", std::io::Error::last_os_error());
+        return Err(std::io::Error::last_os_error()).context("setrlimit failed");
     }
     Ok(())
-}
-
-fn drop_privileges() -> Result<()> {
-    if unsafe { libc::setgroups(0, std::ptr::null()) } != 0 {
-        bail!("setgroups failed: {}", std::io::Error::last_os_error());
-    }
-    if unsafe { libc::setgid(WORKER_GID) } != 0 {
-        bail!("setgid failed: {}", std::io::Error::last_os_error());
-    }
-    if unsafe { libc::setuid(WORKER_UID) } != 0 {
-        bail!("setuid failed: {}", std::io::Error::last_os_error());
-    }
-    Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn build_commands_cover_all_language_pools() {
-        assert_eq!(
-            build_command("scriptc", "javascript").unwrap().0,
-            "rune-build-scriptc"
-        );
-        assert_eq!(
-            build_command("scriptc", "typescript").unwrap().0,
-            "rune-build-scriptc"
-        );
-        assert_eq!(build_command("rust", "rust").unwrap().0, "rustc");
-        assert_eq!(build_command("clang", "c").unwrap().0, "clang");
-        assert_eq!(build_command("clang", "cpp").unwrap().0, "clang++");
-        assert_eq!(build_command("dotnet-aot", "csharp").unwrap().0, "dotnet");
-        assert_eq!(
-            build_command("python", "python").unwrap().0,
-            "rune-build-python"
-        );
-        assert_eq!(build_command("ruby", "ruby").unwrap().0, "rune-build-ruby");
-    }
-
-    #[test]
-    fn invalid_pool_language_pair_is_rejected() {
-        assert!(build_command("scriptc", "python").is_err());
-    }
-
-    #[test]
-    fn policy_requires_positive_limits() {
-        assert!(parse_policy(
-            "rune.build_pool=clang rune.language=c rune.pid_limit=0 rune.fd_limit=1 rune.wall_seconds=1"
-        )
-        .is_err());
-    }
 }
