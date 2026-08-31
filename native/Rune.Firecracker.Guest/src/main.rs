@@ -5,6 +5,7 @@ use std::{
     mem::size_of,
     os::{fd::FromRawFd, unix::fs::PermissionsExt},
     process::{Command, Stdio},
+    thread,
 };
 
 use anyhow::{Context, Result, bail};
@@ -35,7 +36,13 @@ fn main() -> Result<()> {
     if let Err(error) = invoke(&mut connection) {
         write_error(&mut connection, &error.to_string())?;
     }
-    Ok(())
+    connection.flush()?;
+
+    // rune-guest is PID 1. Keep the guest alive until the host destroys the
+    // disposable VM so the vsock response can be drained before init exits.
+    loop {
+        thread::park();
+    }
 }
 
 fn invoke(connection: &mut File) -> Result<()> {
