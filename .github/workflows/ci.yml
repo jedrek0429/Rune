@@ -120,3 +120,6 @@ jobs:
 
       - name: Build and execute native Runes
         run: bash tests/firecracker/native-build-e2e.sh
+
+      - name: Build and execute remaining Rune languages
+        run: bash tests/firecracker/remaining-builds-e2e.sh

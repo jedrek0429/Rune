@@ -5,6 +5,7 @@ use std::{
     fs,
     io::Write,
     os::unix::fs::PermissionsExt,
+    path::Path,
     process::{Command, Stdio},
     thread,
 };
@@ -15,6 +16,13 @@ const MAX_DIAGNOSTIC_BYTES: usize = 64 * 1024;
 
 fn main() -> Result<()> {
     mount_proc()?;
+    let cmdline = fs::read_to_string("/proc/cmdline")?;
+    let values = values(&cmdline);
+
+    if values.get("rune.cache_warm") == Some(&"scriptc") {
+        return warm_scriptc_cache(&values);
+    }
+
     fs::create_dir_all("/work")?;
     fs::create_dir_all("/input")?;
     mount(
@@ -32,8 +40,6 @@ fn main() -> Result<()> {
     fs::set_permissions("/work", fs::Permissions::from_mode(0o700))?;
     chown("/work", WORKER_UID, WORKER_GID)?;
 
-    let cmdline = fs::read_to_string("/proc/cmdline")?;
-    let values = values(&cmdline);
     set_limit(libc::RLIMIT_CPU, positive(&values, "rune.cpu_seconds")?)?;
     set_limit(libc::RLIMIT_NPROC, positive(&values, "rune.pid_limit")?)?;
     set_limit(libc::RLIMIT_NOFILE, positive(&values, "rune.fd_limit")?)?;
@@ -41,11 +47,31 @@ fn main() -> Result<()> {
         .get("rune.language")
         .context("missing rune.language")?;
 
+    if matches!(*language, "javascript" | "typescript") {
+        fs::create_dir_all("/cache-seed")?;
+        mount(
+            "/dev/vdd",
+            "/cache-seed",
+            "ext4",
+            libc::MS_RDONLY | libc::MS_NOSUID | libc::MS_NODEV | libc::MS_NOEXEC,
+        )?;
+    }
+
     drop_privileges()?;
-    let (program, args): (&str, &[&str]) = match *language {
+    fs::create_dir_all("/work/tmp")?;
+
+    let (program, args): (&str, Vec<&str>) = match *language {
+        "javascript" => (
+            "rune-build-scriptc",
+            vec!["/input/source.js", "/work/artifact"],
+        ),
+        "typescript" => (
+            "rune-build-scriptc",
+            vec!["/input/source.ts", "/work/artifact"],
+        ),
         "rust" => (
             "rustc",
-            &[
+            vec![
                 "--edition=2024",
                 "-O",
                 "/input/source.rs",
@@ -55,22 +81,43 @@ fn main() -> Result<()> {
         ),
         "c" => (
             "clang",
-            &["-O2", "/input/source.c", "-o", "/work/artifact"],
+            vec!["-O2", "/input/source.c", "-o", "/work/artifact"],
         ),
         "cpp" => (
             "clang++",
-            &["-O2", "/input/source.cpp", "-o", "/work/artifact"],
+            vec!["-O2", "/input/source.cpp", "-o", "/work/artifact"],
+        ),
+        "csharp" => (
+            "dotnet",
+            vec![
+                "publish",
+                "/input/Rune.csproj",
+                "-c",
+                "Release",
+                "--no-restore",
+                "-p:PublishAot=true",
+                "-o",
+                "/work/publish",
+            ],
+        ),
+        "python" => (
+            "rune-build-python",
+            vec!["/input/source.py", "/work/artifact"],
+        ),
+        "ruby" => (
+            "rune-build-ruby",
+            vec!["/input/source.rb", "/work/artifact"],
         ),
         other => bail!("unsupported build language: {other}"),
     };
 
-    fs::create_dir_all("/work/tmp")?;
     let output = Command::new(program)
         .args(args)
         .env_clear()
         .env("PATH", "/usr/local/bin:/usr/bin:/bin")
         .env("HOME", "/work")
         .env("TMPDIR", "/work/tmp")
+        .env("NUGET_PACKAGES", "/opt/rune/nuget")
         .stdin(Stdio::null())
         .output()
         .context("failed to start compiler")?;
@@ -80,12 +127,56 @@ fn main() -> Result<()> {
         signal_and_park("RUNE_BUILD_FAILED");
     }
 
-    let metadata = fs::metadata("/work/artifact").context("compiler produced no artifact")?;
+    if *language == "csharp" {
+        let published = fs::read_dir("/work/publish")?
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .find(|path| path.is_file() && path.extension().is_none())
+            .context("Native AOT build produced no executable")?;
+        fs::copy(published, "/work/artifact")?;
+    }
+
+    let artifact = Path::new("/work/artifact");
+    let metadata = fs::metadata(artifact).context("compiler produced no artifact")?;
     if metadata.len() == 0 {
         bail!("compiler produced an empty artifact");
     }
-    fs::set_permissions("/work/artifact", fs::Permissions::from_mode(0o755))?;
+    fs::set_permissions(artifact, fs::Permissions::from_mode(0o755))?;
     signal_and_park("RUNE_BUILD_DONE");
+}
+
+fn warm_scriptc_cache(values: &HashMap<&str, &str>) -> Result<()> {
+    fs::create_dir_all("/work")?;
+    mount(
+        "/dev/vdb",
+        "/work",
+        "ext4",
+        libc::MS_NOSUID | libc::MS_NODEV,
+    )?;
+    fs::set_permissions("/work", fs::Permissions::from_mode(0o700))?;
+    chown("/work", WORKER_UID, WORKER_GID)?;
+    set_limit(libc::RLIMIT_CPU, positive(values, "rune.wall_seconds")?)?;
+    set_limit(libc::RLIMIT_NPROC, positive(values, "rune.pid_limit")?)?;
+    set_limit(libc::RLIMIT_NOFILE, positive(values, "rune.fd_limit")?)?;
+    drop_privileges()?;
+
+    for profile in ["runtime", "dynamic"] {
+        let status = Command::new("scriptc")
+            .args(["cache", "warm", profile])
+            .env_clear()
+            .env("PATH", "/usr/local/bin:/usr/bin:/bin")
+            .env("HOME", "/work")
+            .env("TMPDIR", "/work")
+            .env("SCRIPTC_CACHE_DIR", "/work")
+            .current_dir("/work")
+            .status()
+            .with_context(|| format!("failed to start ScriptC {profile} cache warm"))?;
+        if !status.success() {
+            signal_and_park("RUNE_CACHE_WARM_FAILED");
+        }
+    }
+
+    signal_and_park("RUNE_CACHE_WARM_DONE");
 }
 
 fn signal_and_park(marker: &str) -> ! {

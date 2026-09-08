@@ -9,9 +9,14 @@ public sealed class FirecrackerRuneBuilder(
     public static (string Pool, string Language) GetBuildTarget(RuneLanguage language) =>
         language switch
         {
+            RuneLanguage.JavaScript => ("scriptc", "javascript"),
+            RuneLanguage.TypeScript => ("scriptc", "typescript"),
+            RuneLanguage.Python => ("python", "python"),
+            RuneLanguage.Ruby => ("ruby", "ruby"),
             RuneLanguage.Rust => ("rust", "rust"),
             RuneLanguage.C => ("clang", "c"),
             RuneLanguage.Cpp => ("clang", "cpp"),
+            RuneLanguage.CSharp => ("dotnet-aot", "csharp"),
             _ => throw new ArgumentOutOfRangeException(nameof(language))
         };
 
