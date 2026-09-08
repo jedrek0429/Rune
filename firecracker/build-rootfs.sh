@@ -2,14 +2,18 @@
 set -euo pipefail
 
 if [[ $# -ne 2 || "$1" != build ]]; then
-  echo "usage: $0 build <rust|clang>" >&2
+  echo "usage: $0 build <scriptc|rust|clang|dotnet-aot|python|ruby>" >&2
   exit 2
 fi
 
 profile="$2"
 case "$profile" in
+  scriptc) base=ubuntu:24.04; size=1536 ;;
   rust) base=rust:1-bookworm; size=1536 ;;
   clang) base=debian:bookworm-slim; size=768 ;;
+  dotnet-aot) base=debian:bookworm-slim; size=3072 ;;
+  python) base=debian:bookworm-slim; size=1024 ;;
+  ruby) base=debian:bookworm-slim; size=768 ;;
   *) echo "unsupported build profile: $profile" >&2; exit 2 ;;
 esac
 
@@ -43,4 +47,9 @@ rm -f "$rootfs"
 truncate -s "${size}M" "$rootfs"
 mkfs.ext4 -q -F -d "$tmp/rootfs" "$rootfs"
 chmod 0444 "$rootfs"
+
+if [[ "$profile" == scriptc ]]; then
+  bash firecracker/warm-scriptc-cache.sh
+fi
+
 echo "built $rootfs (${size} MiB)"
