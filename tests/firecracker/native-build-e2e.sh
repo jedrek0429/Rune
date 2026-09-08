@@ -11,7 +11,7 @@ EOF
 
 cat >"$tmp/rune.rs" <<'EOF'
 fn main() {
-    println!(r#"{"actions":[],"error":null}"#);
+    println!("{}", r#"{"actions":[],"error":null}"#);
 }
 EOF
 
