@@ -57,7 +57,7 @@ cp "$source_path" "$input_dir/$input_name"
 truncate -s "${disk_mib}M" "$scratch"
 mkfs.ext4 -q -F "$scratch"
 truncate -s 4M "$input"
-mkfs.ext4 -q -F -d "$input_dir" "$input"
+mkfs.ext4 -q -F -O ^has_journal -d "$input_dir" "$input"
 
 "$firecracker" --api-sock "$api_sock" >"$console_log" 2>&1 &
 pid=$!
@@ -110,7 +110,9 @@ set -e
 if [[ "$status" -ne 0 ]]; then
   debugfs -R "dump -p /diagnostics.txt $diagnostics" "$scratch" >/dev/null 2>&1 || true
   [[ ! -s "$diagnostics" ]] || cat "$diagnostics" >&2
+  cat "$console_log" >&2 || true
   [[ "$status" -eq 124 ]] && echo "Rune build exceeded ${wall_seconds}s wall-time limit" >&2
+  [[ "$status" -eq 4 ]] && echo "build VM exited before reporting completion" >&2
   exit "$status"
 fi
 
