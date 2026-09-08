@@ -3,9 +3,10 @@ use std::{
     collections::HashMap,
     ffi::CString,
     fs,
-    io::{Read, Write},
+    io::Write,
     os::unix::fs::PermissionsExt,
     process::{Command, Stdio},
+    thread,
 };
 
 const WORKER_UID: libc::uid_t = 1000;
@@ -76,9 +77,7 @@ fn main() -> Result<()> {
     write_diagnostics(&output.stdout, &output.stderr)?;
 
     if !output.status.success() {
-        unsafe { libc::sync() };
-        println!("RUNE_BUILD_FAILED");
-        return Ok(());
+        signal_and_park("RUNE_BUILD_FAILED");
     }
 
     let metadata = fs::metadata("/work/artifact").context("compiler produced no artifact")?;
@@ -86,10 +85,16 @@ fn main() -> Result<()> {
         bail!("compiler produced an empty artifact");
     }
     fs::set_permissions("/work/artifact", fs::Permissions::from_mode(0o755))?;
+    signal_and_park("RUNE_BUILD_DONE");
+}
+
+fn signal_and_park(marker: &str) -> ! {
     unsafe { libc::sync() };
-    println!("RUNE_BUILD_DONE");
-    std::io::stdout().flush()?;
-    Ok(())
+    println!("{marker}");
+    let _ = std::io::stdout().flush();
+    loop {
+        thread::park();
+    }
 }
 
 fn values(cmdline: &str) -> HashMap<&str, &str> {
