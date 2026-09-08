@@ -9,7 +9,7 @@ FROM ${BASE_IMAGE}
 ARG POOL
 RUN case "$POOL" in \
       clang) apt-get update && apt-get install -y --no-install-recommends clang g++ && rm -rf /var/lib/apt/lists/* ;; \
-      rust) rustc --version ;; \
+      rust) printf '#!/bin/sh\nRUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo exec /usr/local/cargo/bin/rustc "$@"\n' > /usr/local/bin/rustc && chmod 0755 /usr/local/bin/rustc ;; \
       *) exit 2 ;; \
     esac
 RUN mkdir -p /proc /dev /work /input
