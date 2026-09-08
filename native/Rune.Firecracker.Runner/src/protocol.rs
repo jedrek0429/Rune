@@ -7,6 +7,9 @@ pub const MAX_ARTIFACT_BYTES: u64 = 16 * 1024 * 1024;
 #[serde(rename_all = "camelCase")]
 pub enum RuneEventType {
     MessageCreate,
+    MessageDelete,
+    MessageReactionAdd,
+    MessageReactionRemove,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -133,5 +136,18 @@ mod tests {
                 .is_ok()
         );
         assert!(envelope("../rune").validate().is_err());
+    }
+
+    #[test]
+    fn every_supported_gateway_event_deserializes() {
+        for value in [
+            "messageCreate",
+            "messageDelete",
+            "messageReactionAdd",
+            "messageReactionRemove",
+        ] {
+            let json = format!("\"{value}\"");
+            assert!(serde_json::from_str::<RuneEventType>(&json).is_ok());
+        }
     }
 }
