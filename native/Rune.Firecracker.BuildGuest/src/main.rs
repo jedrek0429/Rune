@@ -61,6 +61,15 @@ fn main() -> Result<()> {
             "clang++",
             &["-O2", "/input/source.cpp", "-o", "/work/artifact"],
         ),
+	"javascript" => (
+    	    "scriptc",
+    	    &[
+        	"build",
+        	"/input/source.js",
+        	"-o",
+        	"/work/artifact",
+    	    ],
+	),
         other => bail!("unsupported build language: {other}"),
     };
 
@@ -71,6 +80,8 @@ fn main() -> Result<()> {
         .env("PATH", "/usr/local/bin:/usr/bin:/bin")
         .env("HOME", "/work")
         .env("TMPDIR", "/work/tmp")
+	.env("SCRIPTC_CC", "zigcc")
+	.env("SCRIPTC_TARGET", "x86_64-linux-gnu.2.36")
         .stdin(Stdio::null())
         .output()
         .context("failed to start compiler")?;

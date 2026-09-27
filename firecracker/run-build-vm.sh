@@ -5,7 +5,7 @@ MAX_SOURCE_BYTES=$((64 * 1024))
 MAX_ARTIFACT_BYTES=$((16 * 1024 * 1024))
 
 if [[ $# -ne 3 ]]; then
-  echo "usage: $0 <rust|clang> <rust|c|cpp> <source>" >&2
+  echo "usage: $0 <rust|clang|scriptc> <rust|c|cpp|javascript> <source>" >&2
   exit 2
 fi
 
@@ -16,7 +16,8 @@ case "$pool/$language" in
   rust/rust) vcpu=2; mem_mib=1024; disk_mib=512; wall_seconds=45; pid_limit=128; fd_limit=256; input_name=source.rs ;;
   clang/c) vcpu=1; mem_mib=512; disk_mib=512; wall_seconds=20; pid_limit=128; fd_limit=256; input_name=source.c ;;
   clang/cpp) vcpu=1; mem_mib=512; disk_mib=512; wall_seconds=20; pid_limit=128; fd_limit=256; input_name=source.cpp ;;
-  *) echo "unsupported native build target: $pool/$language" >&2; exit 2 ;;
+  scriptc/javascript) vcpu=2; mem_mib=1024; disk_mib=512; wall_seconds=45; pid_limit=128; fd_limit=256; input_name=source.js ;;
+  *) echo "unsupported build target: $pool/$language" >&2; exit 2 ;;
 esac
 
 [[ -f "$source_path" ]] || { echo "source file is missing" >&2; exit 2; }
