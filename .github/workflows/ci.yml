@@ -71,6 +71,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Generate Rune.Api wrappers
+        run: dotnet run --project tools/Rune.Api.Generator --configuration Release -- generate
+
       - name: Install host dependencies
         run: |
           sudo apt-get update

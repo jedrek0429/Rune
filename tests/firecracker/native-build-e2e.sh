@@ -75,3 +75,60 @@ printf 'int main() { return missing; }\n' >"$tmp/invalid.cpp"
 assert_invalid_build rust rust "$tmp/invalid.rs" Rust rune.rs
 assert_invalid_build clang c "$tmp/invalid.c" C rune.c
 assert_invalid_build clang cpp "$tmp/invalid.cpp" "C++" rune.cpp
+
+cat generated/rust/rune_api.rs >"$tmp/generated-rune.rs"
+cat >>"$tmp/generated-rune.rs" <<'EOF'
+
+struct FakeHost;
+
+impl RuneHost for FakeHost {
+    fn message_reply(
+        &mut self,
+        reply_message: &ReplyMessageProperties,
+    ) -> Result<RestMessage, String> {
+        Ok(RestMessage {
+            id: 99,
+            channel_id: 2,
+            content: reply_message
+                .content
+                .clone()
+                .unwrap_or_default(),
+            author: User {
+                id: 3,
+                username: "rune".to_string(),
+            },
+        })
+    }
+}
+
+fn main() {
+    let message = Message {
+        id: 1,
+        channel_id: 2,
+        content: "hello".to_string(),
+        author: User {
+            id: 3,
+            username: "rune".to_string(),
+        },
+    };
+
+    let mut host = FakeHost;
+    let reply = message.reply(
+        &mut host,
+        ReplyMessageProperties {
+            content: Some("generated".to_string()),
+        },
+    ).unwrap();
+
+    assert_eq!(reply.content, "generated");
+    assert_eq!(
+        REST_MESSAGE_REPLY_NETCORD,
+        "NetCord.Rest.RestMessage.ReplyAsync",
+    );
+
+    println!("{}", r#"{"actions":[],"error":null}"#);
+}
+EOF
+
+build_and_execute rust rust "$tmp/generated-rune.rs"
+echo "generated rust Rune.Api wrapper -> execute OK"
