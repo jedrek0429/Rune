@@ -1,4 +1,5 @@
 ARG BASE_IMAGE=debian:bookworm-slim
+
 FROM rust:1-bookworm AS guest-builder
 WORKDIR /build
 COPY native/Rune.Firecracker.BuildGuest/Cargo.toml Cargo.toml
@@ -6,33 +7,107 @@ COPY native/Rune.Firecracker.BuildGuest/src src
 RUN cargo build --release
 
 FROM ${BASE_IMAGE}
+
 ARG POOL
 ARG NODE_VERSION=24.15.0
 ARG SCRIPTC_VERSION=0.0.35
 ARG ZIG_VERSION=0.16.0
+ARG MICROPYTHON_VERSION=v1.29.0
+
+COPY firecracker/build-tools/python.sh /usr/local/bin/rune-build-python
+RUN chmod 0755 /usr/local/bin/rune-build-python
+
 RUN case "$POOL" in \
-      clang) apt-get update && apt-get install -y --no-install-recommends clang g++ && rm -rf /var/lib/apt/lists/* ;; \
-      rust) printf '#!/bin/sh\nRUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo exec /usr/local/cargo/bin/rustc "$@"\n' > /usr/local/bin/rustc && chmod 0755 /usr/local/bin/rustc ;; \
+      clang) \
+        apt-get update && \
+        apt-get install -y --no-install-recommends clang g++ && \
+        rm -rf /var/lib/apt/lists/* \
+        ;; \
+      rust) \
+        printf '#!/bin/sh\nRUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo exec /usr/local/cargo/bin/rustc "$@"\n' \
+            > /usr/local/bin/rustc && \
+        chmod 0755 /usr/local/bin/rustc \
+        ;; \
       scriptc) \
-      apt-get update && \
-      apt-get install -y --no-install-recommends ca-certificates curl xz-utils && \
-      case "$(dpkg --print-architecture)" in \
-        amd64) node_arch=x64; zig_arch=x86_64 ;; \
-        arm64) node_arch=arm64; zig_arch=aarch64 ;; \
-      *) echo "unsupported architecture: $(dpkg --print-architecture)" >&2; exit 2 ;; \
-      esac && \
-      curl -fsSL -o /tmp/node.tar.xz \
-        "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" && \
-      tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 && \
-      curl -fsSL -o /tmp/zig.tar.xz \
-        "https://ziglang.org/download/${ZIG_VERSION}/zig-${zig_arch}-linux-${ZIG_VERSION}.tar.xz" && \
-      mkdir -p /opt/zig && \
-      tar -xJf /tmp/zig.tar.xz -C /opt/zig --strip-components=1 && \
-      ln -s /opt/zig/zig /usr/local/bin/zig && \
-      npm install -g --allow-scripts=scriptc "scriptc@${SCRIPTC_VERSION}" && \
-      rm -rf /var/lib/apt/lists/* /tmp/node.tar.xz /tmp/zig.tar.xz \
-      ;; \
-      *) echo "unsupported build pool: $POOL" >&2 && exit 2 ;; \
+        apt-get update && \
+        apt-get install -y --no-install-recommends \
+            ca-certificates \
+            curl \
+            xz-utils && \
+        case "$(dpkg --print-architecture)" in \
+          amd64) node_arch=x64; zig_arch=x86_64 ;; \
+          arm64) node_arch=arm64; zig_arch=aarch64 ;; \
+          *) echo "unsupported architecture: $(dpkg --print-architecture)" >&2; exit 2 ;; \
+        esac && \
+        curl -fsSL -o /tmp/node.tar.xz \
+            "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" && \
+        tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 && \
+        curl -fsSL -o /tmp/zig.tar.xz \
+            "https://ziglang.org/download/${ZIG_VERSION}/zig-${zig_arch}-linux-${ZIG_VERSION}.tar.xz" && \
+        mkdir -p /opt/zig && \
+        tar -xJf /tmp/zig.tar.xz -C /opt/zig --strip-components=1 && \
+        ln -s /opt/zig/zig /usr/local/bin/zig && \
+        npm install -g --allow-scripts=scriptc "scriptc@${SCRIPTC_VERSION}" && \
+        rm -rf /var/lib/apt/lists/* /tmp/node.tar.xz /tmp/zig.tar.xz \
+        ;; \
+      python) \
+        apt-get update && \
+        apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            git \
+            python3 && \
+        git clone --depth 1 --branch "${MICROPYTHON_VERSION}" \
+            https://github.com/micropython/micropython.git /opt/micropython && \
+        make -C /opt/micropython/mpy-cross -j2 && \
+        mkdir -p /opt/rune/micropython-embed && \
+        cp -a /opt/micropython/examples/embedding/. \
+            /opt/rune/micropython-embed/ && \
+        sed -i \
+            's/MICROPY_CONFIG_ROM_LEVEL_MINIMUM/MICROPY_CONFIG_ROM_LEVEL_CORE_FEATURES/' \
+            /opt/rune/micropython-embed/mpconfigport.h && \
+        sed -i \
+            '/MICROPY_ENABLE_COMPILER/a #define MICROPY_ENABLE_EXTERNAL_IMPORT (0)\n#define MICROPY_PERSISTENT_CODE_LOAD (1)\n#define MICROPY_PY_JSON (1)' \
+            /opt/rune/micropython-embed/mpconfigport.h && \
+        sed -i \
+            '/include $(MICROPYTHON_TOP)\/ports\/embed\/embed.mk/i SRC_QSTR += $(MICROPYTHON_TOP)/extmod/modjson.c' \
+            /opt/rune/micropython-embed/micropython_embed.mk && \
+        make -C /opt/rune/micropython-embed \
+            -f micropython_embed.mk \
+            MICROPYTHON_TOP=/opt/micropython && \
+        cp /opt/micropython/extmod/modjson.c \
+            /opt/rune/micropython-embed/micropython_embed/extmod/ && \
+        printf '%s\n' \
+            '#include "py/runtime.h"' \
+            '#include "py/builtin.h"' \
+            '' \
+            'mp_obj_t mp_builtin_open(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs) {' \
+            '    (void)n_args;' \
+            '    (void)args;' \
+            '    (void)kwargs;' \
+            '    mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("filesystem access is disabled"));' \
+            '    return MP_OBJ_NULL;' \
+            '}' \
+            '' \
+            'MP_DEFINE_CONST_FUN_OBJ_KW(mp_builtin_open_obj, 1, mp_builtin_open);' \
+            > /opt/rune/micropython-embed/micropython_embed/port/rune_port.c && \
+        make -C /opt/rune/micropython-embed && \
+        find /opt/rune/micropython-embed/micropython_embed \
+            -name '*.o' \
+            -exec ar rcs /opt/rune/libmicropython_embed.a {} + && \
+        cp /opt/micropython/mpy-cross/build/mpy-cross \
+            /usr/local/bin/mpy-cross && \
+        rm -rf /var/lib/apt/lists/* \
+        ;; \
+      *) \
+        echo "unsupported build pool: $POOL" >&2; \
+        exit 2 \
+        ;; \
     esac
+
 RUN mkdir -p /proc /dev /work /input
-COPY --from=guest-builder /build/target/release/rune-firecracker-build-guest /sbin/rune-build-guest
+
+COPY --from=guest-builder \
+    /build/target/release/rune-firecracker-build-guest \
+    /sbin/rune-build-guest
+
