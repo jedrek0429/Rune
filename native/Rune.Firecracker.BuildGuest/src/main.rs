@@ -77,6 +77,14 @@ fn main() -> Result<()> {
                 ("SCRIPTC_TARGET", "x86_64-linux-gnu.2.36"),
             ],
 	),
+	"typescript" => (
+            "scriptc",
+            &["build", "/input/source.ts", "-o", "/work/artifact"],
+            &[
+                ("SCRIPTC_CC", "zigcc"),
+                ("SCRIPTC_TARGET", "x86_64-linux-gnu.2.36"),
+            ],
+        ),
         other => bail!("unsupported build language: {other}"),
     };
 

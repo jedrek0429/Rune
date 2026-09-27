@@ -122,3 +122,5 @@ jobs:
       - name: Build and execute JavaScript Runes
         run: bash tests/firecracker/javascript-build-e2e.sh
 
+      - name: Build and execute TypeScript Runes
+        run: bash tests/firecracker/typescript-build-e2e.sh
