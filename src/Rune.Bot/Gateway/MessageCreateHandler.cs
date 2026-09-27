@@ -1,6 +1,4 @@
-using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
-using NetCord.Rest;
 
 using Rune.Api;
 using Rune.Core.Invocations;
@@ -13,7 +11,7 @@ public sealed class MessageCreateHandler(
     : IMessageCreateGatewayHandler
 {
     public async ValueTask HandleAsync(
-        Message message)
+        NetCord.Gateway.Message message)
     {
         if (message.GuildId is not ulong guildId ||
             message.Author.IsBot)
@@ -51,7 +49,7 @@ public sealed class MessageCreateHandler(
                             $"`{failure.RuneName}`: {failure.Message}"));
 
         await message.ReplyAsync(
-            new ReplyMessageProperties
+            new NetCord.Rest.ReplyMessageProperties
             {
                 Content = text
             });
