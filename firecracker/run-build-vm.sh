@@ -18,7 +18,7 @@ case "$pool/$language" in
   clang/cpp) vcpu=1; mem_mib=512; disk_mib=512; wall_seconds=20; pid_limit=128; fd_limit=256; input_name=source.cpp ;;
   scriptc/javascript) vcpu=2; mem_mib=1024; disk_mib=512; wall_seconds=45; pid_limit=128; fd_limit=256; input_name=source.js ;;
   scriptc/typescript) vcpu=2; mem_mib=1024; disk_mib=512; wall_seconds=45; pid_limit=128; fd_limit=256; input_name=source.ts ;;
-  python/python) vcpu=1 mem_mib=512 disk_mib=256 wall_seconds=20 pid_limit=128 fd_limit=256 input_name=source.py ;;	  
+  python/python) vcpu=1; mem_mib=512; disk_mib=256; wall_seconds=20; pid_limit=128; fd_limit=256; input_name=source.py ;;
   *) echo "unsupported build target: $pool/$language" >&2; exit 2 ;;
 esac
 
