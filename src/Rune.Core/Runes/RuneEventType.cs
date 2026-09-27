@@ -2,5 +2,8 @@ namespace Rune.Core.Runes;
 
 public enum RuneEventType
 {
-    MessageCreate
+    MessageCreate,
+    MessageDelete,
+    MessageReactionAdd,
+    MessageReactionRemove
 }

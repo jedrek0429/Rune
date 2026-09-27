@@ -1,10 +1,12 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Rune.Api/Rune.Api.csproj" />
     <Project Path="src/Rune.Bot/Rune.Bot.csproj" />
     <Project Path="src/Rune.Core/Rune.Core.csproj" />
     <Project Path="src/Rune.Runtime/Rune.Runtime.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Rune.Api.Tests/Rune.Api.Tests.csproj" />
     <Project Path="tests/Rune.Core.Tests/Rune.Core.Tests.csproj" />
     <Project Path="tests/Rune.Runtime.Tests/Rune.Runtime.Tests.csproj" />
   </Folder>

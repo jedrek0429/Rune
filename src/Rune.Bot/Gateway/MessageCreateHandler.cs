@@ -1,6 +1,8 @@
 using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
 using NetCord.Rest;
+
+using Rune.Api;
 using Rune.Core.Invocations;
 using Rune.Runtime;
 
@@ -19,15 +21,18 @@ public sealed class MessageCreateHandler(
             return;
         }
 
+        var payload =
+            NetCordRuneApi.Project(message);
+
         var invocation =
             new MessageCreateEventRuneInvocation(
                 Guid.NewGuid(),
                 guildId,
-                message.ChannelId,
-                message.Id,
-                message.Author.Id,
-                message.Author.Username,
-                message.Content);
+                payload.ChannelId,
+                payload.Id,
+                payload.Author.Id,
+                payload.Author.Username,
+                payload.Content);
 
         var failures =
             await dispatcher.DispatchAsync(
@@ -41,8 +46,9 @@ public sealed class MessageCreateHandler(
                 '\n',
                 failures
                     .Take(3)
-                    .Select(failure =>
-                        $"`{failure.RuneName}`: {failure.Message}"));
+                    .Select(
+                        failure =>
+                            $"`{failure.RuneName}`: {failure.Message}"));
 
         await message.ReplyAsync(
             new ReplyMessageProperties
