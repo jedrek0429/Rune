@@ -42,7 +42,7 @@ fn main() -> Result<()> {
         .context("missing rune.language")?;
 
     drop_privileges()?;
-    let (program, args): (&str, &[&str]) = match *language {
+    let (program, args, env): (&str, &[&str], &[(&str, &str)]) = match *language {
         "rust" => (
             "rustc",
             &[
@@ -52,14 +52,17 @@ fn main() -> Result<()> {
                 "-o",
                 "/work/artifact",
             ],
+            &[],
         ),
         "c" => (
             "clang",
             &["-O2", "/input/source.c", "-o", "/work/artifact"],
+            &[],
         ),
         "cpp" => (
             "clang++",
             &["-O2", "/input/source.cpp", "-o", "/work/artifact"],
+            &[],
         ),
 	"javascript" => (
     	    "scriptc",
@@ -69,19 +72,28 @@ fn main() -> Result<()> {
         	"-o",
         	"/work/artifact",
     	    ],
+            &[
+                ("SCRIPTC_CC", "zigcc"),
+                ("SCRIPTC_TARGET", "x86_64-linux-gnu.2.36"),
+            ],
 	),
         other => bail!("unsupported build language: {other}"),
     };
 
     fs::create_dir_all("/work/tmp")?;
-    let output = Command::new(program)
+    let mut command = Command::new(program);
+    command
         .args(args)
         .env_clear()
         .env("PATH", "/usr/local/bin:/usr/bin:/bin")
         .env("HOME", "/work")
-        .env("TMPDIR", "/work/tmp")
-	.env("SCRIPTC_CC", "zigcc")
-	.env("SCRIPTC_TARGET", "x86_64-linux-gnu.2.36")
+        .env("TMPDIR", "/work/tmp");
+
+    for (key, value) in env {
+        command.env(key, value);
+    }
+    
+    let output = command
         .stdin(Stdio::null())
         .output()
         .context("failed to start compiler")?;
