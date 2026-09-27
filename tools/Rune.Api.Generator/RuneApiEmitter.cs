@@ -488,7 +488,7 @@ public static class RuneApiEmitter
         string type,
         string method) =>
         Snake(
-                type + "_" + WithoutAsync(method))
+                type + WithoutAsync(method))
             .ToUpperInvariant();
 
     private static string WithoutAsync(
