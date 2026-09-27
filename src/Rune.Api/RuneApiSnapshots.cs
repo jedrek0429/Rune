@@ -59,7 +59,7 @@ public sealed record MessageReactionRemoveEventArgs(
     ReactionType Type,
     ulong UserId);
 
-public enum RuneApiEvent
+public enum RuneApiEventType
 {
     MessageCreate,
     MessageDelete,
