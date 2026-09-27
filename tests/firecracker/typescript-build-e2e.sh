@@ -10,7 +10,7 @@ cat >"$tmp/envelope.json" <<'EOF'
 EOF
 
 cat >"$tmp/rune.ts" <<'EOF'
-const result: { actions: unknown[]; error: null } = {
+const result: { actions: string[]; error: string | null } = {
     actions: [],
     error: null,
 };
