@@ -52,6 +52,26 @@ PY
   echo "$language build -> execute OK"
 }
 
+assert_invalid_build() {
+  local pool="$1" language="$2" source="$3" title="$4" filename="$5"
+  local output
+  if output="$(bash firecracker/run-build-vm.sh "$pool" "$language" "$source" 2>&1)"; then
+    echo "$language invalid source unexpectedly built" >&2
+    exit 1
+  fi
+  grep -Fq "$title compilation failed" <<<"$output"
+  grep -Fq "$filename" <<<"$output"
+  ! grep -Eq '/input/|/work/|Kernel panic|console=' <<<"$output"
+}
+
 build_and_execute rust rust "$tmp/rune.rs"
 build_and_execute clang c "$tmp/rune.c"
 build_and_execute clang cpp "$tmp/rune.cpp"
+
+printf 'fn main() { let value = ; }\n' >"$tmp/invalid.rs"
+printf 'int main(void) { return missing; }\n' >"$tmp/invalid.c"
+printf 'int main() { return missing; }\n' >"$tmp/invalid.cpp"
+
+assert_invalid_build rust rust "$tmp/invalid.rs" Rust rune.rs
+assert_invalid_build clang c "$tmp/invalid.c" C rune.c
+assert_invalid_build clang cpp "$tmp/invalid.cpp" "C++" rune.cpp

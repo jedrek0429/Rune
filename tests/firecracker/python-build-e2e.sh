@@ -40,3 +40,17 @@ PY
 
 echo "python build -> execute OK"
 
+cat >"$tmp/invalid.py" <<'EOF'
+if True print("broken")
+EOF
+
+if output="$(bash firecracker/run-build-vm.sh python python "$tmp/invalid.py" 2>&1)"; then
+  echo "python invalid source unexpectedly built" >&2
+  exit 1
+fi
+
+grep -Fq "Python compilation failed" <<<"$output"
+grep -Fq "rune.py" <<<"$output"
+! grep -Eq '/input/|/work/|Kernel panic|console=' <<<"$output"
+
+echo "python diagnostics OK"

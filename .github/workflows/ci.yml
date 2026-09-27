@@ -38,6 +38,9 @@ jobs:
       - name: Test
         run: dotnet test --no-build --configuration Release
 
+      - name: Test build diagnostic formatter
+        run: python3 tests/firecracker/build-diagnostics.test.py
+
       - name: Test Firecracker invocation contract
         run: bash tests/firecracker/invocation-feature.test.sh
 
@@ -129,6 +132,6 @@ jobs:
 
       - name: Build and execute Python runes
         run: bash tests/firecracker/python-build-e2e.sh
-      
+
       - name: Build and execute Python runes library baseline
         run: bash tests/firecracker/python-baseline-e2e.sh

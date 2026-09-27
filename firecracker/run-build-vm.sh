@@ -5,7 +5,7 @@ MAX_SOURCE_BYTES=$((64 * 1024))
 MAX_ARTIFACT_BYTES=$((16 * 1024 * 1024))
 
 if [[ $# -ne 3 ]]; then
-  echo "usage: $0 <rust|clang|scriptc|python> <rust|c|cpp|javascript|python> <source>" >&2
+  echo "usage: $0 <rust|clang|scriptc|python> <rust|c|cpp|javascript|typescript|python> <source>" >&2
   exit 2
 fi
 
@@ -25,6 +25,8 @@ esac
 [[ -f "$source_path" ]] || { echo "source file is missing" >&2; exit 2; }
 (( $(wc -c <"$source_path") <= MAX_SOURCE_BYTES )) || { echo "Rune source exceeds 64 KiB" >&2; exit 2; }
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+diagnostic_formatter="$script_dir/format-build-diagnostic.py"
 root="${RUNE_FIRECRACKER_ROOT:-/var/lib/rune/firecracker}"
 firecracker="${RUNE_FIRECRACKER:-firecracker}"
 kernel="${RUNE_KERNEL:-$root/vmlinux}"
@@ -52,6 +54,7 @@ trap cleanup EXIT
 for dependency in curl python3 truncate mkfs.ext4 e2fsck debugfs sha256sum timeout "$firecracker"; do
   command -v "$dependency" >/dev/null 2>&1 || { echo "missing dependency: $dependency" >&2; exit 1; }
 done
+[[ -r "$diagnostic_formatter" ]] || { echo "missing build diagnostic formatter" >&2; exit 1; }
 [[ -r "$kernel" ]] || { echo "missing kernel: $kernel" >&2; exit 1; }
 [[ -r "$rootfs" ]] || { echo "missing build rootfs: $rootfs" >&2; exit 1; }
 
@@ -66,10 +69,16 @@ mkfs.ext4 -q -F -O ^has_journal -d "$input_dir" "$input"
 pid=$!
 for _ in $(seq 1 400); do
   [[ -S "$api_sock" ]] && break
-  kill -0 "$pid" 2>/dev/null || { cat "$console_log" >&2; exit 1; }
+  kill -0 "$pid" 2>/dev/null || {
+    python3 "$diagnostic_formatter" --language "$language" --kind infrastructure </dev/null >&2
+    exit 1
+  }
   sleep 0.01
 done
-[[ -S "$api_sock" ]] || { echo "Firecracker API socket did not appear" >&2; exit 1; }
+[[ -S "$api_sock" ]] || {
+  python3 "$diagnostic_formatter" --language "$language" --kind infrastructure </dev/null >&2
+  exit 1
+}
 
 json_string() { python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"; }
 api_put() {
@@ -77,7 +86,6 @@ api_put() {
   status="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' --unix-socket "$api_sock" -X PUT -H 'Content-Type: application/json' -d "$2" "http://localhost$endpoint")"
   if [[ "$status" -lt 200 || "$status" -ge 300 ]]; then
     echo "Firecracker API PUT $endpoint returned HTTP $status" >&2
-    cat "$response" >&2 || true
     return 1
   fi
 }
@@ -112,10 +120,19 @@ set -e
 
 if [[ "$status" -ne 0 ]]; then
   debugfs -R "dump -p /diagnostics.txt $diagnostics" "$scratch" >/dev/null 2>&1 || true
-  [[ ! -s "$diagnostics" ]] || cat "$diagnostics" >&2
-  cat "$console_log" >&2 || true
-  [[ "$status" -eq 124 ]] && echo "Rune build exceeded ${wall_seconds}s wall-time limit" >&2
-  [[ "$status" -eq 4 ]] && echo "build VM exited before reporting completion" >&2
+
+  kind=infrastructure
+  case "$status" in
+    3) kind=compilation ;;
+    124) kind=timeout ;;
+    4) kind=infrastructure ;;
+  esac
+
+  python3 "$diagnostic_formatter" \
+    --language "$language" \
+    --kind "$kind" \
+    --input "$diagnostics" >&2
+
   exit "$status"
 fi
 

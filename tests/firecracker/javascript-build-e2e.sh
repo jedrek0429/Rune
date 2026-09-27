@@ -35,3 +35,17 @@ PY
 
 echo "javascript build -> execute OK"
 
+cat >"$tmp/invalid.js" <<'EOF'
+const value = ;
+EOF
+
+if output="$(bash firecracker/run-build-vm.sh scriptc javascript "$tmp/invalid.js" 2>&1)"; then
+  echo "javascript invalid source unexpectedly built" >&2
+  exit 1
+fi
+
+grep -Fq "JavaScript compilation failed" <<<"$output"
+grep -Fq "rune.js" <<<"$output"
+! grep -Eq '/input/|/work/|Kernel panic|console=' <<<"$output"
+
+echo "javascript diagnostics OK"
