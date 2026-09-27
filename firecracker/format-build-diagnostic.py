@@ -33,8 +33,8 @@ def sanitise(raw: str, language: str) -> str:
 
     for source in (
         "source.rs",
-        "source.c",
         "source.cpp",
+        "source.c",
         "source.js",
         "source.ts",
         "source.py",
