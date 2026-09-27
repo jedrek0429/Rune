@@ -14,7 +14,7 @@ const result: { actions: unknown[]; error: null } = {
     actions: [],
     error: null,
 };
-console.log(JSON.stringify({ actions: [], error: null }));
+console.log(JSON.stringify(result));
 EOF
 
 bash firecracker/build-rootfs.sh build scriptc
