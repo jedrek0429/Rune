@@ -19,7 +19,7 @@ EOF
 
 bash firecracker/build-rootfs.sh build scriptc
 
-descriptor="$(bash firecracker/run-build-vm.sh scriptc typescript "$tmp/rune.js")"
+descriptor="$(bash firecracker/run-build-vm.sh scriptc typescript "$tmp/rune.ts")"
 read -r id _ _ <<<"$descriptor"
 
 [[ "$id" == sha256:* ]]
