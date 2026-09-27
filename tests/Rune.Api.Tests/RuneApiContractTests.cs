@@ -1,4 +1,5 @@
 using Rune.Api;
+using Xunit;
 
 namespace Rune.Api.Tests;
 
