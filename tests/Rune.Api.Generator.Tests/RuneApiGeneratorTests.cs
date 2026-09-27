@@ -58,6 +58,10 @@ public sealed class RuneApiGeneratorTests
         Assert.Contains(
             "\"NetCord.Rest.RestMessage.ReplyAsync\"",
             typescript);
+
+        Assert.Contains(
+            "REST_MESSAGE_REPLY",
+            typescript);
     }
 
     [Fact]
@@ -101,6 +105,10 @@ public sealed class RuneApiGeneratorTests
 
         Assert.Contains(
             "\"NetCord.Rest.RestMessage.ReplyAsync\"",
+            rust);
+
+        Assert.Contains(
+            "REST_MESSAGE_REPLY_NETCORD",
             rust);
     }
 
