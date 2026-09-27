@@ -62,6 +62,14 @@ public sealed class RuneApiGeneratorTests
         Assert.Contains(
             "REST_MESSAGE_REPLY",
             typescript);
+
+        Assert.Contains(
+            "call(method: string, payload: any)",
+            typescript);
+
+        Assert.DoesNotContain(
+            "call(method: string, arguments: any)",
+            typescript);
     }
 
     [Fact]
