@@ -29,7 +29,7 @@ public static class RuneApiEmitter
 
         text.Append(
             "export interface RuneHost {\n" +
-            "    call(method: string, arguments: any): Promise<any>;\n" +
+            "    call(method: string, payload: any): Promise<any>;\n" +
             "}\n\n");
 
         foreach (var type in model.Types)
