@@ -72,14 +72,6 @@
   }
 }
 
-@media (max-width: 49.999rem) {
-  site-search button[data-open-modal] {
-    border: 0 !important;
-    background: transparent !important;
-    color: var(--rune-ivory) !important;
-  }
-}
-
 site-search dialog,
 site-search .dialog-frame,
 site-search .search-container {
@@ -142,9 +134,20 @@ site-search .search-container {
   .sl-menu-button,
   site-search button[data-open-modal] {
     border: 1px solid var(--rune-surface-border) !important;
+    border-radius: 50% !important;
+    width: var(--sl-menu-button-size) !important;
+    min-width: var(--sl-menu-button-size) !important;
+    height: var(--sl-menu-button-size) !important;
+    padding: 0.5rem !important;
+    justify-content: center !important;
     background: var(--rune-surface) !important;
     color: var(--sl-color-text) !important;
     box-shadow: none !important;
+  }
+
+  site-search button[data-open-modal] svg {
+    width: 1.25rem !important;
+    height: 1.25rem !important;
   }
 
   .sl-menu-button:hover,
