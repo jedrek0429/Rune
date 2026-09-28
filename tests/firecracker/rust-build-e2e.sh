@@ -47,59 +47,33 @@ grep -Fq "rune.rs" <<<"$output"
 ! grep -Eq '/input/|/work/|Kernel panic|console=' <<<"$output"
 echo "rust diagnostics OK"
 
-cat generated/rust/rune_api.rs >"$tmp/generated-rune.rs"
-cat >>"$tmp/generated-rune.rs" <<'EOF'
-
-struct FakeHost;
-
-impl RuneHost for FakeHost {
-    fn message_reply(
-        &mut self,
-        reply_message: &ReplyMessageProperties,
-    ) -> Result<RestMessage, String> {
-        Ok(RestMessage {
-            id: 99,
-            channel_id: 2,
-            content: reply_message
-                .content
-                .clone()
-                .unwrap_or_default(),
-            author: User {
-                id: 3,
-                username: "rune".to_string(),
-            },
-        })
-    }
-}
-
-fn main() {
-    let message = Message {
-        id: 1,
-        channel_id: 2,
-        content: "hello".to_string(),
-        author: User {
-            id: 3,
-            username: "rune".to_string(),
-        },
-    };
-
-    let mut host = FakeHost;
-    let reply = message.reply(
-        &mut host,
-        ReplyMessageProperties {
-            content: Some("generated".to_string()),
-        },
-    ).unwrap();
-
-    assert_eq!(reply.content, "generated");
-    assert_eq!(
-        REST_MESSAGE_REPLY_NETCORD,
-        "NetCord.Rest.RestMessage.ReplyAsync",
-    );
-
-    println!("{}", r#"{"actions":[],"error":null}"#);
-}
+cat >"$tmp/rune-envelope.json" <<'EOF'
+{"executionId":"e","invocationId":"i","runeId":"r","runeName":"rust-api","guildId":1,"eventType":"messageCreate","artifact":{"id":"unused","digest":"unused","entrypoint":"rune","sizeBytes":1},"payload":{"id":"1","channelId":"2","content":"!hello","author":{"id":"3","username":"rune"}},"enqueuedAt":"2026-09-27T00:00:00Z"}
 EOF
 
-build_and_execute "$tmp/generated-rune.rs"
-echo "generated rust Rune.Api wrapper -> execute OK"
+descriptor="$(
+  dotnet run     --project tests/Rune.BuildHarness     --configuration Release     -- Rust MessageCreate examples/hello.rs
+)"
+read -r id _ _ <<<"$descriptor"
+[[ "$id" == sha256:* ]]
+digest="${id#sha256:}"
+artifact="$root/artifacts/$digest"
+test -s "$artifact"
+
+response="$(
+  bash src/Rune.Firecracker/run-invocation-vm.sh     "$artifact"     "$tmp/rune-envelope.json"
+)"
+
+python3 - "$response" <<'PY'
+import json
+import sys
+
+result = json.loads(sys.argv[1])
+assert result["error"] is None, result
+action = result["actions"][0]
+assert action["method"] == "message.reply", result
+assert action["arguments"]["replyMessage"]["content"] == "Hello, rune!", result
+PY
+
+echo "production Rust Rune API example -> execute OK"
+
