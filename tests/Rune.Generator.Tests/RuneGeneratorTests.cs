@@ -142,6 +142,18 @@ public sealed class RuneGeneratorTests
         Assert.Contains(
             "pub fn reply(",
             rust);
+
+        Assert.Contains(
+            "pub fn __rune_install_host(",
+            rust);
+
+        Assert.Contains(
+            "__rune_with_host(|host|",
+            rust);
+
+        Assert.DoesNotContain(
+            "&self, host: &mut dyn RuneHost",
+            rust);
     }
 
     [Fact]
