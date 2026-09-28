@@ -56,7 +56,7 @@ public static class RuneApiEmitter
                     method.HostName);
 
             text.Append(
-                $"     * @param {{function({JavaScriptFunctionParameters(method, model)}): Promise<{JavaScriptType(method.Result)}>}} [{callback}]\n");
+                $"     * @param {{function({JavaScriptFunctionParameters(method, model)}): Promise<{JavaScriptType(method.Result, model)}>}} [{callback}]\n");
         }
 
         text.Append(
@@ -117,7 +117,7 @@ public static class RuneApiEmitter
             foreach (var member in type.Members)
             {
                 text.Append(
-                    $"    /** @type {{{JavaScriptType(member.Type)}}} */\n" +
+                    $"    /** @type {{{JavaScriptType(member.Type, model)}}} */\n" +
                     $"    {Camel(member.Name)};\n");
             }
 
@@ -165,7 +165,7 @@ public static class RuneApiEmitter
                 }
 
                 text.Append(
-                    $"     * @returns {{Promise<{JavaScriptType(method.Result)}>}}\n" +
+                    $"     * @returns {{Promise<{JavaScriptType(method.Result, model)}>}}\n" +
                     "     */\n");
 
                 var parameters =
@@ -290,11 +290,14 @@ public static class RuneApiEmitter
                 return JavaScriptObjectType(selected, model);
         }
 
-        return JavaScriptType(type);
+        return JavaScriptType(
+            type,
+            model);
     }
 
     private static string JavaScriptType(
-        RuneApiValueType type)
+        RuneApiValueType type,
+        RuneApiModel model)
     {
         var value =
             type.Name switch
@@ -302,6 +305,12 @@ public static class RuneApiEmitter
                 "u64" => "string",
                 "bool" => "boolean",
                 "string" => "string",
+                _ when type.IsSelectedType &&
+                    model.Types.Single(
+                            item =>
+                                item.Name == type.Name)
+                        .IsEnum =>
+                    "number",
                 _ => type.Name
             };
 
