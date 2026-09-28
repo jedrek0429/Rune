@@ -302,19 +302,25 @@ public sealed class RuneGeneratorTests
             "A message received from a Discord gateway event.",
             message);
 
+        var overview =
+            message[
+                message.IndexOf(
+                    "## Overview",
+                    StringComparison.Ordinal)..];
+
         Assert.True(
-            message.IndexOf(
+            overview.IndexOf(
                 "export class Message extends RestMessage",
                 StringComparison.Ordinal) <
-            message.IndexOf(
+            overview.IndexOf(
                 "A message received from a Discord gateway event.",
                 StringComparison.Ordinal));
 
         Assert.True(
-            message.IndexOf(
+            overview.IndexOf(
                 "export class Message extends RestMessage",
                 StringComparison.Ordinal) <
-            message.IndexOf(
+            overview.IndexOf(
                 "### Inheritance",
                 StringComparison.Ordinal));
 
