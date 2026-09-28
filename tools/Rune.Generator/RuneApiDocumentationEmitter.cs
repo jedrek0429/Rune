@@ -153,6 +153,8 @@ public static class RuneApiDocumentationEmitter
                 $"Rune.Api reference for {type.Name}.");
 
         AppendTabsImport(text);
+        text.AppendLine("<div class=\"rune-api-type-marker\" aria-hidden=\"true\"></div>");
+        text.AppendLine();
 
         text.AppendLine("## Overview");
         text.AppendLine();
@@ -188,7 +190,7 @@ public static class RuneApiDocumentationEmitter
 
             text.AppendLine(
                 string.Join(
-                    " → ",
+                    " ← ",
                     chain));
             text.AppendLine();
         }
