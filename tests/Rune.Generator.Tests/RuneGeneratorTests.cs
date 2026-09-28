@@ -104,6 +104,18 @@ public sealed class RuneGeneratorTests
             rust);
 
         Assert.Contains(
+            "#[serde(with = \"rune_snowflake_serde\")]",
+            rust);
+
+        Assert.Contains(
+            "serde_repr::Deserialize_repr",
+            rust);
+
+        Assert.Contains(
+            "#[serde(rename_all = \"camelCase\")]",
+            rust);
+
+        Assert.Contains(
             "pub type_: ReactionType",
             rust);
 
