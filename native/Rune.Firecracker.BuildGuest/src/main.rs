@@ -85,6 +85,11 @@ fn main() -> Result<()> {
                 ("SCRIPTC_TARGET", "x86_64-linux-gnu.2.36"),
             ],
         ),
+        "python" => (
+            "rune-build-python",
+            &["/input/source.py", "/work/artifact"],
+            &[],
+        ),
         other => bail!("unsupported build language: {other}"),
     };
 

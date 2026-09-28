@@ -118,11 +118,17 @@ jobs:
       - name: Execute prebuilt ELF in Firecracker
         run: bash tests/firecracker/invocation-e2e.sh
 
-      - name: Build and execute native Runes
+      - name: Build and execute native runes
         run: bash tests/firecracker/native-build-e2e.sh
 
-      - name: Build and execute JavaScript Runes
+      - name: Build and execute JavaScript runes
         run: bash tests/firecracker/javascript-build-e2e.sh
 
-      - name: Build and execute TypeScript Runes
+      - name: Build and execute TypeScript runes
         run: bash tests/firecracker/typescript-build-e2e.sh
+
+      - name: Build and execute Python runes
+        run: bash tests/firecracker/python-build-e2e.sh
+      
+      - name: Build and execute Python runes library baseline
+        run: bash tests/firecracker/python-baseline-e2e.sh
