@@ -8,7 +8,8 @@ for path in   src/Rune.Runtime/Compilation   src/Rune.Runtime/Wasm   src/Rune.Ru
   fi
 done
 
-if grep -RInE   'Extism|RuneExecutor|RuneWasmCache|AddRuneCompilation|wasm32-unknown-unknown|rune\.wasm|byte\[\][[:space:]]+Wasm'   src tests .github   --exclude-dir=bin   --exclude-dir=obj; then
+if grep -RInE   'Extism|RuneExecutor|RuneWasmCache|AddRuneCompilation|wasm32-unknown-unknown|rune\.wasm|byte\[\][[:space:]]+Wasm'   src tests .github   --exclude-dir=bin   --exclude-dir=obj \
+  --exclude=runtime-cutover-feature.test.sh; then
   echo "legacy WebAssembly runtime reference remains" >&2
   exit 1
 fi
