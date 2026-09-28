@@ -100,6 +100,14 @@ public sealed class RuneGeneratorTests
             javascript);
 
         Assert.Contains(
+            "@callback MessageReplyCallback",
+            javascript);
+
+        Assert.Contains(
+            "@param {MessageReplyCallback} [messageReply]",
+            javascript);
+
+        Assert.Contains(
             "await this.__host.messageReply(replyMessage)",
             javascript);
 
