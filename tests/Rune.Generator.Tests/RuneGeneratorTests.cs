@@ -203,7 +203,7 @@ public sealed class RuneGeneratorTests
 
 
     [Fact]
-    public void Api_documentation_is_user_facing_and_reference_oriented()
+    public void Api_documentation_is_user_facing_and_links_to_NetCord()
     {
         var documentation =
             RuneApiDocumentationEmitter.Emit(LoadApi());
@@ -222,7 +222,7 @@ public sealed class RuneGeneratorTests
                 "docs/src/content/docs/api/generated/events.mdx"];
 
         Assert.Contains(
-            "| Event | Description | Payload |",
+            "| Event | Description | Payload | Source |",
             events);
 
         Assert.Contains(
@@ -268,6 +268,14 @@ public sealed class RuneGeneratorTests
 
         Assert.Contains(
             "object ← [RestMessage](../restmessage/) ← **Message**",
+            message);
+
+        Assert.Contains(
+            "class=\"netcord-source\"",
+            message);
+
+        Assert.Contains(
+            "https://netcord.dev/docs/NetCord.Gateway.Message.html",
             message);
 
         Assert.Contains(
@@ -352,13 +360,18 @@ public sealed class RuneGeneratorTests
             "let reply = message.reply",
             restMessage);
 
-        Assert.DoesNotContain(
-            "NetCord",
+        Assert.Contains(
+            "https://netcord.dev/docs/NetCord.Rest.RestMessage.html",
             restMessage);
 
-        Assert.DoesNotContain(
-            "Host operation:",
+        Assert.Contains(
+            "https://netcord.dev/docs/NetCord.User.html",
             restMessage);
+
+        Assert.Contains(
+            "title=\"NetCord.Rest.RestMessage.ReplyAsync\"",
+            restMessage);
+
 
         Assert.DoesNotContain(
             "Namespace",
