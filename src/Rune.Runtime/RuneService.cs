@@ -43,6 +43,7 @@ public sealed class RuneService(
         var artifact =
             await builder.BuildAsync(
                 language,
+                eventType,
                 source,
                 cancellationToken);
 
@@ -79,6 +80,7 @@ public sealed class RuneService(
         var artifact =
             await builder.BuildAsync(
                 language,
+                current.EventType,
                 source,
                 cancellationToken);
 
