@@ -94,13 +94,13 @@ public static class RuneApiDocumentationEmitter
 
         AppendTabsImport(text);
 
-        text.AppendLine("| Event | Payload | Source |");
-        text.AppendLine("| --- | --- | --- |");
+        text.AppendLine("| Event | Description | Payload | Source |");
+        text.AppendLine("| --- | --- | --- | --- |");
 
         foreach (var runeEvent in model.Events)
         {
             text.AppendLine(
-                $"| `{runeEvent.Name}` | [{runeEvent.Payload}](../types/{Slug(runeEvent.Payload)}/) | {NetCordSource(runeEvent.NetCordName, NetCordMemberUrl(runeEvent.NetCordName))} |");
+                $"| `{runeEvent.Name}` | {runeEvent.Summary ?? "—"} | [{runeEvent.Payload}](../types/{Slug(runeEvent.Payload)}/) | {NetCordSource(runeEvent.NetCordName, NetCordMemberUrl(runeEvent.NetCordName))} |");
         }
 
         text.AppendLine();
@@ -157,6 +157,9 @@ public static class RuneApiDocumentationEmitter
         text.AppendLine("## Overview");
         text.AppendLine();
 
+        AppendTypeDeclaration(text, type);
+        text.AppendLine();
+
         if (!string.IsNullOrWhiteSpace(type.Summary))
         {
             text.AppendLine(type.Summary);
@@ -167,9 +170,6 @@ public static class RuneApiDocumentationEmitter
             NetCordSource(
                 type.NetCordName,
                 NetCordTypeUrl(type.NetCordName)));
-        text.AppendLine();
-
-        AppendTypeDeclaration(text, type);
         text.AppendLine();
 
         if (!type.IsEnum)
