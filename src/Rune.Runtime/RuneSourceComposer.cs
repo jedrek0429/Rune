@@ -64,12 +64,12 @@ import { readFileSync } from "node:fs";
             $$"""
 async function __runeMain(): Promise<void> {
     const envelope = JSON.parse(readFileSync(0, "utf8")) as {
-        payload: unknown;
+        payload: any;
     };
 
     const actions: Array<{ method: string; arguments: unknown }> = [];
     const host = new RuneHost(
-        async (method: string, payload: unknown): Promise<unknown> => {
+        async (method: string, payload: any): Promise<any> => {
             actions.push({ method, arguments: payload });
 
             if (
@@ -77,7 +77,7 @@ async function __runeMain(): Promise<void> {
                 payload !== null &&
                 "replyMessage" in payload
             ) {
-                return (payload as { replyMessage: unknown }).replyMessage;
+                return (payload as { replyMessage: any }).replyMessage;
             }
 
             return {};
