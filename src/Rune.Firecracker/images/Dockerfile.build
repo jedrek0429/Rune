@@ -38,6 +38,7 @@ RUN case "$POOL" in \
         mkdir -p /opt/rune/rust/src && \
         printf 'fn main() {}\n' > /opt/rune/rust/src/main.rs && \
         cargo fetch --manifest-path /opt/rune/rust/Cargo.toml && \
+        ln -sf /usr/local/cargo/bin/cargo /usr/local/bin/cargo && \
         printf '#!/bin/sh\nRUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo exec /usr/local/cargo/bin/rustc "$@"\n' \
             > /usr/local/bin/rustc && \
         chmod 0755 /usr/local/bin/rustc \
