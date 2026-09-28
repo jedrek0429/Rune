@@ -28,17 +28,17 @@ for dependency in   cargo   cc   redis-cli   redis-server   sha256sum; do
   }
 done
 
-redis-server   --bind 127.0.0.1   --port 6379   --save ""   --appendonly no   --daemonize no   >"$tmp/redis.log" 2>&1 &
+redis-server   --bind 127.0.0.1   --port 6380   --save ""   --appendonly no   --daemonize no   >"$tmp/redis.log" 2>&1 &
 redis_pid=$!
 
 for _ in $(seq 1 100); do
-  if redis-cli -h 127.0.0.1 -p 6379 ping       2>/dev/null | grep -q PONG; then
+  if redis-cli -h 127.0.0.1 -p 6380 ping       2>/dev/null | grep -q PONG; then
     break
   fi
   sleep 0.05
 done
 
-redis-cli -h 127.0.0.1 -p 6379 ping   | grep -q PONG
+redis-cli -h 127.0.0.1 -p 6380 ping   | grep -q PONG
 
 bash firecracker/build-snapshot.sh
 
@@ -72,7 +72,7 @@ install -m 0444   "$tmp/rune"   "$root/artifacts/$digest"
 
 cargo build   --quiet   --release   --manifest-path   native/Rune.Firecracker.Runner/Cargo.toml
 
-RUNE_REDIS_URL="redis://127.0.0.1:6379/" RUNE_FIRECRACKER_ROOT="$root" RUNE_VM_MIN=1 RUNE_VM_MAX=1 RUNE_RUNNER_NAME=e2e RUST_LOG=rune_firecracker_runner=info   target/release/rune-firecracker-runner   >"$tmp/runner.log" 2>&1 &
+RUNE_REDIS_URL="redis://127.0.0.1:6380/" RUNE_FIRECRACKER_ROOT="$root" RUNE_VM_MIN=1 RUNE_VM_MAX=1 RUNE_RUNNER_NAME=e2e RUST_LOG=rune_firecracker_runner=info   target/release/rune-firecracker-runner   >"$tmp/runner.log" 2>&1 &
 runner_pid=$!
 
 for _ in $(seq 1 400); do
