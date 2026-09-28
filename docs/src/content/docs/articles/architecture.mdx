@@ -1,35 +1,28 @@
 ---
 title: How Rune works
-description: The path from an uploaded rune to an isolated invocation.
+description: What happens when you register and run a rune.
 ---
 
-Rune is split between a C# control plane and Rust Firecracker infrastructure.
+A rune is a small script that runs when a selected Discord event happens.
 
-## Registration and build
+## Register
 
-When you register a rune, Rune.Bot accepts the source file and passes it to the runtime build pipeline. The source is compiled inside a disposable Firecracker build microVM. Successful builds produce a content-addressed executable artifact rather than source code being sent to invocation VMs.
+Upload your script with Rune.Bot. Rune builds it and saves it for future runs.
 
-## Event dispatch
+## Receive an event
 
-Discord gateway events arrive through NetCord. Rune projects the selected event into Rune.Api, serializes the portable payload, and queues an invocation envelope through Redis.
+When a matching Discord event happens, Rune starts your rune and gives it the event data through Rune.Api.
 
-The runtime path is:
+For example, a `MessageCreate` rune receives a message. It can read fields such as the message content and author.
 
-```text
-Discord gateway event
-→ Rune.Api projection
-→ Redis invocation envelope
-→ Rune.Firecracker.Runner
-→ disposable invocation microVM
-→ Redis result envelope
-→ permitted host action
-→ NetCord
-```
+## Use Rune.Api
 
-## Host actions
+Rune.Api defines the data and actions available to your rune.
 
-A rune cannot call arbitrary bot functionality. Rune.Api methods such as `message.reply(...)` become named host operations. The result is returned to Rune.Bot, which applies the permitted operation to the retained NetCord object that caused the event.
+Methods such as `message.reply(...)` let your rune act on the event it received.
 
-## Contracts
+## Run
 
-`contracts/rune-api.yaml` defines the script-facing API. `contracts/runtime.yaml` defines the C# ↔ Rust runtime protocol. Generated representations are checked in CI for drift.
+Rune runs each invocation in an isolated environment with defined resource limits.
+
+The same Rune.Api concepts are available across supported languages.
