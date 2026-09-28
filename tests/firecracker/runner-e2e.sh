@@ -72,7 +72,7 @@ install -m 0444   "$tmp/rune"   "$root/artifacts/$digest"
 
 cargo build   --quiet   --release   --manifest-path   native/Rune.Firecracker.Runner/Cargo.toml
 
-RUNE_REDIS_URL="redis://127.0.0.1:6380/" RUNE_FIRECRACKER_ROOT="$root" RUNE_VM_MIN=1 RUNE_VM_MAX=1 RUNE_RUNNER_NAME=e2e RUST_LOG=rune_firecracker_runner=info   target/release/rune-firecracker-runner   >"$tmp/runner.log" 2>&1 &
+RUNE_REDIS_URL="redis://127.0.0.1:6380/" RUNE_FIRECRACKER_ROOT="$root" RUNE_VM_MIN=1 RUNE_VM_MAX=1 RUNE_RUNNER_NAME=e2e RUST_LOG=rune_firecracker_runner=info   native/Rune.Firecracker.Runner/target/release/rune-firecracker-runner   >"$tmp/runner.log" 2>&1 &
 runner_pid=$!
 
 for _ in $(seq 1 400); do
@@ -127,11 +127,11 @@ print(json.dumps({
 PY
 )"
 
-redis-cli   -h 127.0.0.1   -p 6379   XADD rune:invocations '*'   json "$envelope"   >/dev/null
+redis-cli   -h 127.0.0.1   -p 6380   XADD rune:invocations '*'   json "$envelope"   >/dev/null
 
 for _ in $(seq 1 400); do
   count="$(
-    redis-cli       -h 127.0.0.1       -p 6379       XLEN rune:results
+    redis-cli       -h 127.0.0.1       -p 6380       XLEN rune:results
   )"
 
   if [[ "$count" -gt 0 ]]; then
@@ -147,7 +147,7 @@ for _ in $(seq 1 400); do
 done
 
 result="$(
-  redis-cli     -h 127.0.0.1     -p 6379     --raw     XRANGE rune:results - + COUNT 1
+  redis-cli     -h 127.0.0.1     -p 6380     --raw     XRANGE rune:results - + COUNT 1
 )"
 
 grep -q '"error":null' <<<"$result"
@@ -155,7 +155,7 @@ grep -q '"method":"message.reply"' <<<"$result"
 grep -q '"content":"redis-runner-e2e"' <<<"$result"
 
 remaining="$(
-  redis-cli     -h 127.0.0.1     -p 6379     XLEN rune:invocations
+  redis-cli     -h 127.0.0.1     -p 6380     XLEN rune:invocations
 )"
 
 [[ "$remaining" -eq 0 ]]
