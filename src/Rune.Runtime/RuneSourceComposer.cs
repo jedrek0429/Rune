@@ -68,21 +68,21 @@ async function __runeMain(): Promise<void> {
     };
 
     const actions: Array<{ method: string; arguments: unknown }> = [];
-    const host = new RuneHost();
+    const host = new RuneHost(
+        async (method: string, payload: unknown): Promise<unknown> => {
+            actions.push({ method, arguments: payload });
 
-    host.call = async (method: string, payload: unknown): Promise<unknown> => {
-        actions.push({ method, arguments: payload });
+            if (
+                typeof payload === "object" &&
+                payload !== null &&
+                "replyMessage" in payload
+            ) {
+                return (payload as { replyMessage: unknown }).replyMessage;
+            }
 
-        if (
-            typeof payload === "object" &&
-            payload !== null &&
-            "replyMessage" in payload
-        ) {
-            return (payload as { replyMessage: unknown }).replyMessage;
-        }
-
-        return {};
-    };
+            return {};
+        },
+    );
 
     const {{argument}} = new {{payloadType}}(envelope.payload, host);
 
