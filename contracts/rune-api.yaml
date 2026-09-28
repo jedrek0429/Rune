@@ -60,7 +60,6 @@ types:
             });
           rust: |
             let reply = message.reply(
-                host,
                 ReplyMessageProperties {
                     content: Some("Hello from Rune!".to_string()),
                 },
