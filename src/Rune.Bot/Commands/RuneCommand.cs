@@ -23,8 +23,8 @@ public sealed class RuneCommand(
     /// Uploads source code and registers it as a rune for this server.
     /// Rune detects the language from the file extension and compiles the source before registration completes.
     /// </summary>
-    /// <param name="name">The server-local name used to identify the rune.</param>
-    /// <param name="file">The source file to upload. Supported extensions are .js, .mjs, .ts, .py, .rs, .c, .cc, .cpp, and .cxx.</param>
+    /// <param name="name">The rune's name in this server.</param>
+    /// <param name="file">The rune source file. Supported extensions: .js, .mjs, .ts, .py, .rs, .c, .cc, .cpp, and .cxx.</param>
     /// <example>/rune register name:hello file:hello.ts</example>
     [RequireUserPermissions<ApplicationCommandContext>(
         Permissions.ManageGuild)]
@@ -99,7 +99,7 @@ public sealed class RuneCommand(
     }
 
     /// <summary>
-    /// Lists the runes registered in this server, including their language, event and enabled state.
+    /// Lists runes in this server with their language, event, and status.
     /// </summary>
     /// <example>/rune list</example>
     [RequireUserPermissions<ApplicationCommandContext>(
@@ -142,7 +142,7 @@ public sealed class RuneCommand(
     }
 
     /// <summary>
-    /// Shows metadata for one registered rune, including its language, event, status and artifact size.
+    /// Shows a rune's language, event, status, and size.
     /// </summary>
     /// <param name="name">The name of the rune to inspect.</param>
     /// <example>/rune info name:hello</example>
@@ -183,7 +183,7 @@ public sealed class RuneCommand(
     }
 
     /// <summary>
-    /// Disables a rune without removing its source or compiled artifact.
+    /// Disables a rune and keeps it registered.
     /// </summary>
     /// <param name="name">The name of the rune to disable.</param>
     /// <example>/rune disable name:hello</example>
@@ -213,7 +213,7 @@ public sealed class RuneCommand(
     }
 
     /// <summary>
-    /// Enables a previously disabled rune.
+    /// Enables a rune.
     /// </summary>
     /// <param name="name">The name of the rune to enable.</param>
     /// <example>/rune enable name:hello</example>
@@ -272,7 +272,7 @@ public sealed class RuneCommand(
     }
 
     /// <summary>
-    /// Replaces a rune's source file and recompiles it while keeping the same registered rune.
+    /// Replaces a rune's source file and rebuilds it.
     /// </summary>
     /// <param name="name">The name of the rune to update.</param>
     /// <param name="file">The replacement source file.</param>
