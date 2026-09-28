@@ -266,7 +266,7 @@ public static class RuneBotDocumentationEmitter
             "Commands for managing runes in Discord.");
 
         text.AppendLine(
-            "Use Rune.Bot to register, inspect, enable, update, and remove runes.");
+            "Use the Rune bot to register, inspect, enable, update, and remove runes.");
         text.AppendLine();
         text.AppendLine(
             "Choose a command below for its options and examples.");
