@@ -88,7 +88,15 @@ public sealed class RuneGeneratorTests
             javascript);
 
         Assert.Contains(
-            "@param {{ content: (string|null) }} replyMessage",
+            "@typedef {",
+            javascript);
+
+        Assert.Contains(
+            "} ReplyMessagePropertiesInput",
+            javascript);
+
+        Assert.Contains(
+            "@param {ReplyMessagePropertiesInput} replyMessage",
             javascript);
 
         Assert.Contains(
