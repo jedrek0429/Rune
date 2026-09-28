@@ -85,6 +85,9 @@ jobs:
           grep -F "License" docs/dist/index.html >/dev/null
           grep -F "© 2026 Andrzej Bansleben" docs/dist/index.html >/dev/null
           grep -F "v0.1.0" docs/dist/index.html >/dev/null
+          grep -F "class=\"netcord-source\"" docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "https://netcord.dev/docs/NetCord.Rest.RestMessage.html" docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "https://netcord.dev/docs/NetCord.User.html" docs/dist/api/generated/types/restmessage/index.html >/dev/null
           grep -F "Overview" docs/dist/api/generated/types/message/index.html >/dev/null
           grep -F "export class Message extends RestMessage" docs/dist/api/generated/types/message/index.html >/dev/null
           grep -F "object ← <a href=\"../restmessage/\">RestMessage</a> ← <strong>Message</strong>" docs/dist/api/generated/types/message/index.html >/dev/null
