@@ -585,6 +585,22 @@ public static class RuneApiEmitter
         return text.ToString();
     }
 
+    internal static string CTypeForDocumentation(
+        RuneApiValueType type,
+        RuneApiModel model) =>
+        CType(type, model);
+
+    internal static string CMemberForDocumentation(
+        string name) =>
+        Snake(name);
+
+    internal static string CMethodForDocumentation(
+        string typeName,
+        string methodName) =>
+        Snake(
+            typeName +
+            WithoutAsync(methodName));
+
     internal static string TypeScriptTypeForDocumentation(
         RuneApiValueType type) =>
         TypeScriptType(type);
