@@ -59,15 +59,25 @@
   background: var(--rune-surface);
 }
 
-site-search button[data-open-modal] {
-  border-color: var(--rune-surface-border) !important;
-  background: var(--rune-surface) !important;
-  color: var(--sl-color-text) !important;
+@media (min-width: 50rem) {
+  site-search button[data-open-modal] {
+    border-color: var(--rune-surface-border) !important;
+    background: var(--rune-surface) !important;
+    color: var(--sl-color-text) !important;
+  }
+
+  site-search button[data-open-modal]:hover {
+    border-color: color-mix(in srgb, var(--sl-color-accent) 42%, var(--rune-surface-border)) !important;
+    background: var(--rune-surface-soft) !important;
+  }
 }
 
-site-search button[data-open-modal]:hover {
-  border-color: color-mix(in srgb, var(--sl-color-accent) 42%, var(--rune-surface-border)) !important;
-  background: var(--rune-surface-soft) !important;
+@media (max-width: 49.999rem) {
+  site-search button[data-open-modal] {
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--rune-ivory) !important;
+  }
 }
 
 site-search dialog,
@@ -120,4 +130,52 @@ site-search .search-container {
 .home-hero ~ hr:first-of-type,
 .home-hero + hr {
   display: none;
+}
+
+
+/* Keep Starlight's mobile chrome on the Rune palette. */
+.sidebar-pane {
+  background-color: var(--sl-color-bg-sidebar) !important;
+}
+
+.sl-menu-button {
+  background-color: var(--rune-gold-bright) !important;
+  color: #17130b !important;
+  box-shadow: none !important;
+}
+
+.sl-menu-button:has(~ :popover-open) {
+  background-color: var(--rune-surface-soft) !important;
+  color: var(--rune-gold-bright) !important;
+}
+
+/* The splash page renders an empty PageTitle ContentPanel before the actual content.
+   Remove that panel and its separator rather than trying to hide an <hr>. */
+main:has(.home-hero) > .content-panel:first-of-type {
+  display: none;
+}
+
+main:has(.home-hero) > .content-panel + .content-panel {
+  border-top: 0 !important;
+}
+
+/* Generated type pages should read like compact SDK reference pages, not prose articles. */
+.sl-markdown-content:has(.rune-api-type-marker) {
+  --sl-content-gap-y: 0.75rem;
+}
+
+.sl-markdown-content:has(.rune-api-type-marker) h2 {
+  margin-top: 2rem !important;
+}
+
+.sl-markdown-content:has(.rune-api-type-marker) h3 {
+  margin-top: 1.5rem !important;
+}
+
+.sl-markdown-content:has(.rune-api-type-marker) h4 {
+  margin-top: 1rem !important;
+}
+
+.sl-markdown-content:has(.rune-api-type-marker) starlight-tabs {
+  margin-top: 0.75rem !important;
 }
