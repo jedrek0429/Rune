@@ -226,7 +226,7 @@ public sealed class RuneGeneratorTests
             events);
 
         Assert.Contains(
-            "Raised when Rune receives a newly created Discord message.",
+            "A new Discord message is created.",
             events);
 
         Assert.Contains(
@@ -303,7 +303,7 @@ public sealed class RuneGeneratorTests
             message);
 
         Assert.Contains(
-            "A message received from a Discord gateway event.",
+            "A message from a MessageCreate event.",
             message);
 
         var overview =
@@ -317,7 +317,7 @@ public sealed class RuneGeneratorTests
                 "export class Message extends RestMessage",
                 StringComparison.Ordinal) <
             overview.IndexOf(
-                "A message received from a Discord gateway event.",
+                "A message from a MessageCreate event.",
                 StringComparison.Ordinal));
 
         Assert.True(
