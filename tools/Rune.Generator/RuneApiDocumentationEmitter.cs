@@ -55,7 +55,7 @@ public static class RuneApiDocumentationEmitter
         AppendTabsImport(text);
 
         text.AppendLine(
-            $"**Rune.Api {model.Version}** · **NetCord {model.NetCordVersion}**");
+            $"**Rune.Api {model.Version}**");
         text.AppendLine();
         text.AppendLine(
             "Rune.Api gives runes event data and Discord actions.");
@@ -94,13 +94,13 @@ public static class RuneApiDocumentationEmitter
 
         AppendTabsImport(text);
 
-        text.AppendLine("| Event | Description | Payload | Source |");
-        text.AppendLine("| --- | --- | --- | --- |");
+        text.AppendLine("| Event | Description | Payload |");
+        text.AppendLine("| --- | --- | --- |");
 
         foreach (var runeEvent in model.Events)
         {
             text.AppendLine(
-                $"| `{runeEvent.Name}` | {runeEvent.Summary ?? "—"} | [{runeEvent.Payload}](../types/{Slug(runeEvent.Payload)}/) | {NetCordSource(runeEvent.NetCordName, NetCordMemberUrl(runeEvent.NetCordName))} |");
+                $"| `{runeEvent.Name}` | {runeEvent.Summary ?? "—"} | [{runeEvent.Payload}](../types/{Slug(runeEvent.Payload)}/) |");
         }
 
         text.AppendLine();
@@ -167,12 +167,6 @@ public static class RuneApiDocumentationEmitter
             text.AppendLine(type.Summary);
             text.AppendLine();
         }
-
-        text.AppendLine(
-            NetCordSource(
-                type.NetCordName,
-                NetCordTypeUrl(type.NetCordName)));
-        text.AppendLine();
 
         if (!type.IsEnum)
         {
@@ -244,11 +238,7 @@ public static class RuneApiDocumentationEmitter
                 text.AppendLine();
                 AppendValueType(text, model, member.Type);
                 text.AppendLine();
-                text.AppendLine(
-                    NetCordSource(
-                        member.CanonicalId,
-                        NetCordMemberUrl(member.CanonicalId)));
-                text.AppendLine();
+
             }
         }
 
@@ -290,14 +280,6 @@ public static class RuneApiDocumentationEmitter
                 text.AppendLine();
                 AppendValueType(text, model, method.Result);
                 text.AppendLine();
-                text.AppendLine(
-                    $"Host operation: `{method.HostName}`  ");
-                text.AppendLine(
-                    NetCordSource(
-                        method.CanonicalId,
-                        NetCordMemberUrl(method.CanonicalId)));
-                text.AppendLine();
-
                 AppendExamples(text, method.Examples, "#### Example");
             }
         }
