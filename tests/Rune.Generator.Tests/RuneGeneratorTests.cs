@@ -217,6 +217,16 @@ public sealed class RuneGeneratorTests
             documentation[
                 "docs/src/content/docs/api/generated/index.mdx"]);
 
+
+        Assert.Contains(
+            "docs/src/data/generated/api.json",
+            documentation.Keys);
+
+        Assert.Contains(
+            "\"runeApi\": \"0.1.0\"",
+            documentation[
+                "docs/src/data/generated/api.json"]);
+
         var message =
             documentation[
                 "docs/src/content/docs/api/generated/types/message.mdx"];
@@ -226,7 +236,19 @@ public sealed class RuneGeneratorTests
             message);
 
         Assert.Contains(
-            "## Inheritance",
+            "## Overview",
+            message);
+
+        Assert.Contains(
+            "export class Message extends RestMessage",
+            message);
+
+        Assert.Contains(
+            "pub struct Message",
+            message);
+
+        Assert.Contains(
+            "### Inheritance",
             message);
 
         Assert.Contains(
@@ -262,15 +284,11 @@ public sealed class RuneGeneratorTests
             message);
 
         Assert.Contains(
-            "## Inherited members",
+            "### Inherited members",
             message);
 
-        Assert.DoesNotContain(
-            "export class Message",
-            message);
-
-        Assert.DoesNotContain(
-            "pub struct Message",
+        Assert.Contains(
+            "A message received from a Discord gateway event.",
             message);
 
         var restMessage =
@@ -319,6 +337,22 @@ public sealed class RuneGeneratorTests
 
         Assert.Contains(
             "#### Returns",
+            restMessage);
+
+        Assert.Contains(
+            "Replies to this message and returns the created message.",
+            restMessage);
+
+        Assert.Contains(
+            "#### Example",
+            restMessage);
+
+        Assert.Contains(
+            "const reply = await message.reply",
+            restMessage);
+
+        Assert.Contains(
+            "let reply = message.reply",
             restMessage);
 
         Assert.Contains(

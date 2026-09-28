@@ -1,0 +1,35 @@
+---
+import version from '../data/generated/api.json';
+
+const base = import.meta.env.BASE_URL;
+---
+
+<footer class="rune-footer">
+  <a href="https://github.com/jedrek0429/Rune/blob/main/LICENSE" target="_blank" rel="noreferrer">
+    License
+  </a>
+  <span>© 2026 Andrzej Bansleben</span>
+  <span>v{version.runeApi}</span>
+</footer>
+
+<style>
+  .rune-footer {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+    padding: 2rem 1rem 2.5rem;
+    border-top: 1px solid var(--sl-color-hairline);
+    color: var(--sl-color-gray-3);
+    font-size: var(--sl-text-sm);
+  }
+
+  .rune-footer a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .rune-footer a:hover {
+    color: var(--sl-color-text-accent);
+  }
+</style>

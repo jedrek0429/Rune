@@ -1,0 +1,86 @@
+---
+title: Quick Start
+description: Register and run your first rune.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+import InstallRune from '../../../components/InstallRune.astro';
+
+A **rune** is a script registered with Rune. This guide uses a `MessageCreate` rune that reads the incoming message and replies to it.
+
+Rune.Api currently has generated bindings for TypeScript and Rust, so every API example in this guide is provided in both languages.
+
+## 1. Add Rune to your server
+
+<InstallRune />
+
+Rune needs the bot and application-command scopes so you can register runes and receive Discord events.
+
+## 2. Write the rune
+
+<Tabs syncKey="language">
+  <TabItem label="TypeScript">
+
+```ts
+if (message.content === "!hello") {
+  await message.reply({
+    content: `Hello, ${message.author.username}!`,
+  });
+}
+```
+
+  </TabItem>
+  <TabItem label="Rust">
+
+```rust
+if message.content == "!hello" {
+    message.reply(
+        host,
+        ReplyMessageProperties {
+            content: Some(format!("Hello, {}!", message.author.username)),
+        },
+    )?;
+}
+```
+
+  </TabItem>
+</Tabs>
+
+The examples assume the `MessageCreate` payload is available as `message`; Rust host operations additionally receive Rune's host handle as `host`.
+
+## 3. Register the rune
+
+In Discord, use `/rune register`, give the rune a name, and attach the source file.
+
+<Tabs syncKey="language">
+  <TabItem label="TypeScript">
+
+```text
+/rune register name:hello file:hello.ts
+```
+
+  </TabItem>
+  <TabItem label="Rust">
+
+```text
+/rune register name:hello file:hello.rs
+```
+
+  </TabItem>
+</Tabs>
+
+Rune builds the upload in an isolated build microVM and stores the resulting executable artifact.
+
+## 4. Trigger it
+
+Send:
+
+```text
+!hello
+```
+
+in a channel where Rune is present. The rune receives the `MessageCreate` event and replies through Rune.Api.
+
+## Next
+
+Read [How Rune works](../architecture/) for the runtime path, [Security model](../security/) for the sandbox boundaries, or go directly to the [API Reference](../../api/generated/).

@@ -12,8 +12,19 @@ export default defineConfig({
       title: 'Rune',
       description: 'Documentation for Rune, its bot interface, and Rune.Api.',
       customCss: ['./src/styles/custom.css'],
+      head: [
+        {
+          tag: 'link',
+          attrs: {
+            rel: 'icon',
+            type: 'image/png',
+            href: `${base}favicon.png`,
+          },
+        },
+      ],
       components: {
         PageTitle: './src/components/PageTitle.astro',
+        Footer: './src/components/Footer.astro',
       },
       social: [
         {
@@ -23,6 +34,14 @@ export default defineConfig({
         },
       ],
       sidebar: [
+        {
+          label: 'Guides',
+          items: [
+            { label: 'Quick Start', link: '/guides/quick-start/' },
+            { label: 'How Rune works', link: '/guides/architecture/' },
+            { label: 'Security model', link: '/guides/security/' },
+          ],
+        },
         {
           label: 'Bot Reference',
           items: [

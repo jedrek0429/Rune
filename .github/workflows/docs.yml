@@ -29,7 +29,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RUNE_DOCS_BASE: ${{ github.event_name == 'pull_request' && format('/Rune/pr-preview/pr-{0}/', github.event.number) || '/Rune/' }}
-      PUBLIC_RUNE_DISCORD_CLIENT_ID: "1541130190392918126"
 
     steps:
       - name: Checkout
@@ -65,24 +64,41 @@ jobs:
         run: |
           set -euo pipefail
           test -f docs/dist/index.html
+          test -f docs/dist/favicon.png
           find docs/dist/_astro -maxdepth 1 -type f -name 'rune.*.webp' | grep -q .
+          test -f docs/dist/guides/quick-start/index.html
+          test -f docs/dist/guides/architecture/index.html
+          test -f docs/dist/guides/security/index.html
           test -f docs/dist/api/generated/index.html
           test -f docs/dist/bot/generated/index.html
           test -f docs/dist/api/generated/types/restmessage/index.html
           grep -F "href=\"$RUNE_DOCS_BASE" docs/dist/index.html >/dev/null
-          grep -F "href=\"${RUNE_DOCS_BASE}api/generated/\"" docs/dist/index.html >/dev/null
-          grep -F ">API Reference<" docs/dist/index.html >/dev/null
-          grep -F "href=\"${RUNE_DOCS_BASE}bot/generated/\"" docs/dist/index.html >/dev/null
-          grep -F ">Bot Reference<" docs/dist/index.html >/dev/null
+          grep -F "href=\"${RUNE_DOCS_BASE}guides/quick-start/\"" docs/dist/index.html >/dev/null
+          grep -F ">Get Started<" docs/dist/index.html >/dev/null
+          ! grep -F ">API Reference<" docs/dist/index.html >/dev/null
+          ! grep -F ">Bot Reference<" docs/dist/index.html >/dev/null
+          ! grep -F ">Add to server<" docs/dist/index.html >/dev/null
           grep -F "_astro/rune." docs/dist/index.html >/dev/null
-          grep -F "1541130190392918126" docs/dist/index.html >/dev/null
+          grep -F "Register a rune" docs/dist/index.html >/dev/null
+          ! grep -F "<hr" docs/dist/index.html >/dev/null
+          grep -F "1541130190392918126" docs/dist/guides/quick-start/index.html >/dev/null
+          grep -F "TypeScript" docs/dist/guides/quick-start/index.html >/dev/null
+          grep -F "Rust" docs/dist/guides/quick-start/index.html >/dev/null
+          grep -F "License" docs/dist/index.html >/dev/null
+          grep -F "© 2026 Andrzej Bansleben" docs/dist/index.html >/dev/null
+          grep -F "v0.1.0" docs/dist/index.html >/dev/null
           grep -F "class=\"netcord-source\"" docs/dist/api/generated/types/restmessage/index.html >/dev/null
           grep -F "raw.githubusercontent.com/NetCordDev/NetCord/main/Resources/Logo/svg/SmallSquare.svg" docs/dist/api/generated/types/restmessage/index.html >/dev/null
           grep -F "<span>Rest.RestMessage" docs/dist/api/generated/types/restmessage/index.html >/dev/null
           grep -F "netcord-source-arrow" docs/dist/api/generated/types/restmessage/index.html >/dev/null
           grep -F "https://netcord.dev/docs/NetCord.Rest.RestMessage.html" docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "Overview" docs/dist/api/generated/types/message/index.html >/dev/null
+          grep -F "export class Message extends RestMessage" docs/dist/api/generated/types/message/index.html >/dev/null
           grep -F "object → <a href=\"../restmessage/\">RestMessage</a> → <strong>Message</strong>" docs/dist/api/generated/types/message/index.html >/dev/null
+          grep -F "Inherited members" docs/dist/api/generated/types/message/index.html >/dev/null
           grep -F "Property Value" docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "Replies to this message and returns the created message." docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "Hello from Rune!" docs/dist/api/generated/types/restmessage/index.html >/dev/null
           grep -F "${RUNE_DOCS_BASE}api/generated/types/user/" docs/dist/api/generated/types/restmessage/index.html >/dev/null
           grep -F "https://netcord.dev/docs/NetCord.User.html" docs/dist/api/generated/types/restmessage/index.html >/dev/null
 

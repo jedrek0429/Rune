@@ -11,105 +11,168 @@ netcord:
 types:
   User:
     netcord: NetCord.User
+    summary: A Discord user exposed to a rune.
     members:
       - name: Id
         representation: snowflake
+        summary: The user's Discord snowflake identifier.
       - name: Username
+        summary: The user's Discord username.
 
   ReplyMessageProperties:
     netcord: NetCord.Rest.ReplyMessageProperties
+    summary: Options used when replying to a message.
     members:
       - name: Content
+        summary: The textual content of the reply.
 
   RestMessage:
     netcord: NetCord.Rest.RestMessage
+    summary: The portable message surface shared by messages exposed to a rune.
+    examples:
+      typescript: |
+        console.log(message.content);
+        console.log(message.author.username);
+      rust: |
+        println!("{}", message.content);
+        println!("{}", message.author.username);
     members:
       - name: Id
         representation: snowflake
+        summary: The message's Discord snowflake identifier.
       - name: ChannelId
         representation: snowflake
+        summary: The Discord channel containing the message.
       - name: Content
+        summary: The textual message content.
       - name: Author
+        summary: The user who authored the message.
     methods:
       - name: ReplyAsync
         host: message.reply
+        summary: Replies to this message and returns the created message.
         parameters:
           - replyMessage
+        examples:
+          typescript: |
+            const reply = await message.reply({
+              content: "Hello from Rune!",
+            });
+          rust: |
+            let reply = message.reply(
+                host,
+                ReplyMessageProperties {
+                    content: Some("Hello from Rune!".to_string()),
+                },
+            )?;
 
   Message:
     netcord: NetCord.Gateway.Message
     base: RestMessage
+    summary: A message received from a Discord gateway event.
     members: []
 
   MessageDeleteEventArgs:
     netcord: NetCord.Gateway.MessageDeleteEventArgs
+    summary: Identifies a Discord message that was deleted.
     members:
       - name: ChannelId
         representation: snowflake
+        summary: The channel from which the message was deleted.
       - name: GuildId
         representation: snowflake
+        summary: The guild containing the message, when applicable.
       - name: MessageId
         representation: snowflake
+        summary: The deleted message's Discord snowflake identifier.
 
   MessageReactionEmoji:
     netcord: NetCord.MessageReactionEmoji
+    summary: Identifies the emoji attached to a reaction event.
     members:
       - name: Animated
+        summary: Whether the emoji is animated.
       - name: Id
         representation: snowflake
+        summary: The custom emoji identifier, when applicable.
       - name: Name
+        summary: The emoji name.
 
   ReactionType:
     netcord: NetCord.ReactionType
+    summary: Distinguishes normal and burst Discord reactions.
     members:
       - name: Normal
+        summary: A normal reaction.
       - name: Burst
+        summary: A burst reaction.
 
   MessageReactionAddEventArgs:
     netcord: NetCord.Gateway.MessageReactionAddEventArgs
+    summary: Describes a reaction added to a Discord message.
     members:
       - name: Burst
+        summary: Whether the reaction is a burst reaction.
       - name: ChannelId
         representation: snowflake
+        summary: The channel containing the reacted message.
       - name: Emoji
+        summary: The emoji used for the reaction.
       - name: GuildId
         representation: snowflake
+        summary: The guild containing the reaction, when applicable.
       - name: MessageAuthorId
         representation: snowflake
+        summary: The author of the reacted message, when available.
       - name: MessageId
         representation: snowflake
+        summary: The reacted message's Discord snowflake identifier.
       - name: Type
+        summary: The Discord reaction type.
       - name: UserId
         representation: snowflake
+        summary: The user who added the reaction.
 
   MessageReactionRemoveEventArgs:
     netcord: NetCord.Gateway.MessageReactionRemoveEventArgs
+    summary: Describes a reaction removed from a Discord message.
     members:
       - name: Burst
+        summary: Whether the reaction is a burst reaction.
       - name: ChannelId
         representation: snowflake
+        summary: The channel containing the reacted message.
       - name: Emoji
+        summary: The emoji used for the reaction.
       - name: GuildId
         representation: snowflake
+        summary: The guild containing the reaction, when applicable.
       - name: MessageId
         representation: snowflake
+        summary: The reacted message's Discord snowflake identifier.
       - name: Type
+        summary: The Discord reaction type.
       - name: UserId
         representation: snowflake
+        summary: The user whose reaction was removed.
 
 events:
   MessageCreate:
     netcord: NetCord.Gateway.GatewayClient.MessageCreate
     payload: Message
+    summary: Raised when Rune receives a newly created Discord message.
 
   MessageDelete:
     netcord: NetCord.Gateway.GatewayClient.MessageDelete
     payload: MessageDeleteEventArgs
+    summary: Raised when a Discord message is deleted.
 
   MessageReactionAdd:
     netcord: NetCord.Gateway.GatewayClient.MessageReactionAdd
     payload: MessageReactionAddEventArgs
+    summary: Raised when a reaction is added to a Discord message.
 
   MessageReactionRemove:
     netcord: NetCord.Gateway.GatewayClient.MessageReactionRemove
     payload: MessageReactionRemoveEventArgs
+    summary: Raised when a reaction is removed from a Discord message.

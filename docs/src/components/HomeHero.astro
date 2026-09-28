@@ -4,11 +4,6 @@ import runeLogo from '../assets/rune.png';
 
 const base = import.meta.env.BASE_URL;
 const href = (path) => `${base}${path.replace(/^\//, '')}`;
-const clientId =
-  import.meta.env.PUBLIC_RUNE_DISCORD_CLIENT_ID ??
-  '1541130190392918126';
-const invite =
-  `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(clientId)}&scope=bot%20applications.commands`;
 ---
 
 <section class="home-hero" aria-labelledby="rune-home-title">
@@ -35,10 +30,8 @@ const invite =
       </p>
     </div>
 
-    <nav class="hero-actions" aria-label="Rune documentation and install links">
-      <a class="primary-action" href={href('api/generated/')}>API Reference</a>
-      <a class="primary-action" href={href('bot/generated/')}>Bot Reference</a>
-      <a class="secondary-action" href={invite}>Add to server</a>
+    <nav class="hero-actions" aria-label="Get started with Rune">
+      <a class="primary-action" href={href('guides/quick-start/')}>Get Started</a>
     </nav>
   </div>
 </section>
@@ -114,73 +107,38 @@ const invite =
   .hero-actions {
     display: flex;
     justify-content: center;
-    flex-wrap: wrap;
-    gap: 0.85rem;
     margin-top: 2.25rem;
   }
 
   .hero-actions a {
     display: inline-flex;
-    min-width: 10.75rem;
+    min-width: 11.5rem;
     min-height: 3rem;
     align-items: center;
     justify-content: center;
-    padding: 0.7rem 1.15rem;
+    padding: 0.7rem 1.2rem;
+    border: 1px solid var(--rune-gold-bright);
     border-radius: 0.65rem;
+    background: var(--rune-gold-bright);
+    color: #17130b;
     font-weight: 700;
     text-decoration: none;
     box-shadow: 0 0.35rem 1.2rem rgba(0, 0, 0, 0.16);
     transition:
       transform 120ms ease,
       background-color 120ms ease,
-      border-color 120ms ease,
-      color 120ms ease;
+      border-color 120ms ease;
   }
 
-  .hero-actions .primary-action {
-    border: 1px solid var(--rune-gold-bright);
-    background: var(--rune-gold-bright);
-    color: #17130b;
-  }
-
-  .hero-actions .secondary-action {
-    border: 1px solid var(--rune-surface-border);
-    background: var(--rune-surface);
-    color: var(--rune-ivory);
-  }
-
-  .hero-actions .primary-action:hover {
+  .hero-actions a:hover {
     border-color: var(--rune-ivory);
     background: var(--rune-ivory);
     color: #17130b;
     transform: translateY(-1px);
   }
 
-  .hero-actions .secondary-action:hover {
-    border-color: var(--rune-gold);
-    background: var(--rune-surface-soft);
-    color: var(--rune-gold-bright);
-    transform: translateY(-1px);
-  }
-
   .hero-actions a:focus-visible {
     outline: 3px solid color-mix(in srgb, var(--rune-gold-bright) 50%, white);
     outline-offset: 3px;
-  }
-
-  @media (max-width: 40rem) {
-    .home-hero {
-      min-height: calc(100svh - 4rem);
-      padding-inline: 1rem;
-    }
-
-    .hero-actions {
-      width: min(100%, 22rem);
-      flex-direction: column;
-    }
-
-    .hero-actions a {
-      width: 100%;
-    }
   }
 </style>

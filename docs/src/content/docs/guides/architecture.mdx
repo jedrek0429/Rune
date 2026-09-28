@@ -1,0 +1,35 @@
+---
+title: How Rune works
+description: The path from an uploaded rune to an isolated invocation.
+---
+
+Rune is split between a C# control plane and Rust Firecracker infrastructure.
+
+## Registration and build
+
+When you register a rune, Rune.Bot accepts the source file and passes it to the runtime build pipeline. The source is compiled inside a disposable Firecracker build microVM. Successful builds produce a content-addressed executable artifact rather than source code being sent to invocation VMs.
+
+## Event dispatch
+
+Discord gateway events arrive through NetCord. Rune projects the selected event into Rune.Api, serializes the portable payload, and queues an invocation envelope through Redis.
+
+The runtime path is:
+
+```text
+Discord gateway event
+→ Rune.Api projection
+→ Redis invocation envelope
+→ Rune.Firecracker.Runner
+→ disposable invocation microVM
+→ Redis result envelope
+→ permitted host action
+→ NetCord
+```
+
+## Host actions
+
+A rune cannot call arbitrary bot functionality. Rune.Api methods such as `message.reply(...)` become named host operations. The result is returned to Rune.Bot, which applies the permitted operation to the retained NetCord object that caused the event.
+
+## Contracts
+
+`contracts/rune-api.yaml` defines the script-facing API. `contracts/runtime.yaml` defines the C# ↔ Rust runtime protocol. Generated representations are checked in CI for drift.

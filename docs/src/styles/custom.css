@@ -114,3 +114,10 @@ site-search .search-container {
   white-space: nowrap;
 }
 
+
+
+/* The landing page has its own hero and should not inherit a divider from document chrome. */
+.home-hero ~ hr:first-of-type,
+.home-hero + hr {
+  display: none;
+}

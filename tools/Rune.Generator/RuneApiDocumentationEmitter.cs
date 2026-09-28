@@ -19,7 +19,10 @@ public static class RuneApiDocumentationEmitter
                     EmitIndex(model),
 
                 [$"{OutputRoot}/events.mdx"] =
-                    EmitEvents(model)
+                    EmitEvents(model),
+
+                ["docs/src/data/generated/api.json"] =
+                    EmitVersionData(model)
             };
 
         foreach (var type in model.Types)
@@ -31,6 +34,13 @@ public static class RuneApiDocumentationEmitter
 
         return output;
     }
+
+    private static string EmitVersionData(
+        RuneApiModel model) =>
+        "{\n" +
+        $"  \"runeApi\": \"{model.Version}\",\n" +
+        $"  \"netCord\": \"{model.NetCordVersion}\"\n" +
+        "}\n";
 
     private static string EmitIndex(
         RuneApiModel model)
@@ -45,10 +55,10 @@ public static class RuneApiDocumentationEmitter
         AppendTabsImport(text);
 
         text.AppendLine(
-            $"Rune.Api {model.Version} is generated from the canonical API selection and maps to NetCord {model.NetCordVersion}.");
+            $"**Rune.Api {model.Version}** · **NetCord {model.NetCordVersion}**");
         text.AppendLine();
         text.AppendLine(
-            "The API surface is identical in every supported language. Only language-specific syntax and semantics differ.");
+            "The API surface is identical in every supported binding. Only language-specific syntax and semantics differ.");
         text.AppendLine();
         text.AppendLine(
             "Choose a language once. The selection is preserved across Rune.Api reference pages.");
@@ -139,9 +149,19 @@ public static class RuneApiDocumentationEmitter
         AppendTypeFrontmatter(
             text,
             type,
-            $"Rune.Api reference for {type.Name}.");
+            type.Summary ??
+                $"Rune.Api reference for {type.Name}.");
 
         AppendTabsImport(text);
+
+        text.AppendLine("## Overview");
+        text.AppendLine();
+
+        if (!string.IsNullOrWhiteSpace(type.Summary))
+        {
+            text.AppendLine(type.Summary);
+            text.AppendLine();
+        }
 
         text.AppendLine(
             NetCordSource(
@@ -149,9 +169,12 @@ public static class RuneApiDocumentationEmitter
                 NetCordTypeUrl(type.NetCordName)));
         text.AppendLine();
 
+        AppendTypeDeclaration(text, type);
+        text.AppendLine();
+
         if (!type.IsEnum)
         {
-            text.AppendLine("## Inheritance");
+            text.AppendLine("### Inheritance");
             text.AppendLine();
 
             var chain =
@@ -179,7 +202,7 @@ public static class RuneApiDocumentationEmitter
         if (inheritedMembers.Count > 0 ||
             inheritedMethods.Count > 0)
         {
-            text.AppendLine("## Inherited members");
+            text.AppendLine("### Inherited members");
             text.AppendLine();
 
             foreach (var member in inheritedMembers)
@@ -195,6 +218,8 @@ public static class RuneApiDocumentationEmitter
             text.AppendLine();
         }
 
+        AppendExamples(text, type.Examples, "## Example");
+
         if (!type.IsEnum && type.Members.Count > 0)
         {
             text.AppendLine("## Properties");
@@ -204,6 +229,13 @@ public static class RuneApiDocumentationEmitter
             {
                 text.AppendLine($"### {member.Name}");
                 text.AppendLine();
+
+                if (!string.IsNullOrWhiteSpace(member.Summary))
+                {
+                    text.AppendLine(member.Summary);
+                    text.AppendLine();
+                }
+
                 AppendPropertySignature(text, member);
                 text.AppendLine();
                 text.AppendLine("#### Property Value");
@@ -227,6 +259,13 @@ public static class RuneApiDocumentationEmitter
             {
                 text.AppendLine($"### {RuneApiEmitter.TypeScriptMethodForDocumentation(method.Name)}");
                 text.AppendLine();
+
+                if (!string.IsNullOrWhiteSpace(method.Summary))
+                {
+                    text.AppendLine(method.Summary);
+                    text.AppendLine();
+                }
+
                 AppendMethodSignature(text, method);
                 text.AppendLine();
 
@@ -256,6 +295,8 @@ public static class RuneApiDocumentationEmitter
                         method.CanonicalId,
                         NetCordMemberUrl(method.CanonicalId)));
                 text.AppendLine();
+
+                AppendExamples(text, method.Examples, "#### Example");
             }
         }
 
@@ -267,11 +308,85 @@ public static class RuneApiDocumentationEmitter
             foreach (var member in type.Members)
             {
                 text.AppendLine(
-                    $"- `{member.Name}` = `{member.EnumValue}`");
+                    $"- `{member.Name}` = `{member.EnumValue}`" +
+                    (string.IsNullOrWhiteSpace(member.Summary)
+                        ? string.Empty
+                        : $" — {member.Summary}"));
             }
         }
 
         return text.ToString();
+    }
+
+    private static void AppendTypeDeclaration(
+        StringBuilder text,
+        RuneApiType type)
+    {
+        var typeScript =
+            type.IsEnum
+                ? $"export enum {type.Name}"
+                : $"export class {type.Name}" +
+                  (type.Base is null
+                      ? string.Empty
+                      : $" extends {type.Base}");
+
+        var rust =
+            type.IsEnum
+                ? $"pub enum {type.Name}"
+                : $"pub struct {type.Name}";
+
+        text.AppendLine("<Tabs syncKey=\"language\">");
+        text.AppendLine("  <TabItem label=\"TypeScript\">");
+        text.AppendLine();
+        text.AppendLine($"```ts\n{typeScript}\n```");
+        text.AppendLine();
+        text.AppendLine("  </TabItem>");
+        text.AppendLine("  <TabItem label=\"Rust\">");
+        text.AppendLine();
+        text.AppendLine($"```rust\n{rust}\n```");
+        text.AppendLine();
+        text.AppendLine("  </TabItem>");
+        text.AppendLine("</Tabs>");
+    }
+
+    private static void AppendExamples(
+        StringBuilder text,
+        IReadOnlyDictionary<string, string> examples,
+        string heading)
+    {
+        if (examples.Count == 0)
+            return;
+
+        text.AppendLine(heading);
+        text.AppendLine();
+        text.AppendLine("<Tabs syncKey=\"language\">");
+
+        foreach (var language in new[] { "typescript", "rust" })
+        {
+            if (!examples.TryGetValue(language, out var example))
+                continue;
+
+            var label =
+                language == "typescript"
+                    ? "TypeScript"
+                    : "Rust";
+
+            var fence =
+                language == "typescript"
+                    ? "ts"
+                    : "rust";
+
+            text.AppendLine($"  <TabItem label=\"{label}\">");
+            text.AppendLine();
+            text.AppendLine($"```{fence}");
+            text.AppendLine(example.TrimEnd());
+            text.AppendLine("```");
+            text.AppendLine();
+            text.AppendLine("  </TabItem>");
+        }
+
+        text.AppendLine("</Tabs>");
+        text.AppendLine();
     }
 
     private static void AppendValueType(

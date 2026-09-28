@@ -1,0 +1,24 @@
+---
+title: Security model
+description: The isolation and capability boundaries around a rune.
+---
+
+Rune treats uploaded runes as untrusted code.
+
+## Isolation
+
+Builds and invocations run in Firecracker microVMs. Invocation VMs receive the executable artifact and the projected event payload rather than unrestricted access to the Rune process.
+
+## Capability-based Discord access
+
+A rune sees only the Rune.Api surface selected by the contract. It does not receive an unrestricted NetCord client or arbitrary Discord API access.
+
+Host methods are explicit operations. For example, `RestMessage.reply(...)` maps to the `message.reply` host operation. Adding a new Discord capability therefore requires adding it deliberately to Rune.Api and its host implementation.
+
+## Resource boundaries
+
+Rune enforces shared limits for invocation payloads, result payloads, and built artifacts through the runtime contract. Build and invocation execution are also bounded by the Firecracker runtime.
+
+## Network and host access
+
+Invocation code does not receive general access to the Rune host process. The intended communication boundary is the Rune.Api host-operation protocol.
