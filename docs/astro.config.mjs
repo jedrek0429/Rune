@@ -12,6 +12,7 @@ export default defineConfig({
       title: 'Rune',
       description: 'Documentation for Rune and Rune API.',
       customCss: ['./src/styles/custom.css'],
+      pagination: false,
       head: [
         {
           tag: 'link',
