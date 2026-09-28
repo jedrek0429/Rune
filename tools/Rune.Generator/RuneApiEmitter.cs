@@ -151,8 +151,9 @@ public static class RuneApiEmitter
                 method.Parameters.Select(
                     parameter =>
                         $"{Camel(parameter.Name)}: " +
-                        TypeScriptType(
-                            parameter.Type)));
+                        TypeScriptInputType(
+                            parameter.Type,
+                            model)));
 
         text.Append(
             $"\n    async {name}({parameters}): " +
@@ -225,6 +226,48 @@ public static class RuneApiEmitter
         }
 
         return value;
+    }
+
+    private static string TypeScriptInputType(
+        RuneApiValueType type,
+        RuneApiModel model)
+    {
+        if (type.Optional)
+        {
+            return
+                TypeScriptInputType(
+                    type with { Optional = false },
+                    model) +
+                " | null";
+        }
+
+        if (type.IsSelectedType)
+        {
+            var selected =
+                model.Types.Single(
+                    item =>
+                        item.Name == type.Name);
+
+            if (!selected.IsEnum)
+            {
+                return
+                    "{ " +
+                    string.Join(
+                        "; ",
+                        AllMembers(
+                            model,
+                            selected)
+                        .Select(
+                            member =>
+                                $"{Camel(member.Name)}: " +
+                                TypeScriptInputType(
+                                    member.Type,
+                                    model))) +
+                    " }";
+            }
+        }
+
+        return TypeScriptType(type);
     }
 
     private static string TypeScriptType(
