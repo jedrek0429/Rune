@@ -1,3 +1,5 @@
+using Rune.Api;
+
 using Xunit;
 
 namespace Rune.Runtime.Tests;
@@ -27,6 +29,68 @@ public sealed class FirecrackerBuildTests
         Assert.Equal(
             expectedLanguage,
             target.Language);
+    }
+
+    [Fact]
+    public void Source_composition_injects_generated_bindings_and_event_bootstrap()
+    {
+        var typescript =
+            RuneSourceComposer.Compose(
+                RuneLanguage.TypeScript,
+                RuneApiEventType.MessageCreate,
+                "await message.reply({ content: \"hello\" });",
+                "declare class Message {}",
+                "class Message {}",
+                "");
+
+        Assert.Contains(
+            "class Message {}",
+            typescript);
+
+        Assert.Contains(
+            "async function rune(message: Message",
+            typescript);
+
+        Assert.Contains(
+            "await message.reply",
+            typescript);
+
+        var rust =
+            RuneSourceComposer.Compose(
+                RuneLanguage.Rust,
+                RuneApiEventType.MessageCreate,
+                "if message.content == \"!hello\" {}",
+                "",
+                "",
+                "pub struct Message { pub content: String }");
+
+        Assert.Contains(
+            "pub struct Message",
+            rust);
+
+        Assert.Contains(
+            "fn rune(message: Message",
+            rust);
+
+        Assert.Contains(
+            "if message.content == \"!hello\" {}",
+            rust);
+    }
+
+    [Fact]
+    public void Source_composition_leaves_unwrapped_languages_unchanged()
+    {
+        const string source = "print('hello')";
+
+        Assert.Equal(
+            source,
+            RuneSourceComposer.Compose(
+                RuneLanguage.Python,
+                RuneApiEventType.MessageCreate,
+                source,
+                "",
+                "",
+                ""));
     }
 
     [Fact]
