@@ -126,7 +126,7 @@ public static class RuneSourceComposer
 use std::io::Read;
 
 """ +
-            $"fn rune({argument}: {payloadType}, host: &mut dyn RuneHost) -> Result<(), String> {{\n" +
+            $"fn rune({argument}: {payloadType}) -> Result<(), String> {{\n" +
             "// <rune-user-source>\n" +
             source +
             "\n// </rune-user-source>\n" +
