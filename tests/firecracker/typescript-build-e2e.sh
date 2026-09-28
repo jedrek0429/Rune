@@ -39,3 +39,17 @@ PY
 
 echo "typescript build -> execute OK"
 
+cat >"$tmp/invalid.ts" <<'EOF'
+const value: number = ;
+EOF
+
+if output="$(bash firecracker/run-build-vm.sh scriptc typescript "$tmp/invalid.ts" 2>&1)"; then
+  echo "typescript invalid source unexpectedly built" >&2
+  exit 1
+fi
+
+grep -Fq "TypeScript compilation failed" <<<"$output"
+grep -Fq "rune.ts" <<<"$output"
+! grep -Eq '/input/|/work/|Kernel panic|console=' <<<"$output"
+
+echo "typescript diagnostics OK"
