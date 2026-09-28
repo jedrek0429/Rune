@@ -24,7 +24,15 @@ public sealed class RuneGeneratorTests
             output.Keys);
 
         Assert.Contains(
+            "generated/javascript/rune-api.js",
+            output.Keys);
+
+        Assert.Contains(
             "generated/typescript/rune-api.ts",
+            output.Keys);
+
+        Assert.DoesNotContain(
+            "generated/javascript/rune-api.d.ts",
             output.Keys);
     }
 
@@ -62,6 +70,42 @@ public sealed class RuneGeneratorTests
         Assert.Contains(
             "guildId = value.GuildId is ulong guildIdSnowflake ? Snowflake(guildIdSnowflake) : null",
             csharp);
+    }
+
+    [Fact]
+    public void JavaScript_binding_is_static_and_untyped()
+    {
+        var javascript =
+            RuneApiEmitter.Emit(LoadApi())[
+                "generated/javascript/rune-api.js"];
+
+        Assert.Contains(
+            "// @ts-check",
+            javascript);
+
+        Assert.Contains(
+            "class Message extends RestMessage",
+            javascript);
+
+        Assert.Contains(
+            "@param {{ content: (string|null) }} replyMessage",
+            javascript);
+
+        Assert.Contains(
+            "await this.__host.messageReply(replyMessage)",
+            javascript);
+
+        Assert.DoesNotContain(
+            "interface RuneEventArguments",
+            javascript);
+
+        Assert.DoesNotContain(
+            ": string",
+            javascript);
+
+        Assert.DoesNotContain(
+            "payload: any",
+            javascript);
     }
 
     [Fact]
