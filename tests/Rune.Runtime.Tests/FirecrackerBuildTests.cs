@@ -69,7 +69,11 @@ public sealed class FirecrackerBuildTests
             rust);
 
         Assert.Contains(
-            "fn rune(message: Message",
+            "fn rune(message: Message) -> Result<(), String>",
+            rust);
+
+        Assert.DoesNotContain(
+            "fn rune(message: Message, host:",
             rust);
 
         Assert.Contains(
