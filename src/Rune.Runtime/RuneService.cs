@@ -1,44 +1,69 @@
+using System.Text;
+
 using Rune.Core.Runes;
-using Rune.Runtime.Compilation;
-using Rune.Runtime.Wasm;
 
 namespace Rune.Runtime;
 
 public sealed class RuneService(
     RuneRegistry runeRegistry,
-    CompilerRegistry compilerRegistry,
-    RuneExecutor executor)
+    IRuneBuilder builder)
 {
-    public async ValueTask<RegisteredRune> RegisterAsync(
+    public ValueTask<RegisteredRune> RegisterAsync(
         ulong guildId,
         string name,
         RuneLanguage language,
         string source,
-        CancellationToken cancellationToken = default)
-    {
-        if (runeRegistry.Get(guildId, name) is not null)
-            throw new InvalidOperationException(
-                $"A rune named '{name}' already exists.");
-
-        var compiler = compilerRegistry.Get(language);
-
-        var compiled = await compiler.CompileAsync(
-            source,
-            cancellationToken);
-
-        var rune = new RegisteredRune(
-            Guid.NewGuid(),
+        CancellationToken cancellationToken = default) =>
+        RegisterAsync(
             guildId,
             name,
             language,
             RuneEventType.MessageCreate,
             source,
-            compiled.Wasm,
-            true);
+            cancellationToken);
 
-        if (!runeRegistry.Add(rune))
+    public async ValueTask<RegisteredRune> RegisterAsync(
+        ulong guildId,
+        string name,
+        RuneLanguage language,
+        RuneEventType eventType,
+        string source,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSource(source);
+
+        if (runeRegistry.Get(
+                guildId,
+                name) is not null)
+        {
             throw new InvalidOperationException(
                 $"A rune named '{name}' already exists.");
+        }
+
+        var artifact =
+            await builder.BuildAsync(
+                language,
+                source,
+                cancellationToken);
+
+        ValidateArtifact(artifact);
+
+        var rune =
+            new RegisteredRune(
+                Guid.NewGuid(),
+                guildId,
+                name,
+                language,
+                eventType,
+                source,
+                true,
+                artifact);
+
+        if (!runeRegistry.Add(rune))
+        {
+            throw new InvalidOperationException(
+                $"A rune named '{name}' already exists.");
+        }
 
         return rune;
     }
@@ -49,65 +74,97 @@ public sealed class RuneService(
         string source,
         CancellationToken cancellationToken = default)
     {
-        var compiler = compilerRegistry.Get(language);
+        ValidateSource(source);
 
-        var compiled = await compiler.CompileAsync(
-            source,
-            cancellationToken);
+        var artifact =
+            await builder.BuildAsync(
+                language,
+                source,
+                cancellationToken);
 
-        var updated = current with
-        {
-            Language = language,
-            Source = source,
-            Wasm = compiled.Wasm
-        };
+        ValidateArtifact(artifact);
 
-        await executor.StopAsync(current.Id);
+        var updated =
+            current with
+            {
+                Language = language,
+                Source = source,
+                Artifact = artifact
+            };
 
         runeRegistry.Replace(updated);
-
-        if (updated.Enabled)
-            executor.Resume(updated.Id);
 
         return updated;
     }
 
-    public async ValueTask<RegisteredRune?> RemoveAsync(
+    public ValueTask<RegisteredRune?> RemoveAsync(
         ulong guildId,
-        string name)
-    {
-        if (!runeRegistry.Remove(
+        string name) =>
+        ValueTask.FromResult(
+            runeRegistry.Remove(
                 guildId,
                 name,
-                out var rune))
-        {
-            return null;
-        }
+                out var removed)
+                ? removed
+                : null);
 
-        await executor.StopAsync(rune!.Id);
-
-        return rune;
-    }
-
-    public async ValueTask<RegisteredRune?> SetEnabledAsync(
+    public ValueTask<RegisteredRune?> SetEnabledAsync(
         ulong guildId,
         string name,
         bool enabled)
     {
-        if (!runeRegistry.SetEnabled(
+        var current =
+            runeRegistry.Get(
+                guildId,
+                name);
+
+        if (current is null ||
+            current.Enabled == enabled)
+        {
+            return ValueTask.FromResult(current);
+        }
+
+        return ValueTask.FromResult(
+            runeRegistry.SetEnabled(
                 guildId,
                 name,
                 enabled,
-                out var rune))
+                out var updated)
+                ? updated
+                : null);
+    }
+
+    private static void ValidateSource(
+        string source)
+    {
+        if (Encoding.UTF8.GetByteCount(source) >
+            64 * 1024)
         {
-            return null;
+            throw new InvalidOperationException(
+                "Rune source may not exceed 64 KiB.");
+        }
+    }
+
+    private static void ValidateArtifact(
+        BuiltRuneArtifact artifact)
+    {
+        if (artifact.SizeBytes <= 0 ||
+            artifact.SizeBytes >
+                16 * 1024 * 1024)
+        {
+            throw new InvalidOperationException(
+                "Built Rune artifact must be between 1 byte and 16 MiB.");
         }
 
-        if (enabled)
-            executor.Resume(rune!.Id);
-        else
-            await executor.StopAsync(rune!.Id);
-
-        return rune;
+        if (string.IsNullOrWhiteSpace(
+                artifact.Id) ||
+            string.IsNullOrWhiteSpace(
+                artifact.Digest) ||
+            string.IsNullOrWhiteSpace(
+                artifact.Entrypoint))
+        {
+            throw new InvalidOperationException(
+                "Built Rune artifact descriptor is incomplete.");
+        }
     }
 }

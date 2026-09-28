@@ -2,16 +2,12 @@ namespace Rune.Runtime;
 
 public sealed class RuneRuntimeOptions
 {
-    public TimeSpan ExecutionTimeout { get; set; } =
-        TimeSpan.FromSeconds(2);
+    public string RedisConnectionString { get; set; } =
+        "localhost:6379";
 
-    public int MaxMemoryPages { get; set; } = 4096;
+    public string ResultConsumerGroup { get; set; } =
+        "rune-bot";
 
-    public int MaxConcurrentExecutions { get; set; } = 16;
-
-    public int MaxHostRequestsPerInvocation { get; set; } = 32;
-
-    public int MaxReplyLength { get; set; } = 2000;
-
-    public long? FuelLimit { get; init; }
+    public int ResultBatchSize { get; set; } =
+        32;
 }

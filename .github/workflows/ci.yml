@@ -44,6 +44,9 @@ jobs:
       - name: Test Firecracker invocation contract
         run: bash tests/firecracker/invocation-feature.test.sh
 
+      - name: Test microVM runtime cutover contract
+        run: bash tests/firecracker/runtime-cutover-feature.test.sh
+
       - name: Test runner and warm-pool contract
         run: bash tests/firecracker/runner-feature.test.sh
 

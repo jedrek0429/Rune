@@ -164,7 +164,7 @@ public sealed class RuneCommand(
             $"Event: {rune.EventType}\n" +
             $"Status: {(rune.Enabled ? "enabled" : "disabled")}\n" +
             $"Source: {sourceBytes:N0} bytes\n" +
-            $"WASM: {rune.Wasm.Length:N0} bytes";
+            $"Artifact: {(rune.Artifact?.SizeBytes ?? 0):N0} bytes";
     }
 
     [RequireUserPermissions<ApplicationCommandContext>(

@@ -10,6 +10,7 @@ namespace Rune.Bot.Gateway;
 
 public sealed class MessageReactionRemoveHandler(
     RuneEventDispatcher dispatcher,
+    RuneInvocationReceiverRegistry receivers,
     ILogger<MessageReactionRemoveHandler> logger)
     : IMessageReactionRemoveGatewayHandler
 {
@@ -22,22 +23,43 @@ public sealed class MessageReactionRemoveHandler(
         var payload =
             NetCordRuneApi.Project(args);
 
-        var failures =
-            await dispatcher.DispatchAsync(
-                new MessageReactionRemoveEventRuneInvocation(
-                    Guid.NewGuid(),
-                    guildId,
-                    payload.ChannelId,
-                    payload.MessageId,
-                    payload.UserId,
-                    new MessageReactionEmojiInvocation(
-                        payload.Emoji.Animated,
-                        payload.Emoji.Id,
-                        payload.Emoji.Name),
-                    payload.Burst,
-                    (byte)payload.Type));
+        var invocationId =
+            Guid.NewGuid();
 
-        foreach (var failure in failures)
+        receivers.Register(
+            invocationId,
+            args);
+
+        RuneDispatchResult result;
+
+        try
+        {
+            result =
+                await dispatcher.DispatchAsync(
+                    new MessageReactionRemoveEventRuneInvocation(
+                        invocationId,
+                        guildId,
+                        payload.ChannelId,
+                        payload.MessageId,
+                        payload.UserId,
+                        new MessageReactionEmojiInvocation(
+                            payload.Emoji.Animated,
+                            payload.Emoji.Id,
+                            payload.Emoji.Name),
+                        payload.Burst,
+                        (byte)payload.Type));
+
+            receivers.Seal(
+                invocationId,
+                result.QueuedExecutions);
+        }
+        catch
+        {
+            receivers.Cancel(invocationId);
+            throw;
+        }
+
+        foreach (var failure in result.Failures)
         {
             logger.LogWarning(
                 "Rune {RuneName} failed during MessageReactionRemove: {Message}",

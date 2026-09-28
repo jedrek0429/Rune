@@ -7,12 +7,6 @@ public sealed record RegisteredRune(
     RuneLanguage Language,
     RuneEventType EventType,
     string Source,
-    byte[] Wasm,
     bool Enabled,
     BuiltRuneArtifact? Artifact = null
-);
-
-public sealed record CompiledRune(
-    byte[] Wasm,
-    IReadOnlyList<string> Diagnostics
 );

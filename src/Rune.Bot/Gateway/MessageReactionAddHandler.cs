@@ -10,6 +10,7 @@ namespace Rune.Bot.Gateway;
 
 public sealed class MessageReactionAddHandler(
     RuneEventDispatcher dispatcher,
+    RuneInvocationReceiverRegistry receivers,
     ILogger<MessageReactionAddHandler> logger)
     : IMessageReactionAddGatewayHandler
 {
@@ -22,23 +23,44 @@ public sealed class MessageReactionAddHandler(
         var payload =
             NetCordRuneApi.Project(args);
 
-        var failures =
-            await dispatcher.DispatchAsync(
-                new MessageReactionAddEventRuneInvocation(
-                    Guid.NewGuid(),
-                    guildId,
-                    payload.ChannelId,
-                    payload.MessageId,
-                    payload.UserId,
-                    payload.MessageAuthorId,
-                    new MessageReactionEmojiInvocation(
-                        payload.Emoji.Animated,
-                        payload.Emoji.Id,
-                        payload.Emoji.Name),
-                    payload.Burst,
-                    (byte)payload.Type));
+        var invocationId =
+            Guid.NewGuid();
 
-        foreach (var failure in failures)
+        receivers.Register(
+            invocationId,
+            args);
+
+        RuneDispatchResult result;
+
+        try
+        {
+            result =
+                await dispatcher.DispatchAsync(
+                    new MessageReactionAddEventRuneInvocation(
+                        invocationId,
+                        guildId,
+                        payload.ChannelId,
+                        payload.MessageId,
+                        payload.UserId,
+                        payload.MessageAuthorId,
+                        new MessageReactionEmojiInvocation(
+                            payload.Emoji.Animated,
+                            payload.Emoji.Id,
+                            payload.Emoji.Name),
+                        payload.Burst,
+                        (byte)payload.Type));
+
+            receivers.Seal(
+                invocationId,
+                result.QueuedExecutions);
+        }
+        catch
+        {
+            receivers.Cancel(invocationId);
+            throw;
+        }
+
+        foreach (var failure in result.Failures)
         {
             logger.LogWarning(
                 "Rune {RuneName} failed during MessageReactionAdd: {Message}",
