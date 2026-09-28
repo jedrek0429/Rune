@@ -291,7 +291,7 @@ public static class RuneApiDocumentationEmitter
         else
         {
             text.AppendLine(
-                $"\`{RuneApiEmitter.TypeScriptTypeForDocumentation(valueType)}\`");
+                $"`{RuneApiEmitter.TypeScriptTypeForDocumentation(valueType)}`");
         }
 
         text.AppendLine();
@@ -307,7 +307,7 @@ public static class RuneApiDocumentationEmitter
         else
         {
             text.AppendLine(
-                $"\`{RuneApiEmitter.RustTypeForDocumentation(valueType)}\`");
+                $"`{RuneApiEmitter.RustTypeForDocumentation(valueType)}`");
         }
 
         text.AppendLine();
