@@ -55,8 +55,10 @@ import { readFileSync } from "node:fs";
 
 """ +
             $"async function rune({argument}: {payloadType}, host: RuneHost): Promise<void> {{\n" +
+            "// <rune-user-source>\n" +
             source +
-            "\n}\n\n" +
+            "\n// </rune-user-source>\n" +
+            "}\n\n" +
             implementation +
             """
 
@@ -121,8 +123,10 @@ use std::io::Read;
 
 """ +
             $"fn rune({argument}: {payloadType}, host: &mut dyn RuneHost) -> Result<(), String> {{\n" +
+            "// <rune-user-source>\n" +
             source +
-            "\n    Ok(())\n}\n\n" +
+            "\n// </rune-user-source>\n" +
+            "    Ok(())\n}\n\n" +
             binding +
             """
 
