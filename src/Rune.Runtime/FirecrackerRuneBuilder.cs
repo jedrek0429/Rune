@@ -56,8 +56,8 @@ public sealed class FirecrackerRuneBuilder(
                 ReadOptional(
                     "generated/javascript/rune-api.d.ts"),
                 ReadOptional(
-                    "generated/javascript/rune-api.js",
-                    "generated/typescript/rune-api.ts"),
+                    "generated/typescript/rune-api.ts",
+                    "generated/javascript/rune-api.js"),
                 ReadOptional(
                     "generated/rust/rune_api.rs"));
 
