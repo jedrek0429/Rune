@@ -5,11 +5,11 @@ description: How Rune keeps runes isolated and scoped.
 
 Rune runs uploaded code in an isolated environment.
 
-## Rune.Api access
+## Rune API access
 
-A rune sees the Rune.Api surface selected by the contract.
+A rune sees the Rune API surface selected by the contract.
 
-Rune.Api methods define the Discord actions available to a rune. For example, `RestMessage.reply(...)` replies to the message that triggered the rune.
+Rune API methods define the Discord actions available to a rune. For example, `RestMessage.reply(...)` replies to the message that triggered the rune.
 
 ## Isolation
 
@@ -17,4 +17,4 @@ Each invocation runs separately with defined execution and data limits.
 
 ## Discord access
 
-Discord actions go through Rune.Api. Adding a new action means adding it to Rune.Api first.
+Runes communicate back and forth with Discord using Rune API, which is a specialised subset of [NetCord](https://netcord.dev/).
