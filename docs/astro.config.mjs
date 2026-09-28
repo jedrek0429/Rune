@@ -12,6 +12,9 @@ export default defineConfig({
       title: 'Rune',
       description: 'Documentation for Rune, its bot interface, and Rune.Api.',
       customCss: ['./src/styles/custom.css'],
+      components: {
+        PageTitle: './src/components/PageTitle.astro',
+      },
       social: [
         {
           icon: 'github',
