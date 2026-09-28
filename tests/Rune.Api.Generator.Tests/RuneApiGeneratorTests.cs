@@ -64,11 +64,15 @@ public sealed class RuneApiGeneratorTests
             typescript);
 
         Assert.Contains(
+            "export class RuneHost",
+            typescript);
+
+        Assert.Contains(
             "call(method: string, payload: any)",
             typescript);
 
         Assert.DoesNotContain(
-            "call(method: string, arguments: any)",
+            "RuneHost | undefined",
             typescript);
     }
 
