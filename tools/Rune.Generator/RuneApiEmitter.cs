@@ -47,6 +47,20 @@ public static class RuneApiEmitter
 
         text.Append(
             "class RuneHost {\n" +
+            "    /**\n");
+
+        foreach (var method in hostMethods)
+        {
+            var callback =
+                TypeScriptHostCallbackName(
+                    method.HostName);
+
+            text.Append(
+                $"     * @param {{({JavaScriptFunctionParameters(method, model)}) => Promise<{JavaScriptType(method.Result)}>}} [{callback}]\n");
+        }
+
+        text.Append(
+            "     */\n" +
             "    constructor(\n");
 
         foreach (var method in hostMethods)
@@ -56,7 +70,6 @@ public static class RuneApiEmitter
                     method.HostName);
 
             text.Append(
-                $"        /** @type {{({JavaScriptFunctionParameters(method, model)}) => Promise<{JavaScriptType(method.Result)}>}} */\n" +
                 $"        {callback} = async () => {{ throw new Error(\"Rune host is not configured\"); }},\n");
         }
 
