@@ -1,0 +1,76 @@
+---
+title: Rune
+description: Small, sandboxed Discord scripts in the language you already use.
+template: splash
+hero:
+  tagline: Run small Discord automations without giving untrusted scripts the keys to your bot or server.
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+import BrandMark from '../../components/BrandMark.astro';
+import HomeActions from '../../components/HomeActions.astro';
+import AddToServer from '../../components/AddToServer.astro';
+
+<BrandMark />
+<HomeActions />
+<AddToServer />
+
+## What is Rune?
+
+**Rune** is the app and service. A **rune** is one script running on Rune.
+
+Rune is a small scripting platform for Discord. You upload a rune through Rune.Bot, Rune builds it into an executable artifact, and each invocation runs inside an isolated Firecracker microVM.
+
+A rune receives a selected Discord event through **Rune.Api** and can call only the Discord operations Rune deliberately exposes. Rune.Api is derived from NetCord, but runes do not receive arbitrary NetCord objects, network access, or unrestricted access to the Rune process.
+
+<CardGrid>
+  <Card title="Write a rune">
+    Today you can build and run runes in JavaScript, TypeScript, Python, Rust, C, or C++.
+  </Card>
+  <Card title="Register it">
+    Upload the source through Rune.Bot and manage the rune with the `/rune` commands.
+  </Card>
+  <Card title="Run safely">
+    Rune builds and invokes runes inside disposable, isolated Firecracker microVMs.
+  </Card>
+  <Card title="React to Discord">
+    Runes can currently receive message creation, message deletion, reaction add, and reaction remove events.
+  </Card>
+</CardGrid>
+
+## Language coverage
+
+Runtime support and Rune.Api bindings are separate. A language can already build and execute while its idiomatic Rune.Api projection is still planned.
+
+| Language | Build & run | Rune.Api binding |
+| --- | --- | --- |
+| TypeScript | Current | Current |
+| Rust | Current | Current |
+| JavaScript | Current | Planned |
+| Python | Current | Planned |
+| C | Current | Planned |
+| C++ | Current | Planned |
+| C# | Planned | Planned |
+| Java | Planned | Planned |
+| PHP | Planned | Planned |
+| Go | Planned | Planned |
+| Bash | Planned | Planned |
+| R | Planned | Planned |
+| Ruby | Planned | Planned |
+| Dart | Planned | Planned |
+| Lua | Planned | Planned |
+| Kotlin | Planned | Planned |
+| Swift | Planned | Planned |
+| F# | Planned | Planned |
+| Zig | Planned | Planned |
+| D | Planned | Planned |
+| Nim | Planned | Planned |
+| Scala | Planned | Planned |
+
+The roadmap is to project the same canonical Rune.Api into each language rather than hand-maintain separate API definitions.
+
+## References
+
+**API Reference** documents Rune.Api, the script-facing API available to a rune. It covers events, inheritance, properties and methods, with language-specific signatures and links back to the corresponding NetCord API.
+
+**Bot Reference** documents Rune.Bot, the Discord command surface used to register and manage runes. It is generated from the bot's command attributes and XML documentation, so the documentation lives next to the commands it describes.

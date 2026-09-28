@@ -201,6 +201,143 @@ public sealed class RuneGeneratorTests
                 api));
     }
 
+
+    [Fact]
+    public void Api_documentation_is_reference_oriented_and_links_to_NetCord()
+    {
+        var documentation =
+            RuneApiDocumentationEmitter.Emit(LoadApi());
+
+        Assert.Contains(
+            "docs/src/content/docs/api/generated/index.mdx",
+            documentation.Keys);
+
+        Assert.Contains(
+            "title: API Reference",
+            documentation[
+                "docs/src/content/docs/api/generated/index.mdx"]);
+
+        var message =
+            documentation[
+                "docs/src/content/docs/api/generated/types/message.mdx"];
+
+        Assert.Contains(
+            "## Type hierarchy",
+            message);
+
+        Assert.Contains(
+            "[RestMessage](../restmessage/) → **Message**",
+            message);
+
+        Assert.Contains(
+            "class=\"netcord-source\"",
+            message);
+
+        Assert.Contains(
+            "title=\"NetCord.Gateway.Message\"",
+            message);
+
+        Assert.Contains(
+            "https://netcord.dev/docs/NetCord.Gateway.Message.html",
+            message);
+
+        Assert.Contains(
+            "## Inherited members",
+            message);
+
+        Assert.DoesNotContain(
+            "export class Message",
+            message);
+
+        Assert.DoesNotContain(
+            "pub struct Message",
+            message);
+
+        var restMessage =
+            documentation[
+                "docs/src/content/docs/api/generated/types/restmessage.mdx"];
+
+        Assert.Contains(
+            "## Properties",
+            restMessage);
+
+        Assert.Contains(
+            "## Methods",
+            restMessage);
+
+        Assert.Contains(
+            "title=\"NetCord.Rest.RestMessage.ReplyAsync\"",
+            restMessage);
+
+        Assert.Contains(
+            "https://netcord.dev/docs/NetCord.Rest.RestMessage.html",
+            restMessage);
+
+        Assert.Contains(
+            "Type: [User](../user/)",
+            restMessage);
+
+        Assert.Contains(
+            "title=\"NetCord.User\"",
+            restMessage);
+
+        Assert.Contains(
+            "Parameter `replyMessage`: [ReplyMessageProperties](../replymessageproperties/)",
+            restMessage);
+
+        Assert.Contains(
+            "title=\"NetCord.Rest.ReplyMessageProperties\"",
+            restMessage);
+
+        Assert.DoesNotContain(
+            "Canonical NetCord member:",
+            restMessage);
+
+        Assert.DoesNotContain(
+            "NetCord:",
+            restMessage);
+
+        Assert.Contains(
+            "<Tabs syncKey=\"language\">",
+            restMessage);
+    }
+
+    [Fact]
+    public void Bot_documentation_is_generated_from_command_metadata_and_xml_comments()
+    {
+        var documentation =
+            RuneBotDocumentationEmitter.Emit(Root);
+
+        Assert.Contains(
+            "docs/src/content/docs/bot/generated/index.mdx",
+            documentation.Keys);
+
+        Assert.Contains(
+            "title: Bot Reference",
+            documentation[
+                "docs/src/content/docs/bot/generated/index.mdx"]);
+
+        var rune =
+            documentation[
+                "docs/src/content/docs/bot/generated/commands/rune.mdx"];
+
+        Assert.Contains(
+            "## /rune register",
+            rune);
+
+        Assert.Contains(
+            "Uploads source code and registers it as a rune for this server.",
+            rune);
+
+        Assert.Contains(
+            "**Required permission:** `Manage Server`",
+            rune);
+
+        Assert.Contains(
+            "/rune register name:hello file:hello.ts",
+            rune);
+    }
+
     private static RuneApiModel LoadApi() =>
         RuneApiLoader.Load(
             Path.Combine(

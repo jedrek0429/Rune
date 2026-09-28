@@ -1,0 +1,88 @@
+:root {
+  --rune-gold: #d8aa45;
+  --rune-gold-bright: #f0cf7a;
+  --rune-ivory: #f4efe2;
+  --rune-stone: #191711;
+  --rune-stone-raised: #211e17;
+  --rune-stone-soft: #2b271e;
+}
+
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #3a2b0d;
+  --sl-color-accent: var(--rune-gold);
+  --sl-color-accent-high: var(--rune-gold-bright);
+  --sl-color-bg: var(--rune-stone);
+  --sl-color-bg-nav: #15130f;
+  --sl-color-bg-sidebar: #171510;
+  --sl-color-bg-inline-code: var(--rune-stone-raised);
+  --sl-color-hairline-light: #383124;
+  --sl-color-hairline: #2f291f;
+  --sl-color-text: var(--rune-ivory);
+  --sl-color-text-accent: var(--rune-gold-bright);
+  --sl-color-white: var(--rune-ivory);
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #f5e7bd;
+  --sl-color-accent: #a66e05;
+  --sl-color-accent-high: #6e4700;
+  --sl-color-bg: #f6f1e6;
+  --sl-color-bg-nav: #eee5d3;
+  --sl-color-bg-sidebar: #f1e9da;
+  --sl-color-bg-inline-code: #ebe1cf;
+  --sl-color-hairline-light: #d7c9ad;
+  --sl-color-hairline: #cbbb9d;
+  --sl-color-text: #292318;
+  --sl-color-text-accent: #8a5a00;
+}
+
+.site-title {
+  color: var(--sl-color-text-accent);
+}
+
+.sl-markdown-content a:not([class]) {
+  text-decoration-color: color-mix(in srgb, var(--sl-color-accent) 60%, transparent);
+}
+
+.sl-markdown-content :is(h2, h3) a {
+  color: var(--sl-color-text-accent);
+}
+
+.card {
+  border-color: color-mix(in srgb, var(--sl-color-accent) 24%, var(--sl-color-hairline));
+}
+
+
+.netcord-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  width: fit-content;
+  padding: 0.32rem 0.58rem;
+  border: 1px solid color-mix(in srgb, var(--sl-color-accent) 28%, var(--sl-color-hairline));
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--sl-color-bg-inline-code) 84%, transparent);
+  color: var(--sl-color-text);
+  font-size: var(--sl-text-xs);
+  font-weight: 650;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: middle;
+}
+
+.netcord-source:hover {
+  border-color: var(--sl-color-accent);
+  color: var(--sl-color-text-accent);
+  background: color-mix(in srgb, var(--sl-color-accent-low) 55%, var(--sl-color-bg));
+}
+
+.netcord-source img {
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 0.22rem;
+  object-fit: contain;
+}
+
+.sl-markdown-content table .netcord-source {
+  margin-block: 0.05rem;
+}

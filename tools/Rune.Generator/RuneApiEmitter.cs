@@ -402,6 +402,42 @@ public static class RuneApiEmitter
         return text.ToString();
     }
 
+    internal static string TypeScriptTypeForDocumentation(
+        RuneApiValueType type) =>
+        TypeScriptType(type);
+
+    internal static string RustTypeForDocumentation(
+        RuneApiValueType type) =>
+        RustType(type);
+
+    internal static string TypeScriptMemberForDocumentation(
+        string name) =>
+        Camel(name);
+
+    internal static string RustMemberForDocumentation(
+        string name) =>
+        RustMember(name);
+
+    internal static string TypeScriptMethodForDocumentation(
+        string name) =>
+        Camel(WithoutAsync(name));
+
+    internal static string RustMethodForDocumentation(
+        string name) =>
+        Snake(WithoutAsync(name));
+
+    internal static IReadOnlyList<RuneApiMember>
+        MembersForDocumentation(
+            RuneApiModel model,
+            RuneApiType type) =>
+        AllMembers(model, type);
+
+    internal static IReadOnlyList<RuneApiMethod>
+        MethodsForDocumentation(
+            RuneApiModel model,
+            RuneApiType type) =>
+        AllMethods(model, type);
+
     private static IReadOnlyList<RuneApiMember>
         AllMembers(
             RuneApiModel model,
