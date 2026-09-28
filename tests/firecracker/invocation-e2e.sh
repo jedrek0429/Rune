@@ -28,8 +28,8 @@ cat >"$tmp/envelope.json" <<'JSON'
 {"executionId":"00000000-0000-0000-0000-000000000001","invocationId":"00000000-0000-0000-0000-000000000002","runeId":"00000000-0000-0000-0000-000000000003","runeName":"e2e","guildId":1,"eventType":"messageCreate","artifact":{"id":"sha256:e2e","digest":"sha256:e2e","entrypoint":"rune","sizeBytes":1},"payload":{},"enqueuedAt":"2026-08-31T00:00:00Z"}
 JSON
 
-bash firecracker/build-invocation-rootfs.sh
-response="$(bash firecracker/run-invocation-vm.sh "$tmp/rune" "$tmp/envelope.json")"
+bash src/Rune.Firecracker/build-invocation-rootfs.sh
+response="$(bash src/Rune.Firecracker/run-invocation-vm.sh "$tmp/rune" "$tmp/envelope.json")"
 grep -q '"marker":"firecracker-e2e"' <<<"$response"
 grep -q '"error":null' <<<"$response"
 

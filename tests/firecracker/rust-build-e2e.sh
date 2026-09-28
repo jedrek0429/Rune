@@ -15,18 +15,18 @@ fn main() {
 }
 EOF
 
-[[ -r "$root/build-images/rust/rootfs.ext4" ]] ||   bash firecracker/build-rootfs.sh build rust
+[[ -r "$root/build-images/rust/rootfs.ext4" ]] ||   bash src/Rune.Firecracker/build-rootfs.sh build rust
 
 build_and_execute() {
   local source="$1"
   local descriptor id digest artifact response
-  descriptor="$(bash firecracker/run-build-vm.sh rust rust "$source")"
+  descriptor="$(bash src/Rune.Firecracker/run-build-vm.sh rust rust "$source")"
   read -r id _ _ <<<"$descriptor"
   [[ "$id" == sha256:* ]]
   digest="${id#sha256:}"
   artifact="$root/artifacts/$digest"
   test -s "$artifact"
-  response="$(bash firecracker/run-invocation-vm.sh "$artifact" "$tmp/envelope.json")"
+  response="$(bash src/Rune.Firecracker/run-invocation-vm.sh "$artifact" "$tmp/envelope.json")"
   python3 - "$response" <<'PY'
 import json, sys
 result = json.loads(sys.argv[1])
@@ -38,7 +38,7 @@ build_and_execute "$tmp/rune.rs"
 echo "rust build -> execute OK"
 
 printf 'fn main() { let value = ; }\n' >"$tmp/invalid.rs"
-if output="$(bash firecracker/run-build-vm.sh rust rust "$tmp/invalid.rs" 2>&1)"; then
+if output="$(bash src/Rune.Firecracker/run-build-vm.sh rust rust "$tmp/invalid.rs" 2>&1)"; then
   echo "rust invalid source unexpectedly built" >&2
   exit 1
 fi

@@ -1,6 +1,6 @@
 using System.Text;
 
-using Rune.Core.Runes;
+using Rune.Api;
 
 namespace Rune.Runtime;
 
@@ -18,7 +18,7 @@ public sealed class RuneService(
             guildId,
             name,
             language,
-            RuneEventType.MessageCreate,
+            RuneApiEventType.MessageCreate,
             source,
             cancellationToken);
 
@@ -26,7 +26,7 @@ public sealed class RuneService(
         ulong guildId,
         string name,
         RuneLanguage language,
-        RuneEventType eventType,
+        RuneApiEventType eventType,
         string source,
         CancellationToken cancellationToken = default)
     {
@@ -148,12 +148,12 @@ public sealed class RuneService(
     private static void ValidateArtifact(
         BuiltRuneArtifact artifact)
     {
-        if (artifact.SizeBytes <= 0 ||
+        if (artifact.SizeBytes == 0 ||
             artifact.SizeBytes >
-                16 * 1024 * 1024)
+                (ulong)RuntimeProtocol.MaxArtifactBytes)
         {
             throw new InvalidOperationException(
-                "Built Rune artifact must be between 1 byte and 16 MiB.");
+                "Built Rune artifact must be between 1 byte and the runtime artifact limit.");
         }
 
         if (string.IsNullOrWhiteSpace(

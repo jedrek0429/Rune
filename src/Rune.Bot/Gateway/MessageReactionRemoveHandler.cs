@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using NetCord.Hosting.Gateway;
 
 using Rune.Api;
-using Rune.Core.Invocations;
 using Rune.Runtime;
 
 namespace Rune.Bot.Gateway;
@@ -36,18 +35,11 @@ public sealed class MessageReactionRemoveHandler(
         {
             result =
                 await dispatcher.DispatchAsync(
-                    new MessageReactionRemoveEventRuneInvocation(
+                    new EventRuneInvocation(
                         invocationId,
                         guildId,
-                        payload.ChannelId,
-                        payload.MessageId,
-                        payload.UserId,
-                        new MessageReactionEmojiInvocation(
-                            payload.Emoji.Animated,
-                            payload.Emoji.Id,
-                            payload.Emoji.Name),
-                        payload.Burst,
-                        (byte)payload.Type));
+                        RuneApiEventType.MessageReactionRemove,
+                        RuneApiPayload.Serialize(payload)));
 
             receivers.Seal(
                 invocationId,

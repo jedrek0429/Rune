@@ -8,7 +8,6 @@ using NetCord.Hosting.Services.ApplicationCommands;
 
 using Rune.Bot;
 using Rune.Bot.Host;
-using Rune.Core.Runes;
 using Rune.Runtime;
 
 var builder =

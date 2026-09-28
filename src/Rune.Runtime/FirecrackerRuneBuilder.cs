@@ -1,12 +1,11 @@
 using System.Diagnostics;
 
-using Rune.Core.Runes;
 using Rune.Runtime.Exceptions;
 
 namespace Rune.Runtime;
 
 public sealed class FirecrackerRuneBuilder(
-    string scriptPath = "firecracker/run-build-vm.sh")
+    string scriptPath = "src/Rune.Firecracker/run-build-vm.sh")
     : IRuneBuilder
 {
     public static (string Pool, string Language)
@@ -96,7 +95,7 @@ public sealed class FirecrackerRuneBuilder(
                         StringSplitOptions.RemoveEmptyEntries);
 
             if (fields.Length != 3 ||
-                !long.TryParse(
+                !ulong.TryParse(
                     fields[1],
                     out var size))
             {

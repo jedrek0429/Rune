@@ -1,7 +1,6 @@
 using NetCord.Hosting.Gateway;
 
 using Rune.Api;
-using Rune.Core.Invocations;
 using Rune.Runtime;
 
 namespace Rune.Bot.Gateway;
@@ -36,14 +35,11 @@ public sealed class MessageCreateHandler(
         {
             result =
                 await dispatcher.DispatchAsync(
-                    new MessageCreateEventRuneInvocation(
+                    new EventRuneInvocation(
                         invocationId,
                         guildId,
-                        payload.ChannelId,
-                        payload.Id,
-                        payload.Author.Id,
-                        payload.Author.Username,
-                        payload.Content));
+                        RuneApiEventType.MessageCreate,
+                        RuneApiPayload.Serialize(payload)));
 
             receivers.Seal(
                 invocationId,

@@ -1,8 +1,6 @@
 using System.Text.Json;
 
-using Rune.Core.Invocations;
-using Rune.Core.Runes;
-using Rune.Runtime;
+using Rune.Api;
 
 using Xunit;
 
@@ -39,16 +37,10 @@ public sealed class RuntimeCutoverTests
         Assert.Null(
             typeof(RegisteredRune)
                 .GetProperty("Wasm"));
-
-        Assert.Null(
-            typeof(RegisteredRune)
-                .Assembly
-                .GetType(
-                    "Rune.Core.Runes.CompiledRune"));
     }
 
     [Fact]
-    public async Task Dispatcher_queues_artifact_only_envelopes_for_all_supported_events()
+    public async Task Dispatcher_passes_projected_payloads_into_artifact_only_envelopes()
     {
         foreach (var invocation in Invocations())
         {
@@ -104,6 +96,10 @@ public sealed class RuntimeCutoverTests
                 invocation.EventType,
                 envelope.EventType);
 
+            Assert.Equal(
+                invocation.Payload.GetRawText(),
+                envelope.Payload.GetRawText());
+
             var json =
                 JsonSerializer.Serialize(
                     envelope);
@@ -117,124 +113,73 @@ public sealed class RuntimeCutoverTests
                 "source",
                 json,
                 StringComparison.OrdinalIgnoreCase);
-
-            AssertPayload(
-                invocation.EventType,
-                envelope.Payload);
         }
     }
 
-    private static IEnumerable<
-        EventRuneInvocation>
+    private static IEnumerable<EventRuneInvocation>
         Invocations()
     {
         yield return
-            new MessageCreateEventRuneInvocation(
+            new EventRuneInvocation(
                 Guid.NewGuid(),
                 1,
-                2,
-                3,
-                4,
-                "user",
-                "hello");
+                RuneApiEventType.MessageCreate,
+                RuneApiPayload.Serialize(
+                    new Message(
+                        3,
+                        2,
+                        "hello",
+                        new User(
+                            4,
+                            "user"))));
 
         yield return
-            new MessageDeleteEventRuneInvocation(
+            new EventRuneInvocation(
                 Guid.NewGuid(),
                 1,
-                2,
-                3);
+                RuneApiEventType.MessageDelete,
+                RuneApiPayload.Serialize(
+                    new MessageDeleteEventArgs(
+                        2,
+                        1,
+                        3)));
 
         yield return
-            new MessageReactionAddEventRuneInvocation(
+            new EventRuneInvocation(
                 Guid.NewGuid(),
                 1,
-                2,
-                3,
-                4,
-                5,
-                new MessageReactionEmojiInvocation(
-                    false,
-                    6,
-                    "x"),
-                false,
-                0);
+                RuneApiEventType.MessageReactionAdd,
+                RuneApiPayload.Serialize(
+                    new MessageReactionAddEventArgs(
+                        false,
+                        2,
+                        new MessageReactionEmoji(
+                            false,
+                            6,
+                            "x"),
+                        1,
+                        5,
+                        3,
+                        ReactionType.Normal,
+                        4)));
 
         yield return
-            new MessageReactionRemoveEventRuneInvocation(
+            new EventRuneInvocation(
                 Guid.NewGuid(),
                 1,
-                2,
-                3,
-                4,
-                new MessageReactionEmojiInvocation(
-                    false,
-                    6,
-                    "x"),
-                false,
-                0);
-    }
-
-    private static void AssertPayload(
-        RuneEventType eventType,
-        JsonElement payload)
-    {
-        switch (eventType)
-        {
-            case RuneEventType.MessageCreate:
-                Assert.Equal(
-                    "3",
-                    payload
-                        .GetProperty("id")
-                        .GetString());
-
-                Assert.Equal(
-                    "4",
-                    payload
-                        .GetProperty("author")
-                        .GetProperty("id")
-                        .GetString());
-
-                break;
-
-            case RuneEventType.MessageDelete:
-                Assert.Equal(
-                    "3",
-                    payload
-                        .GetProperty("messageId")
-                        .GetString());
-
-                break;
-
-            case RuneEventType.MessageReactionAdd:
-                Assert.Equal(
-                    "5",
-                    payload
-                        .GetProperty("messageAuthorId")
-                        .GetString());
-
-                Assert.Equal(
-                    "6",
-                    payload
-                        .GetProperty("emoji")
-                        .GetProperty("id")
-                        .GetString());
-
-                break;
-
-            case RuneEventType.MessageReactionRemove:
-                Assert.Equal(
-                    "4",
-                    payload
-                        .GetProperty("userId")
-                        .GetString());
-
-                break;
-
-            default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(eventType));
-        }
+                RuneApiEventType.MessageReactionRemove,
+                RuneApiPayload.Serialize(
+                    new MessageReactionRemoveEventArgs(
+                        false,
+                        2,
+                        new MessageReactionEmoji(
+                            false,
+                            6,
+                            "x"),
+                        1,
+                        3,
+                        ReactionType.Normal,
+                        4)));
     }
 
     private sealed class FakeBuilder(

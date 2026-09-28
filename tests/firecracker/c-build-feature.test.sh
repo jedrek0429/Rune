@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-guest=native/Rune.Firecracker.BuildGuest/src/main.rs
-launcher=firecracker/run-build-vm.sh
-rootfs=firecracker/build-rootfs.sh
+guest=src/Rune.Firecracker.BuildGuest/src/main.rs
+launcher=src/Rune.Firecracker/run-build-vm.sh
+rootfs=src/Rune.Firecracker/build-rootfs.sh
 
 grep -q '"c"' "$guest"
 grep -q '"clang"' "$guest"

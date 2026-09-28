@@ -1,58 +1,16 @@
+using System.Text.Json;
+
 using Rune.Api;
+
 using Xunit;
 
 namespace Rune.Api.Tests;
 
 public sealed class RuneApiContractTests
 {
-    private static readonly string Root =
-        FindRepositoryRoot();
-
     [Fact]
-    public void Manifest_maps_the_four_gateway_events()
+    public void Message_preserves_selected_inheritance()
     {
-        var model = Load();
-
-        Assert.Equal(
-            [
-                "MessageCreate",
-                "MessageDelete",
-                "MessageReactionAdd",
-                "MessageReactionRemove"
-            ],
-            model.Events.Select(
-                value => value.Name));
-
-        Assert.Equal(
-            [
-                "Message",
-                "MessageDeleteEventArgs",
-                "MessageReactionAddEventArgs",
-                "MessageReactionRemoveEventArgs"
-            ],
-            model.Events.Select(
-                value => value.Payload));
-    }
-
-    [Fact]
-    public void Message_preserves_selected_NetCord_inheritance()
-    {
-        var model = Load();
-
-        var message =
-            Assert.Single(
-                model.Types,
-                value =>
-                    value.Name == "Message");
-
-        Assert.Equal(
-            "NetCord.Gateway.Message",
-            message.NetCordName);
-
-        Assert.Equal(
-            "RestMessage",
-            message.Base);
-
         Assert.True(
             typeof(RestMessage)
                 .IsAssignableFrom(
@@ -60,33 +18,8 @@ public sealed class RuneApiContractTests
     }
 
     [Fact]
-    public void Reaction_event_arguments_use_selected_nested_types()
+    public void Reaction_enum_matches_NetCord()
     {
-        var model = Load();
-
-        var add =
-            Assert.Single(
-                model.Types,
-                value =>
-                    value.Name ==
-                    "MessageReactionAddEventArgs");
-
-        Assert.Equal(
-            "MessageReactionEmoji",
-            Assert.Single(
-                    add.Members,
-                    member =>
-                        member.Name == "Emoji")
-                .Type.Name);
-
-        Assert.Equal(
-            "ReactionType",
-            Assert.Single(
-                    add.Members,
-                    member =>
-                        member.Name == "Type")
-                .Type.Name);
-
         Assert.Equal(
             (int)NetCord.ReactionType.Normal,
             (int)ReactionType.Normal);
@@ -97,120 +30,85 @@ public sealed class RuneApiContractTests
     }
 
     [Fact]
-    public void Reply_is_selected_from_the_real_RestMessage_contract()
+    public void Event_identity_contains_the_selected_gateway_events()
     {
-        var model = Load();
-
-        var restMessage =
-            Assert.Single(
-                model.Types,
-                value =>
-                    value.Name == "RestMessage");
-
-        var reply =
-            Assert.Single(
-                restMessage.Methods);
-
         Assert.Equal(
-            "NetCord.Rest.RestMessage.ReplyAsync",
-            reply.CanonicalId);
-
-        Assert.Equal(
-            "message.reply",
-            reply.HostName);
-
-        Assert.True(reply.IsAsync);
-
-        Assert.Equal(
-            "RestMessage",
-            reply.Result.Name);
-
-        var parameter =
-            Assert.Single(
-                reply.Parameters);
-
-        Assert.Equal(
-            "replyMessage",
-            parameter.Name);
-
-        Assert.Equal(
-            "ReplyMessageProperties",
-            parameter.Type.Name);
+            [
+                RuneApiEventType.MessageCreate,
+                RuneApiEventType.MessageDelete,
+                RuneApiEventType.MessageReactionAdd,
+                RuneApiEventType.MessageReactionRemove
+            ],
+            Enum.GetValues<RuneApiEventType>());
     }
 
     [Fact]
-    public void Invented_NetCord_members_are_rejected()
+    public void Message_wire_payload_uses_string_snowflakes()
     {
-        var source =
-            File.ReadAllText(
-                Path.Combine(
-                    Root,
-                    "api",
-                    "rune-api.yaml"));
+        var payload =
+            RuneApiPayload.Serialize(
+                new Message(
+                    3,
+                    2,
+                    "hello",
+                    new User(
+                        4,
+                        "user")));
 
-        var invalid =
-            source.Replace(
-                "      - name: Username",
-                "      - name: InventedUsername",
-                StringComparison.Ordinal);
+        Assert.Equal(
+            "3",
+            payload
+                .GetProperty("id")
+                .GetString());
 
-        var exception =
-            Assert.Throws<RuneApiValidationException>(
-                () =>
-                    RuneApiLoader.LoadText(
-                        invalid));
+        Assert.Equal(
+            "2",
+            payload
+                .GetProperty("channelId")
+                .GetString());
 
-        Assert.Contains(
-            "InventedUsername",
-            exception.Message);
-
-        Assert.Contains(
-            "NetCord.User",
-            exception.Message);
+        Assert.Equal(
+            "4",
+            payload
+                .GetProperty("author")
+                .GetProperty("id")
+                .GetString());
     }
 
     [Fact]
-    public void Contract_fingerprint_is_deterministic()
+    public void Optional_snowflakes_and_enums_keep_the_wire_contract()
     {
-        var first = Load();
-        var second = Load();
+        var payload =
+            RuneApiPayload.Serialize(
+                new MessageReactionAddEventArgs(
+                    false,
+                    2,
+                    new MessageReactionEmoji(
+                        false,
+                        6,
+                        "x"),
+                    null,
+                    5,
+                    3,
+                    ReactionType.Burst,
+                    4));
 
         Assert.Equal(
-            first.Fingerprint,
-            second.Fingerprint);
+            JsonValueKind.Null,
+            payload
+                .GetProperty("guildId")
+                .ValueKind);
 
         Assert.Equal(
-            64,
-            first.Fingerprint.Length);
-    }
+            "5",
+            payload
+                .GetProperty("messageAuthorId")
+                .GetString());
 
-    private static RuneApiModel Load() =>
-        RuneApiLoader.Load(
-            Path.Combine(
-                Root,
-                "api",
-                "rune-api.yaml"));
-
-    private static string FindRepositoryRoot()
-    {
-        var directory =
-            new DirectoryInfo(
-                AppContext.BaseDirectory);
-
-        while (directory is not null)
-        {
-            if (File.Exists(
-                    Path.Combine(
-                        directory.FullName,
-                        "Rune.slnx")))
-            {
-                return directory.FullName;
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new InvalidOperationException(
-            "Rune repository root was not found.");
+        Assert.Equal(
+            1,
+            payload
+                .GetProperty("type")
+                .GetInt32());
     }
 }

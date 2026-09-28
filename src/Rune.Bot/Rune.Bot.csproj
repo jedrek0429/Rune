@@ -1,8 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\Rune.Api\Rune.Api.csproj" />
-    <ProjectReference Include="..\Rune.Core\Rune.Core.csproj" />
     <ProjectReference Include="..\Rune.Runtime\Rune.Runtime.csproj" />
   </ItemGroup>
 

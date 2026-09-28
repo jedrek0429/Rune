@@ -2,7 +2,7 @@ using System.Text;
 
 using NetCord;
 
-using Rune.Core.Runes;
+using Rune.Runtime;
 
 namespace Rune.Bot;
 

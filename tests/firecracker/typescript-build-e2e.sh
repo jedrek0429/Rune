@@ -17,9 +17,9 @@ const result: { actions: string[]; error: string | null } = {
 console.log(JSON.stringify(result));
 EOF
 
-bash firecracker/build-rootfs.sh build scriptc
+bash src/Rune.Firecracker/build-rootfs.sh build scriptc
 
-descriptor="$(bash firecracker/run-build-vm.sh scriptc typescript "$tmp/rune.ts")"
+descriptor="$(bash src/Rune.Firecracker/run-build-vm.sh scriptc typescript "$tmp/rune.ts")"
 read -r id _ _ <<<"$descriptor"
 
 [[ "$id" == sha256:* ]]
@@ -28,7 +28,7 @@ digest="${id#sha256:}"
 artifact="$root/artifacts/$digest"
 test -s "$artifact"
 
-response="$(bash firecracker/run-invocation-vm.sh "$artifact" "$tmp/envelope.json")"
+response="$(bash src/Rune.Firecracker/run-invocation-vm.sh "$artifact" "$tmp/envelope.json")"
 
 python3 - "$response" <<'PY'
 import json, sys
@@ -43,7 +43,7 @@ cat >"$tmp/invalid.ts" <<'EOF'
 const value: number = ;
 EOF
 
-if output="$(bash firecracker/run-build-vm.sh scriptc typescript "$tmp/invalid.ts" 2>&1)"; then
+if output="$(bash src/Rune.Firecracker/run-build-vm.sh scriptc typescript "$tmp/invalid.ts" 2>&1)"; then
   echo "typescript invalid source unexpectedly built" >&2
   exit 1
 fi
@@ -81,13 +81,13 @@ if (
 console.log(JSON.stringify({ actions: [], error: null }));
 EOF
 
-descriptor="$(bash firecracker/run-build-vm.sh scriptc typescript "$tmp/generated-rune.ts")"
+descriptor="$(bash src/Rune.Firecracker/run-build-vm.sh scriptc typescript "$tmp/generated-rune.ts")"
 read -r id _ _ <<<"$descriptor"
 [[ "$id" == sha256:* ]]
 digest="${id#sha256:}"
 artifact="$root/artifacts/$digest"
 test -s "$artifact"
-response="$(bash firecracker/run-invocation-vm.sh "$artifact" "$tmp/envelope.json")"
+response="$(bash src/Rune.Firecracker/run-invocation-vm.sh "$artifact" "$tmp/envelope.json")"
 
 python3 - "$response" <<'PY'
 import json

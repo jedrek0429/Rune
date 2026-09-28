@@ -29,6 +29,18 @@ jobs:
           rustc --version
           cargo --version
 
+      - name: Generate contracts
+        run: dotnet run --project tools/Rune.Generator --configuration Release -- generate
+
+      - name: Verify generated contracts are current
+        run: |
+          git diff --exit-code -- \
+            src/Rune.Api/Generated \
+            src/Rune.Runtime/Generated \
+            src/Rune.Firecracker.Runner/src/generated_protocol.rs \
+            src/Rune.Firecracker.Guest/src/generated_runtime.rs \
+            src/Rune.Firecracker/generated-runtime.sh
+
       - name: Restore
         run: dotnet restore
 
@@ -63,16 +75,16 @@ jobs:
         run: bash tests/firecracker/cpp-build-feature.test.sh
 
       - name: Check runner
-        run: cargo check --manifest-path native/Rune.Firecracker.Runner/Cargo.toml
+        run: cargo check --manifest-path src/Rune.Firecracker.Runner/Cargo.toml
 
       - name: Lint runner
-        run: cargo clippy --manifest-path native/Rune.Firecracker.Runner/Cargo.toml --all-targets -- -D warnings
+        run: cargo clippy --manifest-path src/Rune.Firecracker.Runner/Cargo.toml --all-targets -- -D warnings
 
       - name: Test runner
-        run: cargo test --manifest-path native/Rune.Firecracker.Runner/Cargo.toml
+        run: cargo test --manifest-path src/Rune.Firecracker.Runner/Cargo.toml
 
       - name: Check runner formatting
-        run: cargo fmt --manifest-path native/Rune.Firecracker.Runner/Cargo.toml -- --check
+        run: cargo fmt --manifest-path src/Rune.Firecracker.Runner/Cargo.toml -- --check
 
   firecracker-smoke:
     runs-on: ubuntu-latest
@@ -88,8 +100,8 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Generate Rune.Api wrappers
-        run: dotnet run --project tools/Rune.Api.Generator --configuration Release -- generate
+      - name: Generate contracts
+        run: dotnet run --project tools/Rune.Generator --configuration Release -- generate
 
       - name: Install host dependencies
         run: |
