@@ -49,6 +49,10 @@ public static class RuneSourceComposer
         var (payloadType, argument) =
             Event(eventType);
 
+        var payloadShape =
+            TypeScriptPayloadShape(
+                eventType);
+
         return
             """
 import { readFileSync } from "node:fs";
@@ -66,7 +70,7 @@ import { readFileSync } from "node:fs";
             $$"""
 async function __runeMain(): Promise<void> {
     const envelope = JSON.parse(readFileSync(0, "utf8")) as {
-        payload: any;
+        payload: " + payloadShape + ";
     };
 
     const actions: Array<{ method: string; arguments: unknown }> = [];
@@ -229,6 +233,29 @@ fn main() {
 }
 """;
     }
+
+    private static string TypeScriptPayloadShape(
+        RuneApiEventType eventType) =>
+        eventType switch
+        {
+            RuneApiEventType.MessageCreate =>
+                "{ id: string; channelId: string; content: string; author: { id: string; username: string } }",
+
+            RuneApiEventType.MessageDelete =>
+                "{ channelId: string; guildId: string | null; messageId: string }",
+
+            RuneApiEventType.MessageReactionAdd =>
+                "{ burst: boolean; channelId: string; emoji: { animated: boolean; id: string | null; name: string | null }; guildId: string | null; messageAuthorId: string | null; messageId: string; type: number; userId: string }",
+
+            RuneApiEventType.MessageReactionRemove =>
+                "{ burst: boolean; channelId: string; emoji: { animated: boolean; id: string | null; name: string | null }; guildId: string | null; messageId: string; type: number; userId: string }",
+
+            _ =>
+                throw new ArgumentOutOfRangeException(
+                    nameof(eventType),
+                    eventType,
+                    null)
+        };
 
     private static (string PayloadType, string Argument)
         Event(RuneApiEventType eventType) =>
