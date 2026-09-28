@@ -4,5 +4,7 @@ public enum RuneLanguage
 {
     JavaScript,
     Python,
-    Rust
+    Rust,
+    C,
+    Cpp
 }
