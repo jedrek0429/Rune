@@ -94,7 +94,7 @@ jobs:
       - name: Install host dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y e2fsprogs
+          sudo apt-get install -y e2fsprogs redis-server
           test -e /dev/kvm
           sudo chmod a+rw /dev/kvm
 
@@ -140,6 +140,9 @@ jobs:
 
       - name: Execute prebuilt ELF in Firecracker
         run: bash tests/firecracker/invocation-e2e.sh
+
+      - name: Execute Redis runner round trip
+        run: bash tests/firecracker/runner-e2e.sh
 
       - name: Build and execute Rust runes
         run: bash tests/firecracker/rust-build-e2e.sh
