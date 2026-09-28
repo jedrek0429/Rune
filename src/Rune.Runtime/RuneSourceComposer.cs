@@ -40,6 +40,12 @@ public static class RuneSourceComposer
                 ? declarations
                 : runtime;
 
+        if (string.IsNullOrWhiteSpace(implementation))
+        {
+            throw new InvalidOperationException(
+                "Generated TypeScript Rune API binding is missing. Run Rune.Generator before building runes.");
+        }
+
         var (payloadType, argument) =
             Event(eventType);
 
@@ -100,6 +106,12 @@ void __runeMain();
         string source,
         string binding)
     {
+        if (string.IsNullOrWhiteSpace(binding))
+        {
+            throw new InvalidOperationException(
+                "Generated Rust Rune API binding is missing. Run Rune.Generator before building runes.");
+        }
+
         var (payloadType, argument) =
             Event(eventType);
 
