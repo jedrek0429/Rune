@@ -67,6 +67,27 @@ public static class RuneApiEmitter
                 " */\n\n");
         }
 
+        foreach (var method in hostMethods)
+        {
+            var callback =
+                TypeScriptHostCallbackName(
+                    method.HostName);
+
+            text.Append(
+                "/**\n" +
+                $" * @callback {JavaScriptHostCallbackTypeName(method.HostName)}\n");
+
+            foreach (var parameter in method.Parameters)
+            {
+                text.Append(
+                    $" * @param {{{JavaScriptInputType(parameter.Type, model)}}} {Camel(parameter.Name)}\n");
+            }
+
+            text.Append(
+                $" * @returns {{Promise<{JavaScriptType(method.Result, model)}>}}\n" +
+                " */\n\n");
+        }
+
         text.Append(
             "class RuneHost {\n" +
             "    /**\n");
@@ -78,7 +99,7 @@ public static class RuneApiEmitter
                     method.HostName);
 
             text.Append(
-                $"     * @param {{function({JavaScriptFunctionParameters(method, model)}): Promise<{JavaScriptType(method.Result, model)}>}} [{callback}]\n");
+                $"     * @param {{{JavaScriptHostCallbackTypeName(method.HostName)}}} [{callback}]\n");
         }
 
         text.Append(
@@ -262,16 +283,18 @@ public static class RuneApiEmitter
         return value;
     }
 
-    private static string JavaScriptFunctionParameters(
-        RuneApiMethod method,
-        RuneApiModel model) =>
-        string.Join(
-            ", ",
-            method.Parameters.Select(
-                parameter =>
-                    JavaScriptInputType(
-                        parameter.Type,
-                        model)));
+    private static string JavaScriptHostCallbackTypeName(
+        string hostName)
+    {
+        var callback =
+            TypeScriptHostCallbackName(
+                hostName);
+
+        return
+            char.ToUpperInvariant(callback[0]) +
+            callback[1..] +
+            "Callback";
+    }
 
     private static string JavaScriptInputType(
         RuneApiValueType type,
