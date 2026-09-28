@@ -86,3 +86,9 @@
 .sl-markdown-content table .netcord-source {
   margin-block: 0.05rem;
 }
+
+
+/* Keep the splash content visually separate from the centred opening hero. */
+.sl-markdown-content > .home-hero + h2 {
+  margin-top: clamp(4rem, 8vw, 7rem);
+}
