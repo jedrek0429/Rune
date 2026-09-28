@@ -100,7 +100,11 @@ public sealed class RuneGeneratorTests
             javascript);
 
         Assert.DoesNotContain(
-            ": string",
+            "export class",
+            javascript);
+
+        Assert.DoesNotContain(
+            "readonly channelId:",
             javascript);
 
         Assert.DoesNotContain(
