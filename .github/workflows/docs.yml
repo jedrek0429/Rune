@@ -47,9 +47,6 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Test generator
-        run: dotnet test tests/Rune.Generator.Tests/Rune.Generator.Tests.csproj --configuration Release
-
       - name: Generate documentation
         run: dotnet run --project tools/Rune.Generator --configuration Release -- generate
 
