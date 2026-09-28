@@ -55,24 +55,6 @@ public static class RuneSourceComposer
 
 import { readFileSync } from "node:fs";
 
-class RuntimeRuneHost extends RuneHost {
-    readonly actions: Array<{ method: string; arguments: unknown }> = [];
-
-    async call(method: string, payload: unknown): Promise<unknown> {
-        this.actions.push({ method, arguments: payload });
-
-        if (
-            typeof payload === "object" &&
-            payload !== null &&
-            "replyMessage" in payload
-        ) {
-            return (payload as { replyMessage: unknown }).replyMessage;
-        }
-
-        return {};
-    }
-}
-
 """ +
             $"async function rune({argument}: {payloadType}, host: RuneHost): Promise<void> {{\n" +
             source +
@@ -83,12 +65,28 @@ async function __runeMain(): Promise<void> {
         payload: unknown;
     };
 
-    const host = new RuntimeRuneHost();
+    const actions: Array<{ method: string; arguments: unknown }> = [];
+    const host = new RuneHost();
+
+    host.call = async (method: string, payload: unknown): Promise<unknown> => {
+        actions.push({ method, arguments: payload });
+
+        if (
+            typeof payload === "object" &&
+            payload !== null &&
+            "replyMessage" in payload
+        ) {
+            return (payload as { replyMessage: unknown }).replyMessage;
+        }
+
+        return {};
+    };
+
     const {{argument}} = new {{payloadType}}(envelope.payload, host);
 
     try {
         await rune({{argument}}, host);
-        console.log(JSON.stringify({ actions: host.actions, error: null }));
+        console.log(JSON.stringify({ actions, error: null }));
     } catch (error) {
         console.log(JSON.stringify({
             actions: [],
