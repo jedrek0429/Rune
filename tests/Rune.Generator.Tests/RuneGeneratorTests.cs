@@ -251,6 +251,10 @@ public sealed class RuneGeneratorTests
             message);
 
         Assert.Contains(
+            "rune-api-type-marker",
+            message);
+
+        Assert.Contains(
             "export class Message extends RestMessage",
             message);
 
@@ -263,7 +267,7 @@ public sealed class RuneGeneratorTests
             message);
 
         Assert.Contains(
-            "object → [RestMessage](../restmessage/) → **Message**",
+            "object ← [RestMessage](../restmessage/) ← **Message**",
             message);
 
         Assert.Contains(
