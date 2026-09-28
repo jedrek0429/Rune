@@ -92,11 +92,19 @@ public sealed class RuneGeneratorTests
             typescript);
 
         Assert.Contains(
-            "readonly call: (method: string, payload: any) => Promise<any>",
+            "readonly messageReply: (replyMessage: { content: string | null }) => Promise<RestMessage>",
+            typescript);
+
+        Assert.Contains(
+            "await this.__host.messageReply(replyMessage)",
             typescript);
 
         Assert.DoesNotContain(
-            "async call(method: string, payload: any)",
+            "payload: any",
+            typescript);
+
+        Assert.DoesNotContain(
+            "Promise<any>",
             typescript);
     }
 
