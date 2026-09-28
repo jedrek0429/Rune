@@ -351,6 +351,14 @@ public sealed class RuneGeneratorTests
             message);
 
         Assert.Contains(
+            "<TabItem label=\"JavaScript\">",
+            message);
+
+        Assert.Contains(
+            "class Message extends RestMessage",
+            message);
+
+        Assert.Contains(
             "pub struct Message",
             message);
 
@@ -446,6 +454,10 @@ public sealed class RuneGeneratorTests
 
         Assert.Contains(
             "const reply = await message.reply",
+            restMessage);
+
+        Assert.Contains(
+            "```js",
             restMessage);
 
         Assert.Contains(
