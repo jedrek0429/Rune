@@ -61,7 +61,7 @@ import { readFileSync } from "node:fs";
             """
 
 """ +
-            $"""
+            $$"""
 async function __runeMain(): Promise<void> {
     const envelope = JSON.parse(readFileSync(0, "utf8")) as {
         payload: unknown;
@@ -162,7 +162,7 @@ impl RuneHost for RuntimeRuneHost {
 }
 
 """ +
-            $"""
+            $$"""
 fn main() {
     let mut input = String::new();
 
