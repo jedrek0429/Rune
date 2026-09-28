@@ -17,7 +17,7 @@ The current build pipeline supports JavaScript, TypeScript, Python, Rust, C, and
 - MessageReactionAdd
 - MessageReactionRemove
 
-Rust and TypeScript Rune.Api bindings are generated from the same canonical API definition. Additional language bindings will be generated from that same contract.
+Rune.Api bindings are generated from the same canonical API definition for each language.
 
 ## Runtime architecture
 
@@ -32,8 +32,6 @@ The runtime path is therefore:
     -> disposable invocation microVM
     -> Redis result
     -> NetCord host action
-
-The old Extism/WebAssembly runtime is not used.
 
 ## Running locally
 
@@ -55,4 +53,4 @@ The bot and native runner must point at the same Redis instance and Firecracker 
 
 ## Status
 
-Rune is under active development. The Firecracker microVM architecture is the only managed execution path.
+Rune is under active development.
