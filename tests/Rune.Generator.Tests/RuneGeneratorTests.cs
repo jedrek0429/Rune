@@ -26,6 +26,10 @@ public sealed class RuneGeneratorTests
         Assert.Contains(
             "generated/typescript/rune-api.ts",
             output.Keys);
+
+        Assert.Contains(
+            "generated/c/rune_api.h",
+            output.Keys);
     }
 
     [Fact]
@@ -86,6 +90,34 @@ public sealed class RuneGeneratorTests
         Assert.Contains(
             "async reply(replyMessage: ReplyMessageProperties)",
             typescript);
+    }
+
+    [Fact]
+    public void C_wrapper_flattens_inheritance_and_exposes_host_calls()
+    {
+        var c =
+            RuneApiEmitter.Emit(LoadApi())[
+                "generated/c/rune_api.h"];
+
+        Assert.Contains(
+            "typedef struct Message {",
+            c);
+
+        Assert.Contains(
+            "uint64_t channel_id;",
+            c);
+
+        Assert.Contains(
+            "ReactionType type;",
+            c);
+
+        Assert.Contains(
+            "rest_message_reply(",
+            c);
+
+        Assert.Contains(
+            "#define REST_MESSAGE_REPLY_NETCORD",
+            c);
     }
 
     [Fact]
