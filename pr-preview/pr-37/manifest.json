@@ -1,0 +1,157 @@
+{
+  "source_base_path": "/home/runner/work/Rune/Rune/docs",
+  "xrefmap": "xrefmap.yml",
+  "files": [
+    {
+      "type": "Conceptual",
+      "source_relative_path": "api/generated/events.md",
+      "output": {
+        ".html": {
+          "relative_path": "api/generated/events.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "api/generated/index.md",
+      "output": {
+        ".html": {
+          "relative_path": "api/generated/index.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "api/generated/message.md",
+      "output": {
+        ".html": {
+          "relative_path": "api/generated/message.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "api/generated/messagedeleteeventargs.md",
+      "output": {
+        ".html": {
+          "relative_path": "api/generated/messagedeleteeventargs.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "api/generated/messagereactionaddeventargs.md",
+      "output": {
+        ".html": {
+          "relative_path": "api/generated/messagereactionaddeventargs.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "api/generated/messagereactionemoji.md",
+      "output": {
+        ".html": {
+          "relative_path": "api/generated/messagereactionemoji.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "api/generated/messagereactionremoveeventargs.md",
+      "output": {
+        ".html": {
+          "relative_path": "api/generated/messagereactionremoveeventargs.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "api/generated/reactiontype.md",
+      "output": {
+        ".html": {
+          "relative_path": "api/generated/reactiontype.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "api/generated/replymessageproperties.md",
+      "output": {
+        ".html": {
+          "relative_path": "api/generated/replymessageproperties.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "api/generated/restmessage.md",
+      "output": {
+        ".html": {
+          "relative_path": "api/generated/restmessage.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "api/generated/toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/generated/toc.html"
+        },
+        ".json": {
+          "relative_path": "api/generated/toc.json"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "api/generated/user.md",
+      "output": {
+        ".html": {
+          "relative_path": "api/generated/user.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "index.md",
+      "output": {
+        ".html": {
+          "relative_path": "index.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Toc",
+      "source_relative_path": "toc.yml",
+      "output": {
+        ".html": {
+          "relative_path": "toc.html"
+        },
+        ".json": {
+          "relative_path": "toc.json"
+        }
+      },
+      "version": ""
+    }
+  ],
+  "groups": [
+    {
+      "xrefmap": "xrefmap.yml"
+    }
+  ]
+}
