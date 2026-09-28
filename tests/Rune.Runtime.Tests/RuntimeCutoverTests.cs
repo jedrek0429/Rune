@@ -189,6 +189,7 @@ public sealed class RuntimeCutoverTests
         public ValueTask<BuiltRuneArtifact>
             BuildAsync(
                 RuneLanguage language,
+                RuneApiEventType eventType,
                 string source,
                 CancellationToken cancellationToken = default) =>
             ValueTask.FromResult(

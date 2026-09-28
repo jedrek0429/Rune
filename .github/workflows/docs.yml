@@ -1,0 +1,171 @@
+name: Docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "contracts/**"
+      - "src/Rune.Api/**"
+      - "src/Rune.Bot/Commands/**"
+      - "tools/Rune.Generator/**"
+      - "tests/Rune.Generator.Tests/**"
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+concurrency:
+  group: docs-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.number) || 'production' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build:
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    env:
+      RUNE_DOCS_BASE: ${{ github.event_name == 'pull_request' && format('/Rune/pr-preview/pr-{0}/', github.event.number) || '/Rune/' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Generate documentation
+        run: dotnet run --project tools/Rune.Generator --configuration Release -- generate
+
+      - name: Install documentation dependencies
+        run: npm install --prefix docs --no-audit --no-fund
+
+      - name: Build documentation
+        run: npm run --prefix docs build
+
+      - name: Validate generated site
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f docs/dist/index.html
+          test -f docs/dist/favicon.png
+          find docs/dist/_astro -maxdepth 1 -type f -name 'rune.*.webp' | grep -q .
+          test -f docs/dist/articles/quick-start/index.html
+          test -f docs/dist/articles/architecture/index.html
+          test -f docs/dist/articles/security/index.html
+          test -f docs/dist/api/generated/index.html
+          test -f docs/dist/bot/generated/index.html
+          test -f docs/dist/api/generated/types/restmessage/index.html
+          grep -F "href=\"$RUNE_DOCS_BASE" docs/dist/index.html >/dev/null
+          grep -F "href=\"${RUNE_DOCS_BASE}articles/quick-start/\"" docs/dist/index.html >/dev/null
+          grep -F ">Get Started<" docs/dist/index.html >/dev/null
+          grep -F ">Add Bot<" docs/dist/index.html >/dev/null
+          grep -F ">API Reference<" docs/dist/index.html >/dev/null
+          grep -F ">Bot Reference<" docs/dist/index.html >/dev/null
+          grep -F "1541130190392918126" docs/dist/index.html >/dev/null
+          grep -F "_astro/rune." docs/dist/index.html >/dev/null
+          grep -F "Register a rune" docs/dist/index.html >/dev/null
+          ! grep -F "<hr" docs/dist/index.html >/dev/null
+          grep -F "1541130190392918126" docs/dist/articles/quick-start/index.html >/dev/null
+          grep -F "TypeScript" docs/dist/articles/quick-start/index.html >/dev/null
+          grep -F "Rust" docs/dist/articles/quick-start/index.html >/dev/null
+          grep -F "License" docs/dist/index.html >/dev/null
+          grep -F "© 2026 Andrzej Bansleben" docs/dist/index.html >/dev/null
+          grep -F "v0.1.0" docs/dist/index.html >/dev/null
+          grep -F "class=\"netcord-source\"" docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "https://netcord.dev/docs/NetCord.Rest.RestMessage.html" docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "https://netcord.dev/docs/NetCord.User.html" docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "Overview" docs/dist/api/generated/types/message/index.html >/dev/null
+          grep -F "export class Message extends RestMessage" docs/dist/api/generated/types/message/index.html >/dev/null
+          grep -F "object ← <a href=\"../restmessage/\">RestMessage</a> ← <strong>Message</strong>" docs/dist/api/generated/types/message/index.html >/dev/null
+          grep -F "Inherited members" docs/dist/api/generated/types/message/index.html >/dev/null
+          grep -F "Property Value" docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "Replies to this message and returns the created message." docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "Hello from Rune!" docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "${RUNE_DOCS_BASE}api/generated/types/user/" docs/dist/api/generated/types/restmessage/index.html >/dev/null
+
+      - name: Upload documentation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rune-docs
+          path: docs/dist
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy-preview:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download documentation artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: rune-docs
+          path: docs/dist
+
+      - name: Deploy pull request preview
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: docs/dist
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          wait-for-pages-deployment: false
+          comment: true
+          qr-code: false
+
+  deploy-production:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download documentation artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: rune-docs
+          path: docs/dist
+
+      - name: Deploy production documentation
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: docs/dist
+          branch: gh-pages
+          clean-exclude: pr-preview
+          force: false
+
+  cleanup-preview:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Remove pull request preview
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: remove
+          comment: true
+          qr-code: false

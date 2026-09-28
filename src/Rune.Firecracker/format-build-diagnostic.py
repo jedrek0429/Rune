@@ -144,7 +144,13 @@ def bounded_details(text: str) -> str | None:
     return details
 
 
-def build_diagnostic(language: str, kind: str, raw: str) -> dict[str, object]:
+def build_diagnostic(
+    language: str,
+    kind: str,
+    raw: str,
+    user_start_line: int | None = None,
+    user_end_line: int | None = None,
+) -> dict[str, object]:
     display_name, filename = LANGUAGES[language]
     cleaned = sanitise(raw, language)
 
@@ -152,6 +158,19 @@ def build_diagnostic(language: str, kind: str, raw: str) -> dict[str, object]:
         kind = "resource"
 
     file, line, column = location(cleaned, filename)
+
+    if (
+        line is not None
+        and user_start_line is not None
+        and user_end_line is not None
+    ):
+        if user_start_line <= line <= user_end_line:
+            line = line - user_start_line + 1
+        else:
+            file = None
+            line = None
+            column = None
+
     message, code = primary_message(cleaned, language, kind)
 
     diagnostic: dict[str, object] = {
@@ -211,6 +230,8 @@ def main() -> int:
         required=True,
     )
     parser.add_argument("--input", type=Path)
+    parser.add_argument("--user-start-line", type=int)
+    parser.add_argument("--user-end-line", type=int)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -220,7 +241,13 @@ def main() -> int:
         else sys.stdin.read()
     )
 
-    diagnostic = build_diagnostic(args.language, args.kind, raw)
+    diagnostic = build_diagnostic(
+        args.language,
+        args.kind,
+        raw,
+        args.user_start_line,
+        args.user_end_line,
+    )
 
     if args.json:
         public = {

@@ -15,12 +15,14 @@ ARG ZIG_VERSION=0.16.0
 ARG MICROPYTHON_VERSION=v1.29.0
 
 COPY src/Rune.Firecracker/build-tools/python.sh /usr/local/bin/rune-build-python
+COPY src/Rune.Firecracker/build-tools/rust.sh /usr/local/bin/rune-build-rust
 COPY src/Rune.Firecracker/build-tools/build-python-runtime.sh /usr/local/bin/build-python-runtime
 COPY src/Rune.Firecracker/python/rune_port.c /opt/rune/python/rune_port.c
 COPY src/Rune.Firecracker/python/rune_time.h /opt/rune/python/rune_time.h
 COPY src/Rune.Firecracker/python/mpconfigrune.h /opt/rune/python/mpconfigrune.h
 RUN chmod 0755 \
     /usr/local/bin/rune-build-python \
+    /usr/local/bin/rune-build-rust \
     /usr/local/bin/build-python-runtime
 
 RUN case "$POOL" in \
@@ -30,6 +32,13 @@ RUN case "$POOL" in \
         rm -rf /var/lib/apt/lists/* \
         ;; \
       rust) \
+        mkdir -p /opt/rune/rust && \
+        printf '[package]\nname = "rune-program"\nversion = "0.1.0"\nedition = "2024"\n\n[dependencies]\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\nserde_repr = "0.1"\n' \
+            > /opt/rune/rust/Cargo.toml && \
+        mkdir -p /opt/rune/rust/src && \
+        printf 'fn main() {}\n' > /opt/rune/rust/src/main.rs && \
+        cargo fetch --manifest-path /opt/rune/rust/Cargo.toml && \
+        ln -sf /usr/local/cargo/bin/cargo /usr/local/bin/cargo && \
         printf '#!/bin/sh\nRUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo exec /usr/local/cargo/bin/rustc "$@"\n' \
             > /usr/local/bin/rustc && \
         chmod 0755 /usr/local/bin/rustc \

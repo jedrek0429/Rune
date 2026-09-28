@@ -1,0 +1,34 @@
+---
+title: How Rune works
+description: What happens when you register and run a rune.
+prev:
+  link: ../quick-start/
+  label: Quick Start
+next:
+  link: ../security/
+  label: Security
+---
+
+A rune is a small script that runs when a selected Discord event happens.
+
+## Register
+
+Upload your script with the Rune bot. Rune builds it and saves it for future runs.
+
+## Receive an event
+
+When a matching Discord event happens, Rune starts your rune and gives it the event data through Rune API.
+
+For example, a `MessageCreate` rune receives a message. It can read fields such as the message content and author.
+
+## Use Rune API
+
+Rune API defines the data and actions available to your rune.
+
+Methods such as `message.reply(...)` let your rune act on the event it received.
+
+## Run
+
+Rune runs each invocation in an isolated environment with defined resource limits.
+
+The same Rune API concepts are available across supported languages.

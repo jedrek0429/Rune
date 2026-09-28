@@ -43,6 +43,15 @@ input_dir="$tmp/input"
 artifact="$tmp/artifact"
 diagnostics="$tmp/diagnostics.txt"
 pid=""
+user_start_line=""
+user_end_line=""
+
+start_marker="$(grep -n -m1 '^// <rune-user-source>$' "$source_path" | cut -d: -f1 || true)"
+end_marker="$(grep -n -m1 '^// </rune-user-source>$' "$source_path" | cut -d: -f1 || true)"
+if [[ -n "$start_marker" && -n "$end_marker" && "$end_marker" -gt "$start_marker" ]]; then
+  user_start_line=$((start_marker + 1))
+  user_end_line=$((end_marker - 1))
+fi
 
 cleanup() {
   if [[ -n "$pid" ]]; then
@@ -62,6 +71,7 @@ done
 
 mkdir -p "$input_dir"
 cp "$source_path" "$input_dir/$input_name"
+chmod 0444 "$input_dir/$input_name"
 truncate -s "${disk_mib}M" "$scratch"
 mkfs.ext4 -q -F "$scratch"
 truncate -s 4M "$input"
@@ -97,7 +107,6 @@ api_put /boot-source "{\"kernel_image_path\":$(json_string "$kernel"),\"boot_arg
 api_put /drives/rootfs "{\"drive_id\":\"rootfs\",\"path_on_host\":$(json_string "$rootfs"),\"is_root_device\":true,\"is_read_only\":true}"
 api_put /drives/scratch "{\"drive_id\":\"scratch\",\"path_on_host\":$(json_string "$scratch"),\"is_root_device\":false,\"is_read_only\":false}"
 api_put /drives/input "{\"drive_id\":\"input\",\"path_on_host\":$(json_string "$input"),\"is_root_device\":false,\"is_read_only\":true}"
-# Deliberately no network interface.
 api_put /actions '{"action_type":"InstanceStart"}'
 
 set +e
@@ -114,6 +123,7 @@ set -e
 kill "$pid" >/dev/null 2>&1 || true
 wait "$pid" 2>/dev/null || true
 pid=""
+
 set +e
 e2fsck -p "$scratch" >/dev/null
 fsck_status=$?
@@ -130,11 +140,20 @@ if [[ "$status" -ne 0 ]]; then
     4) kind=infrastructure ;;
   esac
 
-  python3 "$diagnostic_formatter" \
-    --language "$language" \
-    --kind "$kind" \
-    --input "$diagnostics" >&2
+  formatter_args=(
+    --language "$language"
+    --kind "$kind"
+    --input "$diagnostics"
+  )
 
+  if [[ -n "$user_start_line" && -n "$user_end_line" ]]; then
+    formatter_args+=(
+      --user-start-line "$user_start_line"
+      --user-end-line "$user_end_line"
+    )
+  fi
+
+  python3 "$diagnostic_formatter" "${formatter_args[@]}" >&2
   exit "$status"
 fi
 

@@ -1,0 +1,46 @@
+---
+import Pagination from 'virtual:starlight/components/Pagination';
+import version from '../data/generated/api.json';
+
+const isArticle = Astro.locals.starlightRoute.entry.id.startsWith('articles/');
+---
+
+<footer class="rune-footer">
+  {isArticle && <Pagination />}
+
+  <div class="rune-footer-meta">
+    <a href="https://github.com/jedrek0429/Rune/blob/main/LICENSE" target="_blank" rel="noreferrer">
+      License
+    </a>
+    <span>© 2026 Andrzej Bansleben</span>
+    <span>v{version.runeApi}</span>
+  </div>
+</footer>
+
+<style>
+  .rune-footer {
+    display: grid;
+    gap: 2rem;
+    padding-top: 2rem;
+  }
+
+  .rune-footer-meta {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+    padding: 2rem 1rem 2.5rem;
+    border-top: 1px solid var(--sl-color-hairline);
+    color: var(--sl-color-gray-3);
+    font-size: var(--sl-text-sm);
+  }
+
+  .rune-footer-meta a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .rune-footer-meta a:hover {
+    color: var(--sl-color-text-accent);
+  }
+</style>

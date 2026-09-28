@@ -84,7 +84,27 @@ public sealed class RuneGeneratorTests
             typescript);
 
         Assert.Contains(
+            "async reply(replyMessage: { content: string | null })",
+            typescript);
+
+        Assert.DoesNotContain(
             "async reply(replyMessage: ReplyMessageProperties)",
+            typescript);
+
+        Assert.Contains(
+            "readonly messageReply: (replyMessage: { content: string | null }) => Promise<RestMessage>",
+            typescript);
+
+        Assert.Contains(
+            "await this.__host.messageReply(replyMessage)",
+            typescript);
+
+        Assert.DoesNotContain(
+            "payload: any",
+            typescript);
+
+        Assert.DoesNotContain(
+            "Promise<any>",
             typescript);
     }
 
@@ -104,11 +124,35 @@ public sealed class RuneGeneratorTests
             rust);
 
         Assert.Contains(
+            "#[serde(with = \"rune_snowflake_serde\")]",
+            rust);
+
+        Assert.Contains(
+            "serde_repr::Deserialize_repr",
+            rust);
+
+        Assert.Contains(
+            "#[serde(rename_all = \"camelCase\")]",
+            rust);
+
+        Assert.Contains(
             "pub type_: ReactionType",
             rust);
 
         Assert.Contains(
             "pub fn reply(",
+            rust);
+
+        Assert.Contains(
+            "pub fn __rune_install_host(",
+            rust);
+
+        Assert.Contains(
+            "__rune_with_host(|host|",
+            rust);
+
+        Assert.DoesNotContain(
+            "&self, host: &mut dyn RuneHost",
             rust);
     }
 
@@ -199,6 +243,231 @@ public sealed class RuneGeneratorTests
             RuntimeContractEmitter.Emit(
                 runtime,
                 api));
+    }
+
+
+    [Fact]
+    public void Api_documentation_is_user_facing_and_links_to_NetCord()
+    {
+        var documentation =
+            RuneApiDocumentationEmitter.Emit(LoadApi());
+
+        Assert.Contains(
+            "docs/src/content/docs/api/generated/index.mdx",
+            documentation.Keys);
+
+        Assert.Contains(
+            "title: API Reference",
+            documentation[
+                "docs/src/content/docs/api/generated/index.mdx"]);
+
+        var events =
+            documentation[
+                "docs/src/content/docs/api/generated/events.mdx"];
+
+        Assert.Contains(
+            "| Event | Description | Payload | Source |",
+            events);
+
+        Assert.Contains(
+            "A new Discord message is created.",
+            events);
+
+        Assert.Contains(
+            "docs/src/data/generated/api.json",
+            documentation.Keys);
+
+        Assert.Contains(
+            "\"runeApi\": \"0.1.0\"",
+            documentation[
+                "docs/src/data/generated/api.json"]);
+
+        var message =
+            documentation[
+                "docs/src/content/docs/api/generated/types/message.mdx"];
+
+        Assert.Contains(
+            "title: Class Message",
+            message);
+
+        Assert.Contains(
+            "## Overview",
+            message);
+
+        Assert.Contains(
+            "rune-api-type-marker",
+            message);
+
+        Assert.Contains(
+            "export class Message extends RestMessage",
+            message);
+
+        Assert.Contains(
+            "pub struct Message",
+            message);
+
+        Assert.Contains(
+            "### Inheritance",
+            message);
+
+        Assert.Contains(
+            "object ← [RestMessage](../restmessage/) ← **Message**",
+            message);
+
+        Assert.Contains(
+            "class=\"netcord-source\"",
+            message);
+
+        Assert.Contains(
+            "https://netcord.dev/docs/NetCord.Gateway.Message.html",
+            message);
+
+        Assert.Contains(
+            "### Inherited members",
+            message);
+
+        Assert.Contains(
+            "A message from a MessageCreate event.",
+            message);
+
+        var overview =
+            message[
+                message.IndexOf(
+                    "## Overview",
+                    StringComparison.Ordinal)..];
+
+        Assert.True(
+            overview.IndexOf(
+                "export class Message extends RestMessage",
+                StringComparison.Ordinal) <
+            overview.IndexOf(
+                "A message from a MessageCreate event.",
+                StringComparison.Ordinal));
+
+        Assert.True(
+            overview.IndexOf(
+                "export class Message extends RestMessage",
+                StringComparison.Ordinal) <
+            overview.IndexOf(
+                "### Inheritance",
+                StringComparison.Ordinal));
+
+        var restMessage =
+            documentation[
+                "docs/src/content/docs/api/generated/types/restmessage.mdx"];
+
+        Assert.Contains(
+            "## Properties",
+            restMessage);
+
+        Assert.Contains(
+            "## Methods",
+            restMessage);
+
+        Assert.Contains(
+            "#### Property Value",
+            restMessage);
+
+        Assert.Contains(
+            "[User](../user/)",
+            restMessage);
+
+        Assert.Contains(
+            "#### Parameters",
+            restMessage);
+
+        Assert.Contains(
+            "**`replyMessage`**",
+            restMessage);
+
+        Assert.Contains(
+            "[ReplyMessageProperties](../replymessageproperties/)",
+            restMessage);
+
+        Assert.Contains(
+            "#### Returns",
+            restMessage);
+
+        Assert.Contains(
+            "Replies to this message and returns the created message.",
+            restMessage);
+
+        Assert.Contains(
+            "#### Example",
+            restMessage);
+
+        Assert.Contains(
+            "const reply = await message.reply",
+            restMessage);
+
+        Assert.Contains(
+            "let reply = message.reply",
+            restMessage);
+
+        Assert.Contains(
+            "https://netcord.dev/docs/NetCord.Rest.RestMessage.html",
+            restMessage);
+
+        Assert.Contains(
+            "https://netcord.dev/docs/NetCord.User.html",
+            restMessage);
+
+        Assert.Contains(
+            "title=\"NetCord.Rest.RestMessage.ReplyAsync\"",
+            restMessage);
+
+
+        Assert.DoesNotContain(
+            "Namespace",
+            restMessage);
+
+        Assert.DoesNotContain(
+            "Assembly",
+            restMessage);
+
+        Assert.Contains(
+            "<Tabs syncKey=\"language\">",
+            restMessage);
+    }
+
+    [Fact]
+    public void Bot_documentation_is_generated_from_command_metadata_and_xml_comments()
+    {
+        var documentation =
+            RuneBotDocumentationEmitter.Emit(Root);
+
+        Assert.Contains(
+            "docs/src/content/docs/bot/generated/index.mdx",
+            documentation.Keys);
+
+        Assert.Contains(
+            "title: Bot Reference",
+            documentation[
+                "docs/src/content/docs/bot/generated/index.mdx"]);
+
+        var rune =
+            documentation[
+                "docs/src/content/docs/bot/generated/commands/rune.mdx"];
+
+        Assert.Contains(
+            "## /rune register",
+            rune);
+
+        Assert.Contains(
+            "Uploads source code and registers it as a rune for this server.",
+            rune);
+
+        Assert.Contains(
+            "**Required permission:** `Manage Server`",
+            rune);
+
+        Assert.Contains(
+            "| `eventType` | `RuneApiEventType` | The Discord event that runs this rune. |",
+            rune);
+
+        Assert.Contains(
+            "/rune register name:hello event:MessageCreate file:hello.ts",
+            rune);
     }
 
     private static RuneApiModel LoadApi() =>

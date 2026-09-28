@@ -44,12 +44,9 @@ fn main() -> Result<()> {
     drop_privileges()?;
     let (program, args, env): (&str, &[&str], &[(&str, &str)]) = match *language {
         "rust" => (
-            "rustc",
+            "rune-build-rust",
             &[
-                "--edition=2024",
-                "-O",
                 "/input/source.rs",
-                "-o",
                 "/work/artifact",
             ],
             &[],

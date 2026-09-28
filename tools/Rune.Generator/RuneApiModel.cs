@@ -20,6 +20,8 @@ public sealed record RuneApiType(
     string NetCordName,
     bool IsEnum,
     string? Base,
+    string? Summary,
+    IReadOnlyDictionary<string, string> Examples,
     IReadOnlyList<RuneApiMember> Members,
     IReadOnlyList<RuneApiMethod> Methods);
 
@@ -28,7 +30,8 @@ public sealed record RuneApiMember(
     string CanonicalId,
     RuneApiValueType Type,
     string? Representation,
-    long? EnumValue);
+    long? EnumValue,
+    string? Summary);
 
 public sealed record RuneApiMethod(
     string Name,
@@ -36,7 +39,9 @@ public sealed record RuneApiMethod(
     string HostName,
     bool IsAsync,
     IReadOnlyList<RuneApiParameter> Parameters,
-    RuneApiValueType Result);
+    RuneApiValueType Result,
+    string? Summary,
+    IReadOnlyDictionary<string, string> Examples);
 
 public sealed record RuneApiParameter(
     string Name,
@@ -50,7 +55,8 @@ public sealed record RuneApiValueType(
 public sealed record RuneApiEvent(
     string Name,
     string NetCordName,
-    string Payload);
+    string Payload,
+    string? Summary);
 
 public sealed class RuneApiValidationException(
     string message)
@@ -146,6 +152,8 @@ public static class RuneApiLoader
                     selection.NetCord,
                     runtimeType.IsEnum,
                     selection.Base,
+                    selection.Summary,
+                    selection.Examples,
                     members,
                     methods));
         }
@@ -170,7 +178,8 @@ public static class RuneApiLoader
                 new RuneApiEvent(
                     name,
                     selection.NetCord,
-                    selection.Payload));
+                    selection.Payload,
+                    selection.Summary));
         }
 
         var duplicateHost =
@@ -194,23 +203,23 @@ public static class RuneApiLoader
                         type =>
                             new[]
                             {
-                                $"type:{type.NetCordName}:base:{type.Base}"
+                                $"type:{type.NetCordName}:base:{type.Base}:summary:{type.Summary}:examples:{FormatExamples(type.Examples)}"
                             }
                             .Concat(
                                 type.Members.Select(
                                     member =>
                                         $"member:{member.CanonicalId}:{member.Type.Name}:" +
-                                        $"{member.Type.Optional}:{member.Representation}:{member.EnumValue}"))
+                                        $"{member.Type.Optional}:{member.Representation}:{member.EnumValue}:{member.Summary}"))
                             .Concat(
                                 type.Methods.Select(
                                     method =>
                                         $"method:{method.CanonicalId}:{method.HostName}:{method.IsAsync}:" +
                                         $"{string.Join(',', method.Parameters.Select(parameter => $"{parameter.Name}:{parameter.Type.Name}:{parameter.Type.Optional}"))}:" +
-                                        $"{method.Result.Name}:{method.Result.Optional}")))
+                                        $"{method.Result.Name}:{method.Result.Optional}:{method.Summary}:{FormatExamples(method.Examples)}")))
                     .Concat(
                         events.Select(
                             value =>
-                                $"event:{value.NetCordName}:{value.Payload}")));
+                                $"event:{value.NetCordName}:{value.Payload}:{value.Summary}")));
 
         var fingerprint =
             Convert.ToHexString(
@@ -273,7 +282,8 @@ public static class RuneApiLoader
                     $"{runtimeType.FullName}.{selected.Name}",
                     valueType,
                     selected.Representation,
-                    null));
+                    null,
+                    selected.Summary));
         }
 
         return members;
@@ -362,7 +372,9 @@ public static class RuneApiLoader
                     selected.Host,
                     true,
                     parameters,
-                    result));
+                    result,
+                    selected.Summary,
+                    selected.Examples));
         }
 
         return methods;
@@ -437,7 +449,8 @@ public static class RuneApiLoader
                         false,
                         true),
                     null,
-                    value));
+                    value,
+                    selected.Summary));
         }
 
         return members;
@@ -582,6 +595,14 @@ public static class RuneApiLoader
         }
     }
 
+    private static string FormatExamples(
+        IReadOnlyDictionary<string, string> examples) =>
+        string.Join(
+            "|",
+            examples
+                .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .Select(pair => $"{pair.Key}:{pair.Value}"));
+
     private sealed class Manifest
     {
         public int Schema { get; init; }
@@ -617,6 +638,11 @@ public static class RuneApiLoader
 
         public string? Base { get; init; }
 
+        public string? Summary { get; init; }
+
+        public Dictionary<string, string>
+            Examples { get; init; } = [];
+
         public List<MemberSelection>
             Members { get; init; } = [];
 
@@ -630,6 +656,8 @@ public static class RuneApiLoader
             string.Empty;
 
         public string? Representation { get; init; }
+
+        public string? Summary { get; init; }
     }
 
     private sealed class MethodSelection
@@ -639,6 +667,11 @@ public static class RuneApiLoader
 
         public string Host { get; init; } =
             string.Empty;
+
+        public string? Summary { get; init; }
+
+        public Dictionary<string, string>
+            Examples { get; init; } = [];
 
         public List<string>
             Parameters { get; init; } = [];
@@ -652,5 +685,7 @@ public static class RuneApiLoader
 
         public string Payload { get; init; } =
             string.Empty;
+
+        public string? Summary { get; init; }
     }
 }

@@ -54,47 +54,33 @@ grep -Fq "rune.ts" <<<"$output"
 
 echo "typescript diagnostics OK"
 
-cat generated/typescript/rune-api.ts >"$tmp/generated-rune.ts"
-cat >>"$tmp/generated-rune.ts" <<'EOF'
-
-const generatedMessage = new Message({
-    id: "1",
-    channelId: "2",
-    content: "hello",
-    author: {
-        id: "3",
-        username: "rune",
-    },
-});
-
-if (generatedMessage.channelId !== "2") {
-    throw new Error("generated Message did not hydrate channelId");
-}
-
-if (
-    REST_MESSAGE_REPLY.netCord !==
-    "NetCord.Rest.RestMessage.ReplyAsync"
-) {
-    throw new Error("generated reply identity is wrong");
-}
-
-console.log(JSON.stringify({ actions: [], error: null }));
+cat >"$tmp/rune-envelope.json" <<'EOF'
+{"executionId":"e","invocationId":"i","runeId":"r","runeName":"typescript-api","guildId":1,"eventType":"messageCreate","artifact":{"id":"unused","digest":"unused","entrypoint":"rune","sizeBytes":1},"payload":{"id":"1","channelId":"2","content":"!hello","author":{"id":"3","username":"rune"}},"enqueuedAt":"2026-09-27T00:00:00Z"}
 EOF
 
-descriptor="$(bash src/Rune.Firecracker/run-build-vm.sh scriptc typescript "$tmp/generated-rune.ts")"
+descriptor="$(
+  dotnet run     --project tests/Rune.BuildHarness     --configuration Release     -- TypeScript MessageCreate examples/hello.ts
+)"
 read -r id _ _ <<<"$descriptor"
 [[ "$id" == sha256:* ]]
 digest="${id#sha256:}"
 artifact="$root/artifacts/$digest"
 test -s "$artifact"
-response="$(bash src/Rune.Firecracker/run-invocation-vm.sh "$artifact" "$tmp/envelope.json")"
+
+response="$(
+  bash src/Rune.Firecracker/run-invocation-vm.sh     "$artifact"     "$tmp/rune-envelope.json"
+)"
 
 python3 - "$response" <<'PY'
 import json
 import sys
 
 result = json.loads(sys.argv[1])
-assert result == {"actions": [], "error": None}, result
+assert result["error"] is None, result
+action = result["actions"][0]
+assert action["method"] == "message.reply", result
+assert action["arguments"]["replyMessage"]["content"] == "Hello, rune!", result
 PY
 
-echo "generated typescript Rune.Api wrapper -> execute OK"
+echo "production TypeScript Rune API example -> execute OK"
+

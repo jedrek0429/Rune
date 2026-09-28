@@ -1,0 +1,16 @@
+{
+  "name": "rune-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare:assets": "mkdir -p src/assets public && cp ../assets/rune.png src/assets/rune.png && cp ../assets/rune.png public/favicon.png",
+    "prebuild": "npm run prepare:assets",
+    "build": "astro build",
+    "predev": "npm run prepare:assets",
+    "dev": "astro dev"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.42.4",
+    "astro": "7.3.5"
+  }
+}

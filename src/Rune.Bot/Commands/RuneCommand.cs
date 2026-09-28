@@ -5,6 +5,7 @@ using NetCord.Rest;
 using NetCord.Services;
 using NetCord.Services.ApplicationCommands;
 
+using Rune.Api;
 using Rune.Runtime;
 using Rune.Runtime.Exceptions;
 
@@ -19,6 +20,14 @@ public sealed class RuneCommand(
     RuneUploadReader uploadReader)
     : ApplicationCommandModule<ApplicationCommandContext>
 {
+    /// <summary>
+    /// Uploads source code and registers it as a rune for this server.
+    /// Rune detects the language from the file extension and compiles the source before registration completes.
+    /// </summary>
+    /// <param name="name">The rune's name in this server.</param>
+    /// <param name="eventType">The Discord event that runs this rune.</param>
+    /// <param name="file">The rune source file. Supported extensions: .js, .mjs, .ts, .py, .rs, .c, .cc, .cpp, and .cxx.</param>
+    /// <example>/rune register name:hello event:MessageCreate file:hello.ts</example>
     [RequireUserPermissions<ApplicationCommandContext>(
         Permissions.ManageGuild)]
     [SubSlashCommand(
@@ -26,6 +35,8 @@ public sealed class RuneCommand(
         "Register a rune")]
     public async Task RegisterAsync(
         string name,
+        [SlashCommandParameter(Name = "event", Description = "Discord event that runs this rune")]
+        RuneApiEventType eventType,
         Attachment file)
     {
         await DeferAsync();
@@ -75,6 +86,7 @@ public sealed class RuneCommand(
                     guildId,
                     name,
                     upload.Language!.Value,
+                    eventType,
                     upload.Source!);
 
             await FinishAsync(
@@ -91,6 +103,10 @@ public sealed class RuneCommand(
         }
     }
 
+    /// <summary>
+    /// Lists runes in this server with their language, event, and status.
+    /// </summary>
+    /// <example>/rune list</example>
     [RequireUserPermissions<ApplicationCommandContext>(
         Permissions.ManageGuild)]
     [SubSlashCommand(
@@ -130,6 +146,11 @@ public sealed class RuneCommand(
         return result;
     }
 
+    /// <summary>
+    /// Shows a rune's language, event, status, and size.
+    /// </summary>
+    /// <param name="name">The name of the rune to inspect.</param>
+    /// <example>/rune info name:hello</example>
     [RequireUserPermissions<ApplicationCommandContext>(
         Permissions.ManageGuild)]
     [SubSlashCommand(
@@ -166,6 +187,11 @@ public sealed class RuneCommand(
             $"Artifact: {(rune.Artifact?.SizeBytes ?? 0):N0} bytes";
     }
 
+    /// <summary>
+    /// Disables a rune and keeps it registered.
+    /// </summary>
+    /// <param name="name">The name of the rune to disable.</param>
+    /// <example>/rune disable name:hello</example>
     [RequireUserPermissions<ApplicationCommandContext>(
         Permissions.ManageGuild)]
     [SubSlashCommand(
@@ -191,6 +217,11 @@ public sealed class RuneCommand(
             : $"Disabled `{rune.Name}`.";
     }
 
+    /// <summary>
+    /// Enables a rune.
+    /// </summary>
+    /// <param name="name">The name of the rune to enable.</param>
+    /// <example>/rune enable name:hello</example>
     [RequireUserPermissions<ApplicationCommandContext>(
         Permissions.ManageGuild)]
     [SubSlashCommand(
@@ -216,6 +247,11 @@ public sealed class RuneCommand(
             : $"Enabled `{rune.Name}`.";
     }
 
+    /// <summary>
+    /// Removes a rune from this server.
+    /// </summary>
+    /// <param name="name">The name of the rune to remove.</param>
+    /// <example>/rune remove name:hello</example>
     [RequireUserPermissions<ApplicationCommandContext>(
         Permissions.ManageGuild)]
     [SubSlashCommand(
@@ -240,6 +276,12 @@ public sealed class RuneCommand(
             : $"Removed `{rune.Name}`.";
     }
 
+    /// <summary>
+    /// Replaces a rune's source file and rebuilds it.
+    /// </summary>
+    /// <param name="name">The name of the rune to update.</param>
+    /// <param name="file">The replacement source file.</param>
+    /// <example>/rune update name:hello file:hello.ts</example>
     [RequireUserPermissions<ApplicationCommandContext>(
         Permissions.ManageGuild)]
     [SubSlashCommand(

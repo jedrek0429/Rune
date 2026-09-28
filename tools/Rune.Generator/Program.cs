@@ -32,7 +32,11 @@ var generated =
         .Concat(
             RuntimeContractEmitter.Emit(
                 runtime,
-                api));
+                api))
+        .Concat(
+            RuneApiDocumentationEmitter.Emit(api))
+        .Concat(
+            RuneBotDocumentationEmitter.Emit(root));
 
 foreach (var (relativePath, content) in generated)
 {
