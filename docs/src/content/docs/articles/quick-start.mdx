@@ -6,15 +6,13 @@ description: Register and run your first rune.
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 import InstallRune from '../../../components/InstallRune.astro';
 
-A **rune** is a script registered with Rune. This article uses a `MessageCreate` rune that reads the incoming message and replies to it.
-
-Rune.Api currently has generated bindings for TypeScript and Rust, so every API example in this article is provided in both languages.
+A **rune** is a script registered with Rune. This example replies when someone sends `!hello`.
 
 ## 1. Add Rune to your server
 
 <InstallRune />
 
-Rune needs the bot and application-command scopes so you can register runes and receive Discord events.
+Rune uses Discord's bot and application-command permissions.
 
 ## 2. Write the rune
 
@@ -46,11 +44,11 @@ if message.content == "!hello" {
   </TabItem>
 </Tabs>
 
-The examples assume the `MessageCreate` payload is available as `message`; Rust host operations additionally receive Rune's host handle as `host`.
+The `MessageCreate` event is available as `message`. Rust API calls use the `host` value shown above.
 
 ## 3. Register the rune
 
-In Discord, use `/rune register`, give the rune a name, and attach the source file.
+In Discord, use `/rune register`, choose a name, and attach the source file.
 
 <Tabs syncKey="language">
   <TabItem label="TypeScript">
@@ -69,9 +67,9 @@ In Discord, use `/rune register`, give the rune a name, and attach the source fi
   </TabItem>
 </Tabs>
 
-Rune builds the upload in an isolated build microVM and stores the resulting executable artifact.
+Rune builds the script and saves it.
 
-## 4. Trigger it
+## 4. Try it
 
 Send:
 
@@ -79,8 +77,8 @@ Send:
 !hello
 ```
 
-in a channel where Rune is present. The rune receives the `MessageCreate` event and replies through Rune.Api.
+Rune receives the `MessageCreate` event and your rune replies.
 
 ## Next
 
-Read [How Rune works](../architecture/) for the runtime path, [Security model](../security/) for the sandbox boundaries, or go directly to the [API Reference](../../api/generated/).
+Read [How Rune works](../architecture/), [Security](../security/), or go to the [API Reference](../../api/generated/).
