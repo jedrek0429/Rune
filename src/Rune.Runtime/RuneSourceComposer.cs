@@ -141,20 +141,25 @@ struct RuntimeRuneHostAction {
     arguments: serde_json::Value,
 }
 
-struct RuntimeRuneHost {
-    actions: Vec<RuntimeRuneHostAction>,
+std::thread_local! {
+    static __RUNE_ACTIONS: std::cell::RefCell<Vec<RuntimeRuneHostAction>> =
+        std::cell::RefCell::new(Vec::new());
 }
+
+struct RuntimeRuneHost;
 
 impl RuneHost for RuntimeRuneHost {
     fn message_reply(
         &mut self,
         reply_message: &ReplyMessageProperties,
     ) -> Result<RestMessage, String> {
-        self.actions.push(RuntimeRuneHostAction {
-            method: "message.reply".to_string(),
-            arguments: serde_json::json!({
-                "replyMessage": reply_message,
-            }),
+        __RUNE_ACTIONS.with(|actions| {
+            actions.borrow_mut().push(RuntimeRuneHostAction {
+                method: "message.reply".to_string(),
+                arguments: serde_json::json!({
+                    "replyMessage": reply_message,
+                }),
+            });
         });
 
         Ok(RestMessage {
@@ -217,16 +222,28 @@ fn main() {
             }
         };
 
-    let mut host =
-        RuntimeRuneHost { actions: Vec::new() };
+    __RUNE_ACTIONS.with(|actions| {
+        actions.borrow_mut().clear();
+    });
+
+    __rune_install_host(
+        Box::new(RuntimeRuneHost),
+    );
 
     let error =
-        rune({{argument}}, &mut host).err();
+        rune({{argument}}).err();
+
+    let actions =
+        __RUNE_ACTIONS.with(|actions| {
+            std::mem::take(
+                &mut *actions.borrow_mut(),
+            )
+        });
 
     println!(
         "{}",
         serde_json::json!({
-            "actions": host.actions,
+            "actions": actions,
             "error": error,
         })
     );
