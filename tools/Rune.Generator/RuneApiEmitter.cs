@@ -36,8 +36,12 @@ public static class RuneApiEmitter
 
         text.Append(
             "export class RuneHost {\n" +
-            "    async call(method: string, payload: any): Promise<any> {\n" +
-            "        throw new Error(\"Rune host is not configured\");\n" +
+            "    readonly call: (method: string, payload: any) => Promise<any>;\n\n" +
+            "    constructor(\n" +
+            "        call: (method: string, payload: any) => Promise<any> =\n" +
+            "            async () => { throw new Error(\"Rune host is not configured\"); },\n" +
+            "    ) {\n" +
+            "        this.call = call;\n" +
             "    }\n" +
             "}\n\n");
 
