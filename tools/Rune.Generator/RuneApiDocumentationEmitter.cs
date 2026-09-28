@@ -313,6 +313,20 @@ public static class RuneApiDocumentationEmitter
         text.AppendLine();
         text.AppendLine("  </TabItem>");
         text.AppendLine("</Tabs>");
+
+        if (valueType.IsSelectedType)
+        {
+            var selected =
+                model.Types.Single(
+                    type =>
+                        type.Name == valueType.Name);
+
+            text.AppendLine();
+            text.AppendLine(
+                NetCordSource(
+                    selected.NetCordName,
+                    NetCordTypeUrl(selected.NetCordName)));
+        }
     }
 
     private static void AppendPropertySignature(
