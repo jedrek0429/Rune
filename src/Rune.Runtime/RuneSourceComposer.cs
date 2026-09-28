@@ -99,10 +99,10 @@ public static class RuneSourceComposer
             argument +
             ", host);\n" +
             "        console.log(JSON.stringify({ actions, error: null }));\n" +
-            "    } catch (error) {\n" +
+            "    } catch {\n" +
             "        console.log(JSON.stringify({\n" +
             "            actions: [],\n" +
-            "            error: error instanceof Error ? error.message : String(error),\n" +
+            "            error: \"Rune execution failed.\",\n" +
             "        }));\n" +
             "    }\n" +
             "}\n\n" +
