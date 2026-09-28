@@ -20,4 +20,9 @@ if grep -q '/network-interfaces' "$launcher"; then
   exit 1
 fi
 
+if grep -q -- '--dynamic' "$guest"; then
+  echo 'ScriptC builds must stay on the static tier' >&2
+  exit 1
+fi
+
 echo 'Firecracker build sandbox contract OK'
