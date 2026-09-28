@@ -410,7 +410,7 @@ public sealed class RuneGeneratorTests
             rune);
 
         Assert.Contains(
-            "Registers a source file as a rune in this server.",
+            "Uploads source code and registers it as a rune for this server.",
             rune);
 
         Assert.Contains(
