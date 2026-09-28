@@ -263,13 +263,13 @@ public static class RuneBotDocumentationEmitter
         AppendFrontmatter(
             text,
             "Bot Reference",
-            "Discord command reference for Rune.Bot.");
+            "Commands for managing runes in Discord.");
 
         text.AppendLine(
-            "Rune.Bot is the Discord control surface for registering, inspecting, enabling, updating and removing runes.");
+            "Use Rune.Bot to register, inspect, enable, update, and remove runes.");
         text.AppendLine();
         text.AppendLine(
-            "The command reference below is generated from the same NetCord command attributes and XML documentation used by the bot source.");
+            "Choose a command below for its options and examples.");
         text.AppendLine();
 
         foreach (var command in commands)
