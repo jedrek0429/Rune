@@ -56,7 +56,7 @@ public static class RuneApiEmitter
                     method.HostName);
 
             text.Append(
-                $"     * @param {{({JavaScriptFunctionParameters(method, model)}) => Promise<{JavaScriptType(method.Result)}>}} [{callback}]\n");
+                $"     * @param {{function({JavaScriptFunctionParameters(method, model)}): Promise<{JavaScriptType(method.Result)}>}} [{callback}]\n");
         }
 
         text.Append(
@@ -94,7 +94,7 @@ public static class RuneApiEmitter
             if (type.IsEnum)
             {
                 text.Append(
-                    $"const {type.Name} = Object.freeze({{\n");
+                    $"const {type.Name} = {{\n");
 
                 foreach (var member in type.Members)
                 {
@@ -102,7 +102,7 @@ public static class RuneApiEmitter
                         $"    {member.Name}: {member.EnumValue},\n");
                 }
 
-                text.Append("});\n\n");
+                text.Append("};\n\n");
                 continue;
             }
 
@@ -201,8 +201,8 @@ public static class RuneApiEmitter
             {
                 text.Append(
                     $"const {Constant(type.Name, method.Name)} = " +
-                    $"Object.freeze({{ host: \"{method.HostName}\", " +
-                    $"netCord: \"{method.CanonicalId}\" }});\n");
+                    $"{{ host: \"{method.HostName}\", " +
+                    $"netCord: \"{method.CanonicalId}\" }};\n");
             }
         }
 
