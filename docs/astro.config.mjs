@@ -10,7 +10,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Rune',
-      description: 'Documentation for Rune and Rune.Api.',
+      description: 'Documentation for Rune and Rune API.',
       customCss: ['./src/styles/custom.css'],
       head: [
         {
