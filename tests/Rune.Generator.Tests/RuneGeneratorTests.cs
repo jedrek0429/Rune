@@ -418,7 +418,11 @@ public sealed class RuneGeneratorTests
             rune);
 
         Assert.Contains(
-            "/rune register name:hello file:hello.ts",
+            "| `eventType` | `RuneApiEventType` | The Discord event that runs this rune. |",
+            rune);
+
+        Assert.Contains(
+            "/rune register name:hello event:MessageCreate file:hello.ts",
             rune);
     }
 
