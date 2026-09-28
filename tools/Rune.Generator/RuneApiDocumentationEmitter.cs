@@ -50,15 +50,15 @@ public static class RuneApiDocumentationEmitter
         AppendFrontmatter(
             text,
             "API Reference",
-            "Reference for Rune.Api.");
+            "Reference for Rune API.");
 
         AppendTabsImport(text);
 
         text.AppendLine(
-            $"**Rune.Api {model.Version}**");
+            $"**Rune API {model.Version}**");
         text.AppendLine();
         text.AppendLine(
-            "Rune.Api gives runes event data and Discord actions.");
+            "Rune API gives runes event data and Discord actions.");
         text.AppendLine();
         text.AppendLine(
             "Choose a language once. Rune keeps that choice across the API reference.");
@@ -150,7 +150,7 @@ public static class RuneApiDocumentationEmitter
             text,
             type,
             type.Summary ??
-                $"Rune.Api reference for {type.Name}.");
+                $"Rune API reference for {type.Name}.");
 
         AppendTabsImport(text);
         text.AppendLine("<div class=\"rune-api-type-marker\" aria-hidden=\"true\"></div>");
