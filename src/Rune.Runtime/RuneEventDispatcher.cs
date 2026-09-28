@@ -1,6 +1,3 @@
-using Rune.Core.Invocations;
-using Rune.Core.Runes;
-
 namespace Rune.Runtime;
 
 public sealed class RuneEventDispatcher(
@@ -23,10 +20,6 @@ public sealed class RuneEventDispatcher(
                 invocation.GuildId,
                 invocation.EventType);
 
-        var payload =
-            RuneEventCodec.ToPayload(
-                invocation);
-
         foreach (var rune in runes)
         {
             cancellationToken
@@ -42,9 +35,9 @@ public sealed class RuneEventDispatcher(
                 continue;
             }
 
-            if (rune.Artifact.SizeBytes <= 0 ||
+            if (rune.Artifact.SizeBytes == 0 ||
                 rune.Artifact.SizeBytes >
-                    16 * 1024 * 1024)
+                    (ulong)RuntimeProtocol.MaxArtifactBytes)
             {
                 failures.Add(
                     new RuneFailure(
@@ -65,7 +58,7 @@ public sealed class RuneEventDispatcher(
                         invocation.GuildId,
                         rune.EventType,
                         rune.Artifact,
-                        payload,
+                        invocation.Payload,
                         DateTimeOffset.UtcNow),
                     cancellationToken);
 

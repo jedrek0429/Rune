@@ -1,8 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Rune.Core.Invocations;
-
 using StackExchange.Redis;
 
 namespace Rune.Runtime;
@@ -11,12 +9,6 @@ public sealed class RedisRuneTransport
     : IRuneTransport,
       IAsyncDisposable
 {
-    public const string InvocationStream =
-        "rune:invocations";
-
-    public const string ResultStream =
-        "rune:results";
-
     private static readonly JsonSerializerOptions
         SerializerOptions =
             CreateSerializerOptions();
@@ -56,7 +48,7 @@ public sealed class RedisRuneTransport
                 SerializerOptions);
 
         await _database.StreamAddAsync(
-            InvocationStream,
+            RuntimeProtocol.InvocationStream,
             [
                 new NameValueEntry(
                     "json",
@@ -77,7 +69,7 @@ public sealed class RedisRuneTransport
 
         var entries =
             await _database.StreamReadGroupAsync(
-                ResultStream,
+                RuntimeProtocol.ResultStream,
                 _options.ResultConsumerGroup,
                 consumerName,
                 ">",
@@ -134,13 +126,13 @@ public sealed class RedisRuneTransport
 
         await _database
             .StreamAcknowledgeAsync(
-                ResultStream,
+                RuntimeProtocol.ResultStream,
                 _options.ResultConsumerGroup,
                 streamId);
 
         await _database
             .StreamDeleteAsync(
-                ResultStream,
+                RuntimeProtocol.ResultStream,
                 [streamId]);
     }
 
@@ -169,7 +161,7 @@ public sealed class RedisRuneTransport
             {
                 await _database
                     .StreamCreateConsumerGroupAsync(
-                        ResultStream,
+                        RuntimeProtocol.ResultStream,
                         _options.ResultConsumerGroup,
                         "0-0",
                         createStream: true);

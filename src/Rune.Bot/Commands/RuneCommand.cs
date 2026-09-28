@@ -5,7 +5,6 @@ using NetCord.Rest;
 using NetCord.Services;
 using NetCord.Services.ApplicationCommands;
 
-using Rune.Core.Runes;
 using Rune.Runtime;
 using Rune.Runtime.Exceptions;
 

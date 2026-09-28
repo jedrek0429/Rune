@@ -11,7 +11,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/Rune.Core/Rune.Core.csproj" />
+    <ProjectReference Include="../../src/Rune.Api/Rune.Api.csproj" />
     <ProjectReference Include="../../src/Rune.Runtime/Rune.Runtime.csproj" />
   </ItemGroup>
 </Project>

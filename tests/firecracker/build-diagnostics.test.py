@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-FORMATTER = ROOT / "firecracker" / "format-build-diagnostic.py"
+FORMATTER = ROOT / "src" / "Rune.Firecracker" / "format-build-diagnostic.py"
 
 spec = importlib.util.spec_from_file_location("rune_build_diagnostics", FORMATTER)
 module = importlib.util.module_from_spec(spec)

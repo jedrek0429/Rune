@@ -17,15 +17,15 @@ int main(void) {
 }
 EOF
 
-[[ -r "$root/build-images/clang/rootfs.ext4" ]] ||   bash firecracker/build-rootfs.sh build clang
+[[ -r "$root/build-images/clang/rootfs.ext4" ]] ||   bash src/Rune.Firecracker/build-rootfs.sh build clang
 
-descriptor="$(bash firecracker/run-build-vm.sh clang c "$tmp/rune.c")"
+descriptor="$(bash src/Rune.Firecracker/run-build-vm.sh clang c "$tmp/rune.c")"
 read -r id _ _ <<<"$descriptor"
 [[ "$id" == sha256:* ]]
 digest="${id#sha256:}"
 artifact="$root/artifacts/$digest"
 test -s "$artifact"
-response="$(bash firecracker/run-invocation-vm.sh "$artifact" "$tmp/envelope.json")"
+response="$(bash src/Rune.Firecracker/run-invocation-vm.sh "$artifact" "$tmp/envelope.json")"
 python3 - "$response" <<'PY'
 import json, sys
 result = json.loads(sys.argv[1])
@@ -34,7 +34,7 @@ PY
 echo "c build -> execute OK"
 
 printf 'int main(void) { return missing; }\n' >"$tmp/invalid.c"
-if output="$(bash firecracker/run-build-vm.sh clang c "$tmp/invalid.c" 2>&1)"; then
+if output="$(bash src/Rune.Firecracker/run-build-vm.sh clang c "$tmp/invalid.c" 2>&1)"; then
   echo "c invalid source unexpectedly built" >&2
   exit 1
 fi

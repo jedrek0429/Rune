@@ -1,6 +1,3 @@
-using Rune.Core.Runes;
-using Rune.Runtime;
-
 using Xunit;
 
 namespace Rune.Runtime.Tests;

@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using NetCord.Hosting.Gateway;
 
 using Rune.Api;
-using Rune.Core.Invocations;
 using Rune.Runtime;
 
 namespace Rune.Bot.Gateway;
@@ -36,11 +35,11 @@ public sealed class MessageDeleteHandler(
         {
             result =
                 await dispatcher.DispatchAsync(
-                    new MessageDeleteEventRuneInvocation(
+                    new EventRuneInvocation(
                         invocationId,
                         guildId,
-                        payload.ChannelId,
-                        payload.MessageId));
+                        RuneApiEventType.MessageDelete,
+                        RuneApiPayload.Serialize(payload)));
 
             receivers.Seal(
                 invocationId,

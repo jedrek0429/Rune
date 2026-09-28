@@ -104,9 +104,9 @@ print(json.dumps({
 }))
 EOF
 
-bash firecracker/build-rootfs.sh build python
+bash src/Rune.Firecracker/build-rootfs.sh build python
 
-descriptor="$(bash firecracker/run-build-vm.sh python python "$tmp/rune.py")"
+descriptor="$(bash src/Rune.Firecracker/run-build-vm.sh python python "$tmp/rune.py")"
 read -r id _ _ <<<"$descriptor"
 
 [[ "$id" == sha256:* ]]
@@ -115,7 +115,7 @@ digest="${id#sha256:}"
 artifact="$root/artifacts/$digest"
 test -s "$artifact"
 
-response="$(bash firecracker/run-invocation-vm.sh "$artifact" "$tmp/envelope.json")"
+response="$(bash src/Rune.Firecracker/run-invocation-vm.sh "$artifact" "$tmp/envelope.json")"
 
 python3 - "$response" <<'PY'
 import json

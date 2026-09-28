@@ -40,7 +40,7 @@ done
 
 redis-cli -h 127.0.0.1 -p 6380 ping   | grep -q PONG
 
-bash firecracker/build-snapshot.sh
+bash src/Rune.Firecracker/build-snapshot.sh
 
 cat >"$tmp/rune.c" <<'C'
 #include <stdio.h>
@@ -70,9 +70,9 @@ size="$(wc -c <"$tmp/rune")"
 mkdir -p "$root/artifacts"
 install -m 0444   "$tmp/rune"   "$root/artifacts/$digest"
 
-cargo build   --quiet   --release   --manifest-path   native/Rune.Firecracker.Runner/Cargo.toml
+cargo build   --quiet   --release   --manifest-path   src/Rune.Firecracker.Runner/Cargo.toml
 
-RUNE_REDIS_URL="redis://127.0.0.1:6380/" RUNE_FIRECRACKER_ROOT="$root" RUNE_VM_MIN=1 RUNE_VM_MAX=1 RUNE_RUNNER_NAME=e2e RUST_LOG=rune_firecracker_runner=info   native/Rune.Firecracker.Runner/target/release/rune-firecracker-runner   >"$tmp/runner.log" 2>&1 &
+RUNE_REDIS_URL="redis://127.0.0.1:6380/" RUNE_FIRECRACKER_ROOT="$root" RUNE_VM_MIN=1 RUNE_VM_MAX=1 RUNE_RUNNER_NAME=e2e RUST_LOG=rune_firecracker_runner=info   src/Rune.Firecracker.Runner/target/release/rune-firecracker-runner   >"$tmp/runner.log" 2>&1 &
 runner_pid=$!
 
 for _ in $(seq 1 400); do

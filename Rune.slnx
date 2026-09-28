@@ -2,16 +2,14 @@
   <Folder Name="/src/">
     <Project Path="src/Rune.Api/Rune.Api.csproj" />
     <Project Path="src/Rune.Bot/Rune.Bot.csproj" />
-    <Project Path="src/Rune.Core/Rune.Core.csproj" />
     <Project Path="src/Rune.Runtime/Rune.Runtime.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Rune.Api.Generator.Tests/Rune.Api.Generator.Tests.csproj" />
     <Project Path="tests/Rune.Api.Tests/Rune.Api.Tests.csproj" />
-    <Project Path="tests/Rune.Core.Tests/Rune.Core.Tests.csproj" />
+    <Project Path="tests/Rune.Generator.Tests/Rune.Generator.Tests.csproj" />
     <Project Path="tests/Rune.Runtime.Tests/Rune.Runtime.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
-    <Project Path="tools/Rune.Api.Generator/Rune.Api.Generator.csproj" />
+    <Project Path="tools/Rune.Generator/Rune.Generator.csproj" />
   </Folder>
 </Solution>
