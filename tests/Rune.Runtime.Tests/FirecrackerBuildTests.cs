@@ -73,7 +73,11 @@ public sealed class FirecrackerBuildTests
             javascript);
 
         Assert.Contains(
-            "/** @type {__RuneEnvelope} */ (JSON.parse",
+            "const envelope = /** @type {__RuneEnvelope} */ (",
+            javascript);
+
+        Assert.Contains(
+            "JSON.parse(readFileSync(0, \"utf8\"))",
             javascript);
 
         Assert.Contains(
