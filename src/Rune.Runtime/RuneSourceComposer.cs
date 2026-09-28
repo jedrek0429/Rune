@@ -67,12 +67,11 @@ import { readFileSync } from "node:fs";
             """
 
 """ +
-            $$"""
-async function __runeMain(): Promise<void> {
-    const envelope = JSON.parse(readFileSync(0, "utf8")) as {
-        payload: " + payloadShape + ";
-    };
-
+            "async function __runeMain(): Promise<void> {\n" +
+            "    const envelope = JSON.parse(readFileSync(0, \"utf8\")) as {\n" +
+            $"        payload: {payloadShape};\n" +
+            "    };\n\n" +
+            $"""
     const actions: Array<{ method: string; arguments: unknown }> = [];
     const host = new RuneHost(
         async (method: string, payload: any): Promise<any> => {
