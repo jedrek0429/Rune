@@ -203,7 +203,7 @@ public sealed class RuneGeneratorTests
 
 
     [Fact]
-    public void Api_documentation_is_reference_oriented_and_links_to_NetCord()
+    public void Api_documentation_is_user_facing_and_reference_oriented()
     {
         var documentation =
             RuneApiDocumentationEmitter.Emit(LoadApi());
@@ -222,7 +222,7 @@ public sealed class RuneGeneratorTests
                 "docs/src/content/docs/api/generated/events.mdx"];
 
         Assert.Contains(
-            "| Event | Description | Payload | Source |",
+            "| Event | Description | Payload |",
             events);
 
         Assert.Contains(
@@ -271,34 +271,6 @@ public sealed class RuneGeneratorTests
             message);
 
         Assert.Contains(
-            "class=\"netcord-source\"",
-            message);
-
-        Assert.Contains(
-            "SmallSquare.svg",
-            message);
-
-        Assert.Contains(
-            "<span>Gateway.Message</span>",
-            message);
-
-        Assert.Contains(
-            "netcord-source-arrow",
-            message);
-
-        Assert.Contains(
-            "title=\"NetCord.Gateway.Message\"",
-            message);
-
-        Assert.DoesNotContain(
-            "<span>NetCord</span>",
-            message);
-
-        Assert.Contains(
-            "https://netcord.dev/docs/NetCord.Gateway.Message.html",
-            message);
-
-        Assert.Contains(
             "### Inherited members",
             message);
 
@@ -341,23 +313,11 @@ public sealed class RuneGeneratorTests
             restMessage);
 
         Assert.Contains(
-            "title=\"NetCord.Rest.RestMessage.ReplyAsync\"",
-            restMessage);
-
-        Assert.Contains(
-            "https://netcord.dev/docs/NetCord.Rest.RestMessage.html",
-            restMessage);
-
-        Assert.Contains(
             "#### Property Value",
             restMessage);
 
         Assert.Contains(
             "[User](../user/)",
-            restMessage);
-
-        Assert.Contains(
-            "title=\"NetCord.User\"",
             restMessage);
 
         Assert.Contains(
@@ -392,16 +352,12 @@ public sealed class RuneGeneratorTests
             "let reply = message.reply",
             restMessage);
 
-        Assert.Contains(
-            "title=\"NetCord.Rest.ReplyMessageProperties\"",
+        Assert.DoesNotContain(
+            "NetCord",
             restMessage);
 
         Assert.DoesNotContain(
-            "Canonical NetCord member:",
-            restMessage);
-
-        Assert.DoesNotContain(
-            "NetCord:",
+            "Host operation:",
             restMessage);
 
         Assert.DoesNotContain(
