@@ -28,7 +28,8 @@ status=$?
 set -e
 
 sed \
-  's#/work/rust-rune/src/main.rs#/input/source.rs#g' \
+  -e 's#/work/rust-rune/src/main.rs#/input/source.rs#g' \
+  -e 's#src/main.rs#/input/source.rs#g' \
   "$project/stderr" >&2
 
 if [ "$status" -ne 0 ]; then
