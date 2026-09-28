@@ -54,56 +54,56 @@ public static class RuneSourceComposer
                 eventType);
 
         return
-            """
-import { readFileSync } from "node:fs";
-
-""" +
-            $"async function rune({argument}: {payloadType}, host: RuneHost): Promise<void> {{\n" +
+            "import { readFileSync } from \"node:fs\";\n\n" +
+            "async function rune(" +
+            argument +
+            ": " +
+            payloadType +
+            ", host: RuneHost): Promise<void> {\n" +
             "// <rune-user-source>\n" +
             source +
             "\n// </rune-user-source>\n" +
             "}\n\n" +
             implementation +
-            """
-
-""" +
+            "\n\n" +
             "async function __runeMain(): Promise<void> {\n" +
             "    const envelope = JSON.parse(readFileSync(0, \"utf8\")) as {\n" +
-            $"        payload: {payloadShape};\n" +
+            "        payload: " +
+            payloadShape +
+            ";\n" +
             "    };\n\n" +
-            $"""
-    const actions: Array<{ method: string; arguments: unknown }> = [];
-    const host = new RuneHost(
-        async (method: string, payload: any): Promise<any> => {
-            actions.push({ method, arguments: payload });
-
-            if (
-                typeof payload === "object" &&
-                payload !== null &&
-                "replyMessage" in payload
-            ) {
-                return (payload as { replyMessage: any }).replyMessage;
-            }
-
-            return {};
-        },
-    );
-
-    const {{argument}} = new {{payloadType}}(envelope.payload, host);
-
-    try {
-        await rune({{argument}}, host);
-        console.log(JSON.stringify({ actions, error: null }));
-    } catch (error) {
-        console.log(JSON.stringify({
-            actions: [],
-            error: error instanceof Error ? error.message : String(error),
-        }));
-    }
-}
-
-void __runeMain();
-""";
+            "    const actions: Array<{ method: string; arguments: unknown }> = [];\n" +
+            "    const host = new RuneHost(\n" +
+            "        async (method: string, payload: any): Promise<any> => {\n" +
+            "            actions.push({ method, arguments: payload });\n\n" +
+            "            if (\n" +
+            "                typeof payload === \"object\" &&\n" +
+            "                payload !== null &&\n" +
+            "                \"replyMessage\" in payload\n" +
+            "            ) {\n" +
+            "                return (payload as { replyMessage: any }).replyMessage;\n" +
+            "            }\n\n" +
+            "            return {};\n" +
+            "        },\n" +
+            "    );\n\n" +
+            "    const " +
+            argument +
+            " = new " +
+            payloadType +
+            "(envelope.payload, host);\n\n" +
+            "    try {\n" +
+            "        await rune(" +
+            argument +
+            ", host);\n" +
+            "        console.log(JSON.stringify({ actions, error: null }));\n" +
+            "    } catch (error) {\n" +
+            "        console.log(JSON.stringify({\n" +
+            "            actions: [],\n" +
+            "            error: error instanceof Error ? error.message : String(error),\n" +
+            "        }));\n" +
+            "    }\n" +
+            "}\n\n" +
+            "void __runeMain();\n";
     }
 
     private static string ComposeRust(
