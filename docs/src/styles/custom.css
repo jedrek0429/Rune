@@ -29,17 +29,17 @@
   --sl-color-accent-low: #f5e7bd;
   --sl-color-accent: #a66e05;
   --sl-color-accent-high: #6e4700;
-  --sl-color-bg: #f6f1e6;
-  --sl-color-bg-nav: #eee5d3;
-  --sl-color-bg-sidebar: #f1e9da;
-  --sl-color-bg-inline-code: #ebe1cf;
-  --sl-color-hairline-light: #d7c9ad;
-  --sl-color-hairline: #cbbb9d;
-  --sl-color-text: #292318;
-  --sl-color-text-accent: #8a5a00;
-  --rune-surface: #eee5d3;
-  --rune-surface-soft: #e6dbc7;
-  --rune-surface-border: #cdbd9f;
+  --sl-color-bg: #fbf8f0;
+  --sl-color-bg-nav: #f4ecd9;
+  --sl-color-bg-sidebar: #f7f0e2;
+  --sl-color-bg-inline-code: #eee5d4;
+  --sl-color-hairline-light: #d9c9aa;
+  --sl-color-hairline: #c5b18a;
+  --sl-color-text: #211c14;
+  --sl-color-text-accent: #7a4e00;
+  --rune-surface: #fffaf0;
+  --rune-surface-soft: #f3e7cf;
+  --rune-surface-border: #bca67b;
 }
 
 .site-title {
