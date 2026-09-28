@@ -1,6 +1,5 @@
 if message.content == "!rune" {
     message.reply(
-        host,
         ReplyMessageProperties {
             content: Some(format!(
                 "Rune API is working.\nAuthor: {}\nMessage: {}\nChannel: {}",
