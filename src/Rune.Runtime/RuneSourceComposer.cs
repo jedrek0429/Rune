@@ -50,16 +50,18 @@ public static class RuneSourceComposer
             Event(eventType);
 
         return
-            implementation +
             """
-
 import { readFileSync } from "node:fs";
 
 """ +
             $"async function rune({argument}: {payloadType}, host: RuneHost): Promise<void> {{\n" +
             source +
             "\n}\n\n" +
-            $$"""
+            implementation +
+            """
+
+""" +
+            $"""
 async function __runeMain(): Promise<void> {
     const envelope = JSON.parse(readFileSync(0, "utf8")) as {
         payload: unknown;
@@ -114,10 +116,15 @@ void __runeMain();
             Event(eventType);
 
         return
+            """
+use std::io::Read;
+
+""" +
+            $"fn rune({argument}: {payloadType}, host: &mut dyn RuneHost) -> Result<(), String> {{\n" +
+            source +
+            "\n    Ok(())\n}\n\n" +
             binding +
             """
-
-use std::io::Read;
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -155,10 +162,7 @@ impl RuneHost for RuntimeRuneHost {
 }
 
 """ +
-            $"fn rune({argument}: {payloadType}, host: &mut dyn RuneHost) -> Result<(), String> {{\n" +
-            source +
-            "\n    Ok(())\n}\n\n" +
-            $$"""
+            $"""
 fn main() {
     let mut input = String::new();
 
