@@ -662,7 +662,24 @@ public static class RuneApiDocumentationEmitter
         text.AppendLine();
     }
 
-    private static string JavaScriptType(\n        RuneApiValueType type)\n    {\n        var value =\n            type.Name switch\n            {\n                "u64" => "string",\n                "bool" => "boolean",\n                "string" => "string",\n                _ => type.Name\n            };\n\n        return type.Optional\n            ? value + " | null"\n            : value;\n    }\n\n    private static void AppendTypeFrontmatter(
+    private static string JavaScriptType(
+        RuneApiValueType type)
+    {
+        var value =
+            type.Name switch
+            {
+                "u64" => "string",
+                "bool" => "boolean",
+                "string" => "string",
+                _ => type.Name
+            };
+
+        return type.Optional
+            ? value + " | null"
+            : value;
+    }
+
+    private static void AppendTypeFrontmatter(
         StringBuilder text,
         RuneApiType type,
         string description)
