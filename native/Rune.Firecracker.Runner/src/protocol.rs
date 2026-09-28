@@ -137,7 +137,7 @@ mod tests {
             "messageReactionAdd",
             "messageReactionRemove",
         ] {
-            let json = format!("\\\"{value}\\\"");
+            let json = serde_json::to_string(value).unwrap();
             assert!(serde_json::from_str::<RuneEventType>(&json).is_ok());
         }
     }
