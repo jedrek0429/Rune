@@ -72,8 +72,9 @@ public static class RuneSourceComposer
             "/** @typedef {{ replyMessage: ReplyMessagePropertiesInput }} __RuneReplyArguments */\n" +
             "/** @typedef {{ method: string, arguments: __RuneReplyArguments }} __RuneAction */\n\n" +
             "async function __runeMain() {\n" +
-            "    /** @type {__RuneEnvelope} */\n" +
-            "    const envelope = JSON.parse(readFileSync(0, \"utf8\"));\n\n" +
+            "    const envelope = /** @type {__RuneEnvelope} */ (\n" +
+            "        JSON.parse(readFileSync(0, \"utf8\"))\n" +
+            "    );\n\n" +
             "    /** @type {Array<__RuneAction>} */\n" +
             "    const actions = [];\n" +
             "    const host = new RuneHost(\n" +
