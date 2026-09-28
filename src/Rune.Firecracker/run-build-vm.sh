@@ -62,6 +62,7 @@ done
 
 mkdir -p "$input_dir"
 cp "$source_path" "$input_dir/$input_name"
+chmod 0444 "$input_dir/$input_name"
 truncate -s "${disk_mib}M" "$scratch"
 mkfs.ext4 -q -F "$scratch"
 truncate -s 4M "$input"
