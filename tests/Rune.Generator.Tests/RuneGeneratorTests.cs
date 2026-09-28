@@ -222,11 +222,15 @@ public sealed class RuneGeneratorTests
                 "docs/src/content/docs/api/generated/types/message.mdx"];
 
         Assert.Contains(
-            "## Type hierarchy",
+            "title: Class Message",
             message);
 
         Assert.Contains(
-            "[RestMessage](../restmessage/) → **Message**",
+            "## Inheritance",
+            message);
+
+        Assert.Contains(
+            "object → [RestMessage](../restmessage/) → **Message**",
             message);
 
         Assert.Contains(
@@ -234,7 +238,23 @@ public sealed class RuneGeneratorTests
             message);
 
         Assert.Contains(
+            "SmallSquare.svg",
+            message);
+
+        Assert.Contains(
+            "<span>Gateway.Message</span>",
+            message);
+
+        Assert.Contains(
+            "netcord-source-arrow",
+            message);
+
+        Assert.Contains(
             "title=\"NetCord.Gateway.Message\"",
+            message);
+
+        Assert.DoesNotContain(
+            "<span>NetCord</span>",
             message);
 
         Assert.Contains(
@@ -274,7 +294,11 @@ public sealed class RuneGeneratorTests
             restMessage);
 
         Assert.Contains(
-            "Type: [User](../user/)",
+            "#### Property Value",
+            restMessage);
+
+        Assert.Contains(
+            "[User](../user/)",
             restMessage);
 
         Assert.Contains(
@@ -282,7 +306,19 @@ public sealed class RuneGeneratorTests
             restMessage);
 
         Assert.Contains(
-            "Parameter `replyMessage`: [ReplyMessageProperties](../replymessageproperties/)",
+            "#### Parameters",
+            restMessage);
+
+        Assert.Contains(
+            "**`replyMessage`**",
+            restMessage);
+
+        Assert.Contains(
+            "[ReplyMessageProperties](../replymessageproperties/)",
+            restMessage);
+
+        Assert.Contains(
+            "#### Returns",
             restMessage);
 
         Assert.Contains(
@@ -295,6 +331,14 @@ public sealed class RuneGeneratorTests
 
         Assert.DoesNotContain(
             "NetCord:",
+            restMessage);
+
+        Assert.DoesNotContain(
+            "Namespace",
+            restMessage);
+
+        Assert.DoesNotContain(
+            "Assembly",
             restMessage);
 
         Assert.Contains(

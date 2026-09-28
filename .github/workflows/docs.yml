@@ -65,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           test -f docs/dist/index.html
-          test -f docs/dist/rune.png
+          find docs/dist/_astro -maxdepth 1 -type f -name 'rune.*.webp' | grep -q .
           test -f docs/dist/api/generated/index.html
           test -f docs/dist/bot/generated/index.html
           test -f docs/dist/api/generated/types/restmessage/index.html
@@ -74,12 +74,15 @@ jobs:
           grep -F ">API Reference<" docs/dist/index.html >/dev/null
           grep -F "href=\"${RUNE_DOCS_BASE}bot/generated/\"" docs/dist/index.html >/dev/null
           grep -F ">Bot Reference<" docs/dist/index.html >/dev/null
-          grep -F "${RUNE_DOCS_BASE}rune.png" docs/dist/index.html >/dev/null
+          grep -F "_astro/rune." docs/dist/index.html >/dev/null
           grep -F "1541130190392918126" docs/dist/index.html >/dev/null
           grep -F "class=\"netcord-source\"" docs/dist/api/generated/types/restmessage/index.html >/dev/null
-          grep -F "raw.githubusercontent.com/NetCordDev/NetCord/main/Resources/Logo/png/SmallSquare.png" docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "raw.githubusercontent.com/NetCordDev/NetCord/main/Resources/Logo/svg/SmallSquare.svg" docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "<span>Rest.RestMessage" docs/dist/api/generated/types/restmessage/index.html >/dev/null
+          grep -F "netcord-source-arrow" docs/dist/api/generated/types/restmessage/index.html >/dev/null
           grep -F "https://netcord.dev/docs/NetCord.Rest.RestMessage.html" docs/dist/api/generated/types/restmessage/index.html >/dev/null
-          grep -F "RestMessage</a> → <strong>Message</strong>" docs/dist/api/generated/types/message/index.html >/dev/null
+          grep -F "object → <a href=\"../restmessage/\">RestMessage</a> → <strong>Message</strong>" docs/dist/api/generated/types/message/index.html >/dev/null
+          grep -F "Property Value" docs/dist/api/generated/types/restmessage/index.html >/dev/null
           grep -F "${RUNE_DOCS_BASE}api/generated/types/user/" docs/dist/api/generated/types/restmessage/index.html >/dev/null
           grep -F "https://netcord.dev/docs/NetCord.User.html" docs/dist/api/generated/types/restmessage/index.html >/dev/null
 

@@ -136,9 +136,9 @@ public static class RuneApiDocumentationEmitter
     {
         var text = new StringBuilder();
 
-        AppendFrontmatter(
+        AppendTypeFrontmatter(
             text,
-            type.Name,
+            type,
             $"Rune.Api reference for {type.Name}.");
 
         AppendTabsImport(text);
@@ -148,32 +148,27 @@ public static class RuneApiDocumentationEmitter
                 type.NetCordName,
                 NetCordTypeUrl(type.NetCordName)));
         text.AppendLine();
-        text.AppendLine("## Type hierarchy");
-        text.AppendLine();
 
-        var inheritance =
-            Inheritance(model, type);
+        if (!type.IsEnum)
+        {
+            text.AppendLine("## Inheritance");
+            text.AppendLine();
 
-        if (inheritance.Count == 0)
-        {
-            text.AppendLine($"**{type.Name}**");
-        }
-        else
-        {
             var chain =
-                inheritance
-                    .Select(
-                        ancestor =>
-                            $"[{ancestor.Name}](../{Slug(ancestor.Name)}/)")
+                new[] { "object" }
+                    .Concat(
+                        Inheritance(model, type)
+                            .Select(
+                                ancestor =>
+                                    $"[{ancestor.Name}](../{Slug(ancestor.Name)}/)"))
                     .Append($"**{type.Name}**");
 
             text.AppendLine(
                 string.Join(
                     " → ",
                     chain));
+            text.AppendLine();
         }
-
-        text.AppendLine();
 
         var inheritedMembers =
             InheritedMembers(model, type);
@@ -211,7 +206,10 @@ public static class RuneApiDocumentationEmitter
                 text.AppendLine();
                 AppendPropertySignature(text, member);
                 text.AppendLine();
-                AppendValueTypeLinks(text, model, member.Type, "Type");
+                text.AppendLine("#### Property Value");
+                text.AppendLine();
+                AppendValueType(text, model, member.Type);
+                text.AppendLine();
                 text.AppendLine(
                     NetCordSource(
                         member.CanonicalId,
@@ -231,17 +229,26 @@ public static class RuneApiDocumentationEmitter
                 text.AppendLine();
                 AppendMethodSignature(text, method);
                 text.AppendLine();
-                AppendValueTypeLinks(text, model, method.Result, "Returns");
 
-                foreach (var parameter in method.Parameters)
+                if (method.Parameters.Count > 0)
                 {
-                    AppendValueTypeLinks(
-                        text,
-                        model,
-                        parameter.Type,
-                        $"Parameter `{RuneApiEmitter.TypeScriptMemberForDocumentation(parameter.Name)}`");
+                    text.AppendLine("#### Parameters");
+                    text.AppendLine();
+
+                    foreach (var parameter in method.Parameters)
+                    {
+                        text.AppendLine(
+                            $"**`{RuneApiEmitter.TypeScriptMemberForDocumentation(parameter.Name)}`**");
+                        text.AppendLine();
+                        AppendValueType(text, model, parameter.Type);
+                        text.AppendLine();
+                    }
                 }
 
+                text.AppendLine("#### Returns");
+                text.AppendLine();
+                AppendValueType(text, model, method.Result);
+                text.AppendLine();
                 text.AppendLine(
                     $"Host operation: `{method.HostName}`  ");
                 text.AppendLine(
@@ -267,26 +274,45 @@ public static class RuneApiDocumentationEmitter
         return text.ToString();
     }
 
-    private static void AppendValueTypeLinks(
+    private static void AppendValueType(
         StringBuilder text,
         RuneApiModel model,
-        RuneApiValueType valueType,
-        string label)
+        RuneApiValueType valueType)
     {
-        if (!valueType.IsSelectedType)
-            return;
+        text.AppendLine("<Tabs syncKey=\"language\">");
+        text.AppendLine("  <TabItem label=\"TypeScript\">");
+        text.AppendLine();
 
-        var selected =
-            model.Types.Single(
-                type =>
-                    type.Name == valueType.Name);
+        if (valueType.IsSelectedType)
+        {
+            text.AppendLine(
+                $"[{valueType.Name}](../{Slug(valueType.Name)}/)");
+        }
+        else
+        {
+            text.AppendLine(
+                $"\`{RuneApiEmitter.TypeScriptTypeForDocumentation(valueType)}\`");
+        }
 
-        text.AppendLine(
-            $"{label}: [{selected.Name}](../{Slug(selected.Name)}/)  ");
-        text.AppendLine(
-            NetCordSource(
-                selected.NetCordName,
-                NetCordTypeUrl(selected.NetCordName)));
+        text.AppendLine();
+        text.AppendLine("  </TabItem>");
+        text.AppendLine("  <TabItem label=\"Rust\">");
+        text.AppendLine();
+
+        if (valueType.IsSelectedType)
+        {
+            text.AppendLine(
+                $"[{valueType.Name}](../{Slug(valueType.Name)}/)");
+        }
+        else
+        {
+            text.AppendLine(
+                $"\`{RuneApiEmitter.RustTypeForDocumentation(valueType)}\`");
+        }
+
+        text.AppendLine();
+        text.AppendLine("  </TabItem>");
+        text.AppendLine("</Tabs>");
     }
 
     private static void AppendPropertySignature(
@@ -439,6 +465,21 @@ public static class RuneApiDocumentationEmitter
         text.AppendLine();
     }
 
+    private static void AppendTypeFrontmatter(
+        StringBuilder text,
+        RuneApiType type,
+        string description)
+    {
+        text.AppendLine("---");
+        text.AppendLine(
+            $"title: {(type.IsEnum ? "Enum" : "Class")} {type.Name}");
+        text.AppendLine($"description: {description}");
+        text.AppendLine("sidebar:");
+        text.AppendLine($"  label: {type.Name}");
+        text.AppendLine("---");
+        text.AppendLine();
+    }
+
     private static void AppendFrontmatter(
         StringBuilder text,
         string title,
@@ -465,10 +506,19 @@ public static class RuneApiDocumentationEmitter
         $"<a class=\"netcord-source\" href=\"{url}\" target=\"_blank\" rel=\"noreferrer\" " +
         $"aria-label=\"Open {canonicalId} in NetCord documentation\" " +
         $"title=\"{canonicalId}\">" +
-        "<img src=\"https://raw.githubusercontent.com/NetCordDev/NetCord/main/Resources/Logo/png/SmallSquare.png\" " +
+        "<img src=\"https://raw.githubusercontent.com/NetCordDev/NetCord/main/Resources/Logo/svg/SmallSquare.svg\" " +
         "alt=\"\" aria-hidden=\"true\" />" +
-        "<span>NetCord</span>" +
+        $"<span>{NetCordDisplayName(canonicalId)}</span>" +
+        "<span class=\"netcord-source-arrow\" aria-hidden=\"true\">↗</span>" +
         "</a>";
+
+    private static string NetCordDisplayName(
+        string canonicalId) =>
+        canonicalId.StartsWith(
+            "NetCord.",
+            StringComparison.Ordinal)
+            ? canonicalId["NetCord.".Length..]
+            : canonicalId;
 
     private static string NetCordTypeUrl(
         string canonicalType) =>

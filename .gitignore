@@ -4,6 +4,6 @@ appsettings.json
 artifacts/
 docs/dist/
 docs/node_modules/
-docs/public/rune.png
+docs/src/assets/rune.png
 docs/src/content/docs/api/generated/
 docs/src/content/docs/bot/generated/

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare:assets": "cp ../assets/rune.png public/rune.png",
+    "prepare:assets": "mkdir -p src/assets && cp ../assets/rune.png src/assets/rune.png",
     "prebuild": "npm run prepare:assets",
     "build": "astro build",
     "predev": "npm run prepare:assets",

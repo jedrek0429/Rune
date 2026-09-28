@@ -20,6 +20,9 @@
   --sl-color-text: var(--rune-ivory);
   --sl-color-text-accent: var(--rune-gold-bright);
   --sl-color-white: var(--rune-ivory);
+  --rune-surface: #211e17;
+  --rune-surface-soft: #272219;
+  --rune-surface-border: #3b3428;
 }
 
 :root[data-theme='light'] {
@@ -34,6 +37,9 @@
   --sl-color-hairline: #cbbb9d;
   --sl-color-text: #292318;
   --sl-color-text-accent: #8a5a00;
+  --rune-surface: #eee5d3;
+  --rune-surface-soft: #e6dbc7;
+  --rune-surface-border: #cdbd9f;
 }
 
 .site-title {
@@ -49,46 +55,62 @@
 }
 
 .card {
-  border-color: color-mix(in srgb, var(--sl-color-accent) 24%, var(--sl-color-hairline));
+  border-color: var(--rune-surface-border);
+  background: var(--rune-surface);
+}
+
+site-search button[data-open-modal] {
+  border-color: var(--rune-surface-border) !important;
+  background: var(--rune-surface) !important;
+  color: var(--sl-color-text) !important;
+}
+
+site-search button[data-open-modal]:hover {
+  border-color: color-mix(in srgb, var(--sl-color-accent) 42%, var(--rune-surface-border)) !important;
+  background: var(--rune-surface-soft) !important;
+}
+
+site-search dialog,
+site-search .dialog-frame,
+site-search .search-container {
+  background: var(--sl-color-bg-nav);
 }
 
 
 .netcord-source {
   display: inline-flex;
   align-items: center;
-  gap: 0.42rem;
+  gap: 0.3rem;
   width: fit-content;
-  padding: 0.32rem 0.58rem;
-  border: 1px solid color-mix(in srgb, var(--sl-color-accent) 28%, var(--sl-color-hairline));
-  border-radius: 0.5rem;
-  background: color-mix(in srgb, var(--sl-color-bg-inline-code) 84%, transparent);
-  color: var(--sl-color-text);
-  font-size: var(--sl-text-xs);
-  font-weight: 650;
-  line-height: 1;
+  color: var(--sl-color-text-accent);
+  font-size: var(--sl-text-sm);
+  font-weight: 550;
+  line-height: 1.35;
   text-decoration: none;
-  vertical-align: middle;
+  vertical-align: baseline;
 }
 
 .netcord-source:hover {
-  border-color: var(--sl-color-accent);
-  color: var(--sl-color-text-accent);
-  background: color-mix(in srgb, var(--sl-color-accent-low) 55%, var(--sl-color-bg));
+  color: var(--rune-gold-bright);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 .netcord-source img {
-  width: 1.05rem;
-  height: 1.05rem;
-  border-radius: 0.22rem;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
   object-fit: contain;
 }
 
+.netcord-source-arrow {
+  position: relative;
+  top: -0.05em;
+  font-size: 0.82em;
+  opacity: 0.78;
+}
+
 .sl-markdown-content table .netcord-source {
-  margin-block: 0.05rem;
+  white-space: nowrap;
 }
 
-
-/* Keep the splash content visually separate from the centred opening hero. */
-.sl-markdown-content > .home-hero + h2 {
-  margin-top: clamp(4rem, 8vw, 7rem);
-}
