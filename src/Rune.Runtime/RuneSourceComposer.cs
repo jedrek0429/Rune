@@ -8,17 +8,22 @@ public static class RuneSourceComposer
         RuneLanguage language,
         RuneApiEventType eventType,
         string source,
-        string typeScriptDeclarations,
-        string javaScriptRuntime,
+        string typeScriptBinding,
+        string javaScriptBinding,
         string rustBinding) =>
         language switch
         {
+            RuneLanguage.JavaScript =>
+                ComposeJavaScript(
+                    eventType,
+                    source,
+                    javaScriptBinding),
+
             RuneLanguage.TypeScript =>
                 ComposeTypeScript(
                     eventType,
                     source,
-                    typeScriptDeclarations,
-                    javaScriptRuntime),
+                    typeScriptBinding),
 
             RuneLanguage.Rust =>
                 ComposeRust(
@@ -29,16 +34,86 @@ public static class RuneSourceComposer
             _ => source
         };
 
+    private static string ComposeJavaScript(
+        RuneApiEventType eventType,
+        string source,
+        string binding)
+    {
+        if (string.IsNullOrWhiteSpace(binding))
+        {
+            throw new InvalidOperationException(
+                "Generated JavaScript Rune API binding is missing. Run Rune.Generator before building runes.");
+        }
+
+        var (payloadType, argument) =
+            Event(eventType);
+
+        var payloadShape =
+            JavaScriptPayloadShape(
+                eventType);
+
+        return
+            "import { readFileSync } from \"node:fs\";\n\n" +
+            "/**\n" +
+            $" * @param {{{payloadType}}} {argument}\n" +
+            " * @param {RuneHost} host\n" +
+            " */\n" +
+            "async function rune(" +
+            argument +
+            ", host) {\n" +
+            "// <rune-user-source>\n" +
+            source +
+            "\n// </rune-user-source>\n" +
+            "}\n\n" +
+            binding +
+            "\n\n" +
+            "/** @typedef {{ payload: " +
+            payloadShape +
+            " }} __RuneEnvelope */\n\n" +
+            "async function __runeMain() {\n" +
+            "    /** @type {__RuneEnvelope} */\n" +
+            "    const envelope = JSON.parse(readFileSync(0, \"utf8\"));\n\n" +
+            "    /** @type {Array<{ method: string, arguments: { replyMessage: { content: (string|null) } } }>} */\n" +
+            "    const actions = [];\n" +
+            "    const host = new RuneHost(\n" +
+            "        async (replyMessage) => {\n" +
+            "            actions.push({\n" +
+            "                method: \"message.reply\",\n" +
+            "                arguments: { replyMessage },\n" +
+            "            });\n\n" +
+            "            return new RestMessage({\n" +
+            "                id: \"0\",\n" +
+            "                channelId: \"0\",\n" +
+            "                content: replyMessage.content ?? \"\",\n" +
+            "                author: { id: \"0\", username: \"Rune\" },\n" +
+            "            });\n" +
+            "        },\n" +
+            "    );\n\n" +
+            "    const " +
+            argument +
+            " = new " +
+            payloadType +
+            "(envelope.payload, host);\n\n" +
+            "    try {\n" +
+            "        await rune(" +
+            argument +
+            ", host);\n" +
+            "        console.log(JSON.stringify({ actions, error: null }));\n" +
+            "    } catch (error) {\n" +
+            "        console.log(JSON.stringify({\n" +
+            "            actions: [],\n" +
+            "            error: error instanceof Error ? error.message : String(error),\n" +
+            "        }));\n" +
+            "    }\n" +
+            "}\n\n" +
+            "void __runeMain();\n";
+    }
+
     private static string ComposeTypeScript(
         RuneApiEventType eventType,
         string source,
-        string declarations,
-        string runtime)
+        string implementation)
     {
-        var implementation =
-            string.IsNullOrWhiteSpace(runtime)
-                ? declarations
-                : runtime;
 
         if (string.IsNullOrWhiteSpace(implementation))
         {
@@ -250,6 +325,29 @@ fn main() {
 }
 """;
     }
+
+    private static string JavaScriptPayloadShape(
+        RuneApiEventType eventType) =>
+        eventType switch
+        {
+            RuneApiEventType.MessageCreate =>
+                "{ id: string, channelId: string, content: string, author: { id: string, username: string } }",
+
+            RuneApiEventType.MessageDelete =>
+                "{ channelId: string, guildId: (string|null), messageId: string }",
+
+            RuneApiEventType.MessageReactionAdd =>
+                "{ burst: boolean, channelId: string, emoji: { animated: boolean, id: (string|null), name: (string|null) }, guildId: (string|null), messageAuthorId: (string|null), messageId: string, type: number, userId: string }",
+
+            RuneApiEventType.MessageReactionRemove =>
+                "{ burst: boolean, channelId: string, emoji: { animated: boolean, id: (string|null), name: (string|null) }, guildId: (string|null), messageId: string, type: number, userId: string }",
+
+            _ =>
+                throw new ArgumentOutOfRangeException(
+                    nameof(eventType),
+                    eventType,
+                    null)
+        };
 
     private static string TypeScriptPayloadShape(
         RuneApiEventType eventType) =>
