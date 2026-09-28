@@ -37,9 +37,9 @@ export default defineConfig({
         {
           label: 'Articles',
           items: [
-            { label: 'Quick Start', link: '/guides/quick-start/' },
-            { label: 'How Rune works', link: '/guides/architecture/' },
-            { label: 'Security model', link: '/guides/security/' },
+            { label: 'Quick Start', link: '/articles/quick-start/' },
+            { label: 'How Rune works', link: '/articles/architecture/' },
+            { label: 'Security model', link: '/articles/security/' },
           ],
         },
         {
