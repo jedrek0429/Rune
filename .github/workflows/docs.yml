@@ -75,9 +75,10 @@ jobs:
           grep -F "href=\"$RUNE_DOCS_BASE" docs/dist/index.html >/dev/null
           grep -F "href=\"${RUNE_DOCS_BASE}guides/quick-start/\"" docs/dist/index.html >/dev/null
           grep -F ">Get Started<" docs/dist/index.html >/dev/null
-          ! grep -F ">API Reference<" docs/dist/index.html >/dev/null
-          ! grep -F ">Bot Reference<" docs/dist/index.html >/dev/null
-          ! grep -F ">Add to server<" docs/dist/index.html >/dev/null
+          grep -F ">Add Bot<" docs/dist/index.html >/dev/null
+          grep -F ">API Reference<" docs/dist/index.html >/dev/null
+          grep -F ">Bot Reference<" docs/dist/index.html >/dev/null
+          grep -F "1541130190392918126" docs/dist/index.html >/dev/null
           grep -F "_astro/rune." docs/dist/index.html >/dev/null
           grep -F "Register a rune" docs/dist/index.html >/dev/null
           ! grep -F "<hr" docs/dist/index.html >/dev/null

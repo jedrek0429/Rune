@@ -35,7 +35,7 @@ export default defineConfig({
       ],
       sidebar: [
         {
-          label: 'Guides',
+          label: 'Articles',
           items: [
             { label: 'Quick Start', link: '/guides/quick-start/' },
             { label: 'How Rune works', link: '/guides/architecture/' },
