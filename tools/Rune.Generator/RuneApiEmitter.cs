@@ -45,6 +45,28 @@ public static class RuneApiEmitter
                         type.Methods)
                 .ToArray();
 
+        foreach (var type in model.Types)
+        {
+            if (type.IsEnum)
+                continue;
+
+            text.Append(
+                "/**\n" +
+                " * @typedef {{\n");
+
+            foreach (var member in AllMembers(
+                         model,
+                         type))
+            {
+                text.Append(
+                    $" *   {Camel(member.Name)}: {JavaScriptInputType(member.Type, model)},\n");
+            }
+
+            text.Append(
+                $" * }} {type.Name}Input\n" +
+                " */\n\n");
+        }
+
         text.Append(
             "class RuneHost {\n" +
             "    /**\n");
@@ -123,7 +145,7 @@ public static class RuneApiEmitter
 
             text.Append(
                 $"    /**\n" +
-                $"     * @param {{{JavaScriptObjectType(type, model)}}} value\n" +
+                $"     * @param {{{type.Name}Input}} value\n" +
                 "     * @param {RuneHost} [__host]\n" +
                 "     */\n" +
                 "    constructor(value, __host = new RuneHost()) {\n");
@@ -251,20 +273,6 @@ public static class RuneApiEmitter
                         parameter.Type,
                         model)));
 
-    private static string JavaScriptObjectType(
-        RuneApiType type,
-        RuneApiModel model) =>
-        "{ " +
-        string.Join(
-            ", ",
-            AllMembers(
-                model,
-                type)
-                .Select(
-                    member =>
-                        $"{Camel(member.Name)}: {JavaScriptInputType(member.Type, model)}")) +
-        " }";
-
     private static string JavaScriptInputType(
         RuneApiValueType type,
         RuneApiModel model)
@@ -287,7 +295,7 @@ public static class RuneApiEmitter
                         item.Name == type.Name);
 
             if (!selected.IsEnum)
-                return JavaScriptObjectType(selected, model);
+                return type.Name + "Input";
         }
 
         return JavaScriptType(
