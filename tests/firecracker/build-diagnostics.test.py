@@ -74,6 +74,31 @@ class BuildDiagnosticTests(unittest.TestCase):
         self.assertEqual(result["message"], "invalid syntax")
         self.assertEqual((result["file"], result["line"]), ("rune.py", 2))
 
+    def test_composed_source_location_maps_back_to_user_line(self):
+        result = module.build_diagnostic(
+            "typescript",
+            "rune.ts:145:11 - error SC0001: broken",
+            "compilation",
+            user_start_line=143,
+            user_end_line=147,
+        )
+        self.assertEqual(
+            (result["file"], result["line"], result["column"]),
+            ("rune.ts", 3, 11),
+        )
+
+    def test_generated_source_location_is_hidden(self):
+        result = module.build_diagnostic(
+            "typescript",
+            "rune.ts:150:22 - error SC1100: internal bootstrap failure",
+            "compilation",
+            user_start_line=3,
+            user_end_line=6,
+        )
+        self.assertNotIn("file", result)
+        self.assertNotIn("line", result)
+        self.assertNotIn("column", result)
+
     def test_internal_paths_and_ansi_are_removed(self):
         result = self.diagnostic(
             "rust",
