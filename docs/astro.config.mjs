@@ -10,7 +10,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Rune',
-      description: 'Documentation for Rune, its bot interface, and Rune.Api.',
+      description: 'Documentation for Rune and Rune.Api.',
       customCss: ['./src/styles/custom.css'],
       head: [
         {
@@ -39,7 +39,7 @@ export default defineConfig({
           items: [
             { label: 'Quick Start', link: '/articles/quick-start/' },
             { label: 'How Rune works', link: '/articles/architecture/' },
-            { label: 'Security model', link: '/articles/security/' },
+            { label: 'Security', link: '/articles/security/' },
           ],
         },
         {
