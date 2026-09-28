@@ -84,6 +84,10 @@ public sealed class RuneGeneratorTests
             typescript);
 
         Assert.Contains(
+            "async reply(replyMessage: { content: string | null })",
+            typescript);
+
+        Assert.DoesNotContain(
             "async reply(replyMessage: ReplyMessageProperties)",
             typescript);
     }
