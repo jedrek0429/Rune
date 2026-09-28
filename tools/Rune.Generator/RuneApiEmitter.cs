@@ -468,6 +468,28 @@ public static class RuneApiEmitter
 
         text.Append("}\n\n");
 
+        text.Append(
+            "thread_local! {\n" +
+            "    static __RUNE_HOST: std::cell::RefCell<Option<Box<dyn RuneHost>>> =\n" +
+            "        std::cell::RefCell::new(None);\n" +
+            "}\n\n" +
+            "pub fn __rune_install_host(host: Box<dyn RuneHost>) {\n" +
+            "    __RUNE_HOST.with(|slot| {\n" +
+            "        *slot.borrow_mut() = Some(host);\n" +
+            "    });\n" +
+            "}\n\n" +
+            "fn __rune_with_host<T>(\n" +
+            "    callback: impl FnOnce(&mut dyn RuneHost) -> Result<T, String>,\n" +
+            ") -> Result<T, String> {\n" +
+            "    __RUNE_HOST.with(|slot| {\n" +
+            "        let mut slot = slot.borrow_mut();\n" +
+            "        let host = slot\n" +
+            "            .as_deref_mut()\n" +
+            "            .ok_or_else(|| \"Rune host is not configured\".to_string())?;\n" +
+            "        callback(host)\n" +
+            "    })\n" +
+            "}\n\n");
+
         foreach (var type in model.Types)
         {
             if (type.IsEnum)
@@ -499,11 +521,12 @@ public static class RuneApiEmitter
 
                 text.Append(
                     $"    pub fn {Snake(WithoutAsync(method.Name))}(" +
-                    $"&self, host: &mut dyn RuneHost{parameters}) -> " +
+                    $"&self{parameters}) -> " +
                     $"Result<{RustType(method.Result)}, String> {{\n");
 
                 text.Append(
-                    $"        host.{HostMethodName(method.HostName)}(");
+                    "        __rune_with_host(|host| " +
+                    $"host.{HostMethodName(method.HostName)}(");
 
                 text.Append(
                     string.Join(
@@ -512,7 +535,7 @@ public static class RuneApiEmitter
                             parameter =>
                                 $"&{RustMember(parameter.Name)}")));
 
-                text.Append(")\n    }\n");
+                text.Append("))\n    }\n");
             }
 
             text.Append("}\n\n");
