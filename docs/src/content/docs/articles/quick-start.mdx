@@ -52,26 +52,22 @@ The `MessageCreate` event is available as `message`. Rust API calls use the `hos
 
 ## 3. Register the rune
 
-In Discord, use `/rune register`, choose a name, and attach the source file.
+In Discord, run `/rune register`. Set `name` to `hello` and attach your source file to `file`.
 
 <Tabs syncKey="language">
   <TabItem label="TypeScript">
 
-```text
-/rune register name:hello file:hello.ts
-```
+Attach `hello.ts`.
 
   </TabItem>
   <TabItem label="Rust">
 
-```text
-/rune register name:hello file:hello.rs
-```
+Attach `hello.rs`.
 
   </TabItem>
 </Tabs>
 
-Rune builds the script and saves it.
+The register command creates a `MessageCreate` rune. Rune builds the script and saves it.
 
 ## 4. Try it
 
