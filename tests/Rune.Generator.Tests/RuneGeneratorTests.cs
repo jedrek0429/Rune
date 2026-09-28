@@ -217,6 +217,17 @@ public sealed class RuneGeneratorTests
             documentation[
                 "docs/src/content/docs/api/generated/index.mdx"]);
 
+        var events =
+            documentation[
+                "docs/src/content/docs/api/generated/events.mdx"];
+
+        Assert.Contains(
+            "| Event | Description | Payload | Source |",
+            events);
+
+        Assert.Contains(
+            "Raised when Rune receives a newly created Discord message.",
+            events);
 
         Assert.Contains(
             "docs/src/data/generated/api.json",
@@ -290,6 +301,22 @@ public sealed class RuneGeneratorTests
         Assert.Contains(
             "A message received from a Discord gateway event.",
             message);
+
+        Assert.True(
+            message.IndexOf(
+                "export class Message extends RestMessage",
+                StringComparison.Ordinal) <
+            message.IndexOf(
+                "A message received from a Discord gateway event.",
+                StringComparison.Ordinal));
+
+        Assert.True(
+            message.IndexOf(
+                "export class Message extends RestMessage",
+                StringComparison.Ordinal) <
+            message.IndexOf(
+                "### Inheritance",
+                StringComparison.Ordinal));
 
         var restMessage =
             documentation[
