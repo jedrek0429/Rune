@@ -63,7 +63,7 @@ public static class RuneApiEmitter
             }
 
             text.Append(
-                $" * }} {type.Name}Input\n" +
+                $" * }}}} {type.Name}Input\n" +
                 " */\n\n");
         }
 
