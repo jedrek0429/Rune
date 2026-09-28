@@ -4,6 +4,7 @@ use serde_json::Value;
 pub const MAX_ARTIFACT_BYTES: u64 = 16 * 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[allow(clippy::enum_variant_names)]
 #[serde(rename_all = "camelCase")]
 pub enum RuneEventType {
     MessageCreate,
