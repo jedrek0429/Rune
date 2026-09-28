@@ -10,7 +10,6 @@ using Rune.Bot;
 using Rune.Bot.Host;
 using Rune.Core.Runes;
 using Rune.Runtime;
-using Rune.Runtime.Compilation;
 
 var builder =
     Host.CreateApplicationBuilder(args);
@@ -34,57 +33,25 @@ builder.Services
     .AddSingleton<RuneRegistry>()
     .AddSingleton<RuneService>()
     .AddSingleton<RuneUploadReader>()
-    .AddRuneCompilation(
-        options =>
-        {
-            var home =
-                Environment.GetFolderPath(
-                    Environment.SpecialFolder.UserProfile);
-
-            options.JavaScriptCompiler =
-                Path.Combine(
-                    home,
-                    ".local/bin/extism-js");
-
-            options.PythonCompiler =
-                Path.Combine(
-                    home,
-                    ".local/bin/extism-py");
-
-            options.RustCompiler = "cargo";
-
-            options.JavaScriptTimeout =
-                TimeSpan.FromSeconds(30);
-
-            options.PythonTimeout =
-                TimeSpan.FromSeconds(30);
-
-            options.RustTimeout =
-                TimeSpan.FromMinutes(2);
-
-            options.RustTargetDirectory =
-                Path.Combine(
-                    Path.GetTempPath(),
-                    "rune-rust-target");
-        })
+    .AddSingleton<RuneEventDispatcher>()
+    .AddSingleton<RuneInvocationReceiverRegistry>()
+    .AddSingleton<
+        IRuneHostRequestHandler,
+        NetCordRuneHostRequestHandler>()
+    .AddHostedService<RuneResultWorker>()
     .AddRuneRuntime(
         options =>
         {
-            options.ExecutionTimeout =
-                TimeSpan.FromSeconds(2);
+            options.RedisConnectionString =
+                Environment.GetEnvironmentVariable(
+                    "RUNE_REDIS_URL") ??
+                "localhost:6379";
+        });
 
-            options.MaxMemoryPages = 4096;
-            options.MaxConcurrentExecutions = 16;
-            options.MaxHostRequestsPerInvocation = 32;
-            options.MaxReplyLength = 2000;
-        })
-    .AddSingleton<RuneEventDispatcher>()
-    .AddSingleton<
-        IRuneHostRequestHandler,
-        NetCordRuneHostRequestHandler>();
+var host =
+    builder.Build();
 
-var host = builder.Build();
-
-host.AddModules(typeof(Program).Assembly);
+host.AddModules(
+    typeof(Program).Assembly);
 
 await host.RunAsync();

@@ -21,12 +21,11 @@ public sealed class BuiltRuneArtifactTests
             RuneLanguage.JavaScript,
             RuneEventType.MessageCreate,
             "export function handle() {}",
-            [],
             true,
             artifact);
 
         Assert.Equal(RuneLanguage.JavaScript, rune.Language);
         Assert.Same(artifact, rune.Artifact);
-        Assert.Equal("rune", rune.Artifact.Entrypoint);
+        Assert.Equal("rune", rune.Artifact!.Entrypoint);
     }
 }

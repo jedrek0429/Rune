@@ -8,87 +8,49 @@
   A small, sandboxed scripting platform for Discord.
 </p>
 
-Rune lets you upload scripts directly through Discord and run them as isolated WebAssembly modules.
+Rune builds uploaded scripts into executable artifacts and runs each invocation inside an isolated Firecracker microVM.
 
-Runes are written in languages such as JavaScript and Python, while Rune provides a common Discord-facing API.
+The current build pipeline supports JavaScript, TypeScript, Python, Rust, C, and C++. Rune.Api is a deliberately selected subset of NetCord and currently defines four gateway events:
 
-The goal is to support as many languages as possible.
+- MessageCreate
+- MessageDelete
+- MessageReactionAdd
+- MessageReactionRemove
 
-```javascript
-if (message.content === "hello") {
-    await message.reply("Hello!");
-}
-````
+Rune.Api bindings are generated from the same canonical API definition for each language.
 
-```python
-if message.content == "hello":
-    await message.reply("Hello!")
-```
+## Runtime architecture
 
-## Discord API
+Rune.Bot builds source through disposable Firecracker build VMs and stores content-addressed executable artifacts. Gateway events are projected into Rune.Api payloads and queued in Redis. Rune.Firecracker.Runner consumes those envelopes, invokes the artifact in a disposable microVM, and publishes host actions back through Redis. Rune.Bot applies those host actions to the original retained NetCord event object.
 
-Rune subsets [NetCord](https://github.com/NetCordDev/NetCord) and ports it for each language. Currently all runes are registered as `MessageCreate` events.
+The runtime path is therefore:
 
-For a `MessageCreate` rune, the only object passed is `message`, which exposes the following properties and methods.
-
-JavaScript:
-
-```javascript
-message.id
-message.channelId
-message.content
-
-message.author.id
-message.author.username
-
-await message.reply("Hello!")
-```
-
-Python:
-
-```python
-message.id
-message.channel_id
-message.content
-
-message.author.id
-message.author.username
-
-await message.reply("Hello!")
-```
-
-Rust:
-
-```rust
-fn rune(message: RuneMessage) -> FnResult<()> {
-    message.id;
-    message.channel_id;
-    message.content;
-
-    message.author.id;
-    message.author.username;
-
-    message.reply("Hello!")?;
-
-    Ok(())
-}
-```
+    Discord gateway event
+    -> Rune.Api projection
+    -> Redis invocation envelope
+    -> Firecracker runner
+    -> disposable invocation microVM
+    -> Redis result
+    -> NetCord host action
 
 ## Running locally
 
-Rune currently requires the Extism JavaScript and Python compilers:
+You need:
 
-```sh
-extism-js
-extism-py
-```
+- .NET 10
+- Redis
+- Firecracker with KVM access
+- the Rune Firecracker kernel/rootfs/snapshot assets
+- the toolchains required for whichever Rune languages you build
 
-Once they are installed, start Rune with:
+The bot and native runner must point at the same Redis instance and Firecracker state root.
 
-```sh
-dotnet run --project src/Rune.Bot
-```
+    export RUNE_REDIS_URL=redis://127.0.0.1:6379/
+    export RUNE_FIRECRACKER_ROOT="$HOME/.local/share/rune/firecracker"
+
+    dotnet run --project src/Rune.Bot
+    cargo run --manifest-path native/Rune.Firecracker.Runner/Cargo.toml
 
 ## Status
 
-Rune is under active development. The current implementation supports JavaScript and Python event runes compiled to WebAssembly.
+Rune is under active development.

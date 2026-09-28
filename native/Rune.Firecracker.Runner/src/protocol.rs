@@ -4,9 +4,13 @@ use serde_json::Value;
 pub const MAX_ARTIFACT_BYTES: u64 = 16 * 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[allow(clippy::enum_variant_names)]
 #[serde(rename_all = "camelCase")]
 pub enum RuneEventType {
     MessageCreate,
+    MessageDelete,
+    MessageReactionAdd,
+    MessageReactionRemove,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -122,6 +126,19 @@ mod tests {
             },
             payload: Value::Null,
             enqueued_at: "now".into(),
+        }
+    }
+
+    #[test]
+    fn every_supported_gateway_event_deserializes() {
+        for value in [
+            "messageCreate",
+            "messageDelete",
+            "messageReactionAdd",
+            "messageReactionRemove",
+        ] {
+            let json = serde_json::to_string(value).unwrap();
+            assert!(serde_json::from_str::<RuneEventType>(&json).is_ok());
         }
     }
 

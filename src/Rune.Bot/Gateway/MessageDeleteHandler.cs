@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 
-using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
 
 using Rune.Api;
@@ -11,6 +10,7 @@ namespace Rune.Bot.Gateway;
 
 public sealed class MessageDeleteHandler(
     RuneEventDispatcher dispatcher,
+    RuneInvocationReceiverRegistry receivers,
     ILogger<MessageDeleteHandler> logger)
     : IMessageDeleteGatewayHandler
 {
@@ -23,15 +23,36 @@ public sealed class MessageDeleteHandler(
         var payload =
             NetCordRuneApi.Project(args);
 
-        var failures =
-            await dispatcher.DispatchAsync(
-                new MessageDeleteEventRuneInvocation(
-                    Guid.NewGuid(),
-                    guildId,
-                    payload.ChannelId,
-                    payload.MessageId));
+        var invocationId =
+            Guid.NewGuid();
 
-        foreach (var failure in failures)
+        receivers.Register(
+            invocationId,
+            args);
+
+        RuneDispatchResult result;
+
+        try
+        {
+            result =
+                await dispatcher.DispatchAsync(
+                    new MessageDeleteEventRuneInvocation(
+                        invocationId,
+                        guildId,
+                        payload.ChannelId,
+                        payload.MessageId));
+
+            receivers.Seal(
+                invocationId,
+                result.QueuedExecutions);
+        }
+        catch
+        {
+            receivers.Cancel(invocationId);
+            throw;
+        }
+
+        foreach (var failure in result.Failures)
         {
             logger.LogWarning(
                 "Rune {RuneName} failed during MessageDelete: {Message}",

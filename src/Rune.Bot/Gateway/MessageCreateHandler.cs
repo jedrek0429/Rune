@@ -7,7 +7,8 @@ using Rune.Runtime;
 namespace Rune.Bot.Gateway;
 
 public sealed class MessageCreateHandler(
-    RuneEventDispatcher dispatcher)
+    RuneEventDispatcher dispatcher,
+    RuneInvocationReceiverRegistry receivers)
     : IMessageCreateGatewayHandler
 {
     public async ValueTask HandleAsync(
@@ -22,31 +23,49 @@ public sealed class MessageCreateHandler(
         var payload =
             NetCordRuneApi.Project(message);
 
-        var invocation =
-            new MessageCreateEventRuneInvocation(
-                Guid.NewGuid(),
-                guildId,
-                payload.ChannelId,
-                payload.Id,
-                payload.Author.Id,
-                payload.Author.Username,
-                payload.Content);
+        var invocationId =
+            Guid.NewGuid();
 
-        var failures =
-            await dispatcher.DispatchAsync(
-                invocation);
+        receivers.Register(
+            invocationId,
+            message);
 
-        if (failures.Count == 0)
+        RuneDispatchResult result;
+
+        try
+        {
+            result =
+                await dispatcher.DispatchAsync(
+                    new MessageCreateEventRuneInvocation(
+                        invocationId,
+                        guildId,
+                        payload.ChannelId,
+                        payload.Id,
+                        payload.Author.Id,
+                        payload.Author.Username,
+                        payload.Content));
+
+            receivers.Seal(
+                invocationId,
+                result.QueuedExecutions);
+        }
+        catch
+        {
+            receivers.Cancel(invocationId);
+            throw;
+        }
+
+        if (result.Failures.Count == 0)
             return;
 
         var text =
             string.Join(
                 '\n',
-                failures
+                result.Failures
                     .Take(3)
                     .Select(
                         failure =>
-                            $"`{failure.RuneName}`: {failure.Message}"));
+                            $"{failure.RuneName}: {failure.Message}"));
 
         await message.ReplyAsync(
             new NetCord.Rest.ReplyMessageProperties
