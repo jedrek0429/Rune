@@ -67,7 +67,7 @@ const generatedMessage = new Message({
     },
 });
 
-if (generatedMessage.channelId !== BigInt("2")) {
+if (generatedMessage.channelId !== "2") {
     throw new Error("generated Message did not hydrate channelId");
 }
 

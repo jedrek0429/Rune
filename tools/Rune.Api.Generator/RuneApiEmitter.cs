@@ -186,7 +186,7 @@ public static class RuneApiEmitter
         }
 
         if (type.Name == "u64")
-            return $"BigInt({value})";
+            return $"String({value})";
 
         if (type.IsSelectedType &&
             !model.Types.Single(
@@ -206,7 +206,7 @@ public static class RuneApiEmitter
         string value)
     {
         if (type.Name == "u64")
-            return $"{value}.toString()";
+            return value;
 
         if (type.IsSelectedType)
         {
@@ -222,7 +222,7 @@ public static class RuneApiEmitter
         var value =
             type.Name switch
             {
-                "u64" => "bigint",
+                "u64" => "string",
                 "bool" => "boolean",
                 "string" => "string",
                 _ => type.Name

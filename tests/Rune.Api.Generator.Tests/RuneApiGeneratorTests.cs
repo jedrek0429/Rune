@@ -36,7 +36,7 @@ public sealed class RuneApiGeneratorTests
             typescript);
 
         Assert.Contains(
-            "readonly channelId: bigint",
+            "readonly channelId: string",
             typescript);
 
         Assert.Contains(
