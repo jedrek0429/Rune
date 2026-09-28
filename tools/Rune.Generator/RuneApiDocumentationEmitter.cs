@@ -50,7 +50,7 @@ public static class RuneApiDocumentationEmitter
         AppendFrontmatter(
             text,
             "API Reference",
-            "Generated reference for the language-neutral Rune.Api contract.");
+            "Reference for Rune.Api.");
 
         AppendTabsImport(text);
 
@@ -58,10 +58,10 @@ public static class RuneApiDocumentationEmitter
             $"**Rune.Api {model.Version}** · **NetCord {model.NetCordVersion}**");
         text.AppendLine();
         text.AppendLine(
-            "The API surface is identical in every supported binding. Only language-specific syntax and semantics differ.");
+            "Rune.Api gives runes event data and Discord actions.");
         text.AppendLine();
         text.AppendLine(
-            "Choose a language once. The selection is preserved across Rune.Api reference pages.");
+            "Choose a language once. Rune keeps that choice across the API reference.");
         text.AppendLine();
 
         AppendLanguageSemantics(text);
@@ -90,7 +90,7 @@ public static class RuneApiDocumentationEmitter
         AppendFrontmatter(
             text,
             "Events",
-            "Rune.Api gateway events and their payloads.");
+            "Events available to runes and the data each event provides.");
 
         AppendTabsImport(text);
 
@@ -583,13 +583,13 @@ public static class RuneApiDocumentationEmitter
         text.AppendLine("  <TabItem label=\"TypeScript\">");
         text.AppendLine();
         text.AppendLine(
-            "TypeScript uses camelCase members, string snowflakes, Promise-returning host calls, and object-bound host access.");
+            "TypeScript uses camelCase names and string Discord IDs.");
         text.AppendLine();
         text.AppendLine("  </TabItem>");
         text.AppendLine("  <TabItem label=\"Rust\">");
         text.AppendLine();
         text.AppendLine(
-            "Rust uses snake_case members, native `u64` snowflakes, `Result<T, String>` host calls, and an explicit mutable host reference.");
+            "Rust uses snake_case names and `u64` Discord IDs.");
         text.AppendLine();
         text.AppendLine("  </TabItem>");
         text.AppendLine("</Tabs>");
