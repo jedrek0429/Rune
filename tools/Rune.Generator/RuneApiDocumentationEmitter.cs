@@ -361,20 +361,26 @@ public static class RuneApiDocumentationEmitter
         text.AppendLine();
         text.AppendLine("<Tabs syncKey=\"language\">");
 
-        foreach (var language in new[] { "typescript", "rust" })
+        foreach (var language in new[] { "typescript", "javascript", "rust" })
         {
             if (!examples.TryGetValue(language, out var example))
                 continue;
 
             var label =
-                language == "typescript"
-                    ? "TypeScript"
-                    : "Rust";
+                language switch
+                {
+                    "typescript" => "TypeScript",
+                    "javascript" => "JavaScript",
+                    _ => "Rust"
+                };
 
             var fence =
-                language == "typescript"
-                    ? "ts"
-                    : "rust";
+                language switch
+                {
+                    "typescript" => "ts",
+                    "javascript" => "js",
+                    _ => "rust"
+                };
 
             text.AppendLine($"  <TabItem label=\"{label}\">");
             text.AppendLine();
@@ -497,7 +503,7 @@ public static class RuneApiDocumentationEmitter
         text.AppendLine("  <TabItem label=\"Rust\">");
         text.AppendLine();
         text.AppendLine(
-            $"```rust\n{RuneApiEmitter.RustMethodForDocumentation(method.Name)}(&self, host: &mut dyn RuneHost{rustParameters}) -> Result<{RuneApiEmitter.RustTypeForDocumentation(method.Result)}, String>;\n```");
+            $"```rust\n{RuneApiEmitter.RustMethodForDocumentation(method.Name)}(&self{rustParameters}) -> Result<{RuneApiEmitter.RustTypeForDocumentation(method.Result)}, String>;\n```");
         text.AppendLine();
         text.AppendLine("  </TabItem>");
         text.AppendLine("</Tabs>");
