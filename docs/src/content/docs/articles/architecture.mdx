@@ -7,17 +7,17 @@ A rune is a small script that runs when a selected Discord event happens.
 
 ## Register
 
-Upload your script with Rune.Bot. Rune builds it and saves it for future runs.
+Upload your script with the Rune bot. Rune builds it and saves it for future runs.
 
 ## Receive an event
 
-When a matching Discord event happens, Rune starts your rune and gives it the event data through Rune.Api.
+When a matching Discord event happens, Rune starts your rune and gives it the event data through Rune API.
 
 For example, a `MessageCreate` rune receives a message. It can read fields such as the message content and author.
 
-## Use Rune.Api
+## Use Rune API
 
-Rune.Api defines the data and actions available to your rune.
+Rune API defines the data and actions available to your rune.
 
 Methods such as `message.reply(...)` let your rune act on the event it received.
 
@@ -25,4 +25,4 @@ Methods such as `message.reply(...)` let your rune act on the event it received.
 
 Rune runs each invocation in an isolated environment with defined resource limits.
 
-The same Rune.Api concepts are available across supported languages.
+The same Rune API concepts are available across supported languages.
