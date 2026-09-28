@@ -5,9 +5,11 @@ source="$1"
 output="$2"
 project=/work/rust-rune
 target=/work/rust-target
+cargo_home=/work/cargo-home
 
-rm -rf "$project" "$target"
-mkdir -p "$project/src"
+rm -rf "$project" "$target" "$cargo_home"
+mkdir -p "$project/src" "$cargo_home"
+ln -s /usr/local/cargo/registry "$cargo_home/registry"
 
 cp /opt/rune/rust/Cargo.toml "$project/Cargo.toml"
 cp /opt/rune/rust/Cargo.lock "$project/Cargo.lock"
