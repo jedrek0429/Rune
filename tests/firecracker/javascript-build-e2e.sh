@@ -49,3 +49,39 @@ grep -Fq "rune.js" <<<"$output"
 ! grep -Eq '/input/|/work/|Kernel panic|console=' <<<"$output"
 
 echo "javascript diagnostics OK"
+
+cat >"$tmp/rune-envelope.json" <<'EOF'
+{"executionId":"e","invocationId":"i","runeId":"r","runeName":"javascript-api","guildId":1,"eventType":"messageCreate","artifact":{"id":"unused","digest":"unused","entrypoint":"rune","sizeBytes":1},"payload":{"id":"1","channelId":"2","content":"!hello","author":{"id":"3","username":"rune"}},"enqueuedAt":"2026-09-27T00:00:00Z"}
+EOF
+
+descriptor="$(
+  dotnet run \
+    --project tests/Rune.BuildHarness \
+    --configuration Release \
+    -- JavaScript MessageCreate examples/hello.js
+)"
+read -r id _ _ <<<"$descriptor"
+[[ "$id" == sha256:* ]]
+digest="${id#sha256:}"
+artifact="$root/artifacts/$digest"
+test -s "$artifact"
+
+response="$(
+  bash src/Rune.Firecracker/run-invocation-vm.sh \
+    "$artifact" \
+    "$tmp/rune-envelope.json"
+)"
+
+python3 - "$response" <<'PY'
+import json
+import sys
+
+result = json.loads(sys.argv[1])
+assert result["error"] is None, result
+action = result["actions"][0]
+assert action["method"] == "message.reply", result
+assert action["arguments"]["replyMessage"]["content"] == "Hello, rune!", result
+PY
+
+echo "production JavaScript Rune API example -> execute OK"
+
