@@ -347,7 +347,7 @@ public static class RuneApiDocumentationEmitter
 
         var javascript =
             type.IsEnum
-                ? $"const {type.Name} = Object.freeze({{ ... }})"
+                ? $"const {type.Name} = {{ ... }}"
                 : $"class {type.Name}" +
                   (type.Base is null
                       ? string.Empty
