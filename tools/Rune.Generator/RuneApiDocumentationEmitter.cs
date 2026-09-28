@@ -55,10 +55,10 @@ public static class RuneApiDocumentationEmitter
         AppendTabsImport(text);
 
         text.AppendLine(
-            $"**Rune API {model.Version}**");
+            $"**Rune API {model.Version}** · **NetCord {model.NetCordVersion}**");
         text.AppendLine();
         text.AppendLine(
-            "Rune API gives runes event data and Discord actions.");
+            "Rune API is a specialised subset of NetCord for runes.");
         text.AppendLine();
         text.AppendLine(
             "Choose a language once. Rune keeps that choice across the API reference.");
@@ -94,13 +94,13 @@ public static class RuneApiDocumentationEmitter
 
         AppendTabsImport(text);
 
-        text.AppendLine("| Event | Description | Payload |");
-        text.AppendLine("| --- | --- | --- |");
+        text.AppendLine("| Event | Description | Payload | Source |");
+        text.AppendLine("| --- | --- | --- | --- |");
 
         foreach (var runeEvent in model.Events)
         {
             text.AppendLine(
-                $"| `{runeEvent.Name}` | {runeEvent.Summary ?? "—"} | [{runeEvent.Payload}](../types/{Slug(runeEvent.Payload)}/) |");
+                $"| `{runeEvent.Name}` | {runeEvent.Summary ?? "—"} | [{runeEvent.Payload}](../types/{Slug(runeEvent.Payload)}/) | {NetCordSource(runeEvent.NetCordName, NetCordMemberUrl(runeEvent.NetCordName))} |");
         }
 
         text.AppendLine();
@@ -167,6 +167,12 @@ public static class RuneApiDocumentationEmitter
             text.AppendLine(type.Summary);
             text.AppendLine();
         }
+
+        text.AppendLine(
+            NetCordSource(
+                type.NetCordName,
+                NetCordTypeUrl(type.NetCordName)));
+        text.AppendLine();
 
         if (!type.IsEnum)
         {
@@ -238,7 +244,11 @@ public static class RuneApiDocumentationEmitter
                 text.AppendLine();
                 AppendValueType(text, model, member.Type);
                 text.AppendLine();
-
+                text.AppendLine(
+                    NetCordSource(
+                        member.CanonicalId,
+                        NetCordMemberUrl(member.CanonicalId)));
+                text.AppendLine();
             }
         }
 
@@ -280,6 +290,12 @@ public static class RuneApiDocumentationEmitter
                 text.AppendLine();
                 AppendValueType(text, model, method.Result);
                 text.AppendLine();
+                text.AppendLine(
+                    NetCordSource(
+                        method.CanonicalId,
+                        NetCordMemberUrl(method.CanonicalId)));
+                text.AppendLine();
+
                 AppendExamples(text, method.Examples, "#### Example");
             }
         }
