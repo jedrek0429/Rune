@@ -1,13 +1,21 @@
 using System.Diagnostics;
 
+using Rune.Api;
+
 using Rune.Runtime.Exceptions;
 
 namespace Rune.Runtime;
 
 public sealed class FirecrackerRuneBuilder(
-    string scriptPath = "src/Rune.Firecracker/run-build-vm.sh")
+    string scriptPath = "src/Rune.Firecracker/run-build-vm.sh",
+    string? repositoryRoot = null)
     : IRuneBuilder
 {
+    private readonly string _repositoryRoot =
+        repositoryRoot ??
+        FindRepositoryRoot();
+
+
     public static (string Pool, string Language)
         GetBuildTarget(
             RuneLanguage language) =>
@@ -33,11 +41,25 @@ public sealed class FirecrackerRuneBuilder(
 
     public async ValueTask<BuiltRuneArtifact> BuildAsync(
         RuneLanguage language,
+        RuneApiEventType eventType,
         string source,
         CancellationToken cancellationToken = default)
     {
         var (pool, wireLanguage) =
             GetBuildTarget(language);
+
+        source =
+            RuneSourceComposer.Compose(
+                language,
+                eventType,
+                source,
+                ReadOptional(
+                    "generated/javascript/rune-api.d.ts"),
+                ReadOptional(
+                    "generated/javascript/rune-api.js",
+                    "generated/typescript/rune-api.ts"),
+                ReadOptional(
+                    "generated/rust/rune_api.rs"));
 
         var sourcePath =
             Path.GetTempFileName();
@@ -114,4 +136,47 @@ public sealed class FirecrackerRuneBuilder(
             File.Delete(sourcePath);
         }
     }
+    private string ReadOptional(
+        params string[] relativePaths)
+    {
+        foreach (var relativePath in relativePaths)
+        {
+            var path =
+                Path.Combine(
+                    _repositoryRoot,
+                    relativePath.Replace(
+                        '/',
+                        Path.DirectorySeparatorChar));
+
+            if (File.Exists(path))
+                return File.ReadAllText(path);
+        }
+
+        return string.Empty;
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory =
+            new DirectoryInfo(
+                Directory.GetCurrentDirectory());
+
+        while (directory is not null)
+        {
+            if (File.Exists(
+                    Path.Combine(
+                        directory.FullName,
+                        "Rune.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory =
+                directory.Parent;
+        }
+
+        throw new InvalidOperationException(
+            "Rune repository root was not found.");
+    }
+
 }
