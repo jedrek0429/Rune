@@ -47,8 +47,17 @@ jobs:
       - name: Test runner and warm-pool contract
         run: bash tests/firecracker/runner-feature.test.sh
 
-      - name: Test native build contract
-        run: bash tests/firecracker/native-build-feature.test.sh
+      - name: Test build sandbox contract
+        run: bash tests/firecracker/build-sandbox-feature.test.sh
+
+      - name: Test Rust build contract
+        run: bash tests/firecracker/rust-build-feature.test.sh
+
+      - name: Test C build contract
+        run: bash tests/firecracker/c-build-feature.test.sh
+
+      - name: Test C++ build contract
+        run: bash tests/firecracker/cpp-build-feature.test.sh
 
       - name: Check runner
         run: cargo check --manifest-path native/Rune.Firecracker.Runner/Cargo.toml
@@ -129,8 +138,14 @@ jobs:
       - name: Execute prebuilt ELF in Firecracker
         run: bash tests/firecracker/invocation-e2e.sh
 
-      - name: Build and execute native runes
-        run: bash tests/firecracker/native-build-e2e.sh
+      - name: Build and execute Rust runes
+        run: bash tests/firecracker/rust-build-e2e.sh
+
+      - name: Build and execute C runes
+        run: bash tests/firecracker/c-build-e2e.sh
+
+      - name: Build and execute C++ runes
+        run: bash tests/firecracker/cpp-build-e2e.sh
 
       - name: Build and execute JavaScript runes
         run: bash tests/firecracker/javascript-build-e2e.sh

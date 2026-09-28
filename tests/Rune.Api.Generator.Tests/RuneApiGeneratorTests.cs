@@ -74,6 +74,18 @@ public sealed class RuneApiGeneratorTests
         Assert.DoesNotContain(
             "RuneHost | undefined",
             typescript);
+
+        Assert.Contains(
+            "protected readonly __host: RuneHost",
+            typescript);
+
+        Assert.Contains(
+            "constructor(value: any = {}, __host: RuneHost",
+            typescript);
+
+        Assert.DoesNotContain(
+            "extends RestMessage {\n\n    constructor(value: any = {}, protected readonly __host",
+            typescript);
     }
 
     [Fact]

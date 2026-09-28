@@ -66,9 +66,15 @@ public static class RuneApiEmitter
                     $"{TypeScriptType(member.Type)};\n");
             }
 
+            var hostParameter =
+                type.Base is null
+                    ? "protected readonly __host: RuneHost = new RuneHost()"
+                    : "__host: RuneHost = new RuneHost()";
+
             text.Append(
                 "\n    constructor(value: any = {}, " +
-                "protected readonly __host: RuneHost = new RuneHost()) {\n");
+                hostParameter +
+                ") {\n");
 
             if (type.Base is not null)
             {
