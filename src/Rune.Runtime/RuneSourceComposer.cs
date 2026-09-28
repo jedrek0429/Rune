@@ -72,18 +72,19 @@ public static class RuneSourceComposer
             payloadShape +
             ";\n" +
             "    };\n\n" +
-            "    const actions: Array<{ method: string; arguments: unknown }> = [];\n" +
+            "    const actions: Array<{ method: string; arguments: { replyMessage: { content: string | null } } }> = [];\n" +
             "    const host = new RuneHost(\n" +
-            "        async (method: string, payload: any): Promise<any> => {\n" +
-            "            actions.push({ method, arguments: payload });\n\n" +
-            "            if (\n" +
-            "                typeof payload === \"object\" &&\n" +
-            "                payload !== null &&\n" +
-            "                \"replyMessage\" in payload\n" +
-            "            ) {\n" +
-            "                return (payload as { replyMessage: any }).replyMessage;\n" +
-            "            }\n\n" +
-            "            return {};\n" +
+            "        async (replyMessage: { content: string | null }): Promise<RestMessage> => {\n" +
+            "            actions.push({\n" +
+            "                method: \"message.reply\",\n" +
+            "                arguments: { replyMessage },\n" +
+            "            });\n\n" +
+            "            return new RestMessage({\n" +
+            "                id: \"0\",\n" +
+            "                channelId: \"0\",\n" +
+            "                content: replyMessage.content ?? \"\",\n" +
+            "                author: { id: \"0\", username: \"Rune\" },\n" +
+            "            });\n" +
             "        },\n" +
             "    );\n\n" +
             "    const " +
