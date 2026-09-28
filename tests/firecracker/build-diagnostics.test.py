@@ -77,8 +77,8 @@ class BuildDiagnosticTests(unittest.TestCase):
     def test_composed_source_location_maps_back_to_user_line(self):
         result = module.build_diagnostic(
             "typescript",
-            "rune.ts:145:11 - error SC0001: broken",
             "compilation",
+            "rune.ts:145:11 - error SC0001: broken",
             user_start_line=143,
             user_end_line=147,
         )
@@ -90,8 +90,8 @@ class BuildDiagnosticTests(unittest.TestCase):
     def test_generated_source_location_is_hidden(self):
         result = module.build_diagnostic(
             "typescript",
-            "rune.ts:150:22 - error SC1100: internal bootstrap failure",
             "compilation",
+            "rune.ts:150:22 - error SC1100: internal bootstrap failure",
             user_start_line=3,
             user_end_line=6,
         )
