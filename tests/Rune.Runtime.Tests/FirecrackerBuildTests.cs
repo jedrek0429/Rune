@@ -73,6 +73,10 @@ public sealed class FirecrackerBuildTests
             javascript);
 
         Assert.Contains(
+            "/** @type {__RuneEnvelope} */ (JSON.parse",
+            javascript);
+
+        Assert.Contains(
             "await message.reply",
             javascript);
 
