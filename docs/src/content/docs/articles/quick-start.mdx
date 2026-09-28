@@ -48,7 +48,6 @@ if (message.content === "!hello") {
 ```rust
 if message.content == "!hello" {
     message.reply(
-        host,
         ReplyMessageProperties {
             content: Some(format!("Hello, {}!", message.author.username)),
         },
@@ -59,7 +58,7 @@ if message.content == "!hello" {
   </TabItem>
 </Tabs>
 
-The `MessageCreate` event is available as `message`. Rust API calls use the `host` value shown above.
+The `MessageCreate` event is available as `message`.
 
 ## 3. Register the rune
 
