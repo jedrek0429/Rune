@@ -204,7 +204,24 @@ The profiles provide:
 
 These images only need to be rebuilt when their toolchains or build environment change.
 
-### 7. Start Redis
+### 7. Build the warm snapshot
+
+The runner starts invocation microVMs from a Firecracker snapshot. Build it after the kernel and invocation image are ready:
+
+```bash
+bash src/Rune.Firecracker/build-snapshot.sh
+```
+
+This creates:
+
+```text
+$RUNE_FIRECRACKER_ROOT/snapshot/vmstate
+$RUNE_FIRECRACKER_ROOT/snapshot/memory
+```
+
+Rebuild the snapshot whenever the invocation image or kernel changes.
+
+### 8. Start Redis
 
 Start a local Redis server:
 
@@ -230,17 +247,27 @@ You should receive:
 PONG
 ```
 
-### 8. Configure Discord
+### 9. Configure Discord
 
 Create a bot in the Discord Developer Portal and copy its bot token.
 
-Rune uses NetCord's standard `Discord` configuration section, so the token can be supplied through the .NET environment-variable configuration syntax:
+Copy the example configuration:
 
 ```bash
-export Discord__Token="YOUR_BOT_TOKEN"
+cp "appsettings - example.json" appsettings.json
 ```
 
-Never commit the bot token.
+Then set the token in `appsettings.json`:
+
+```json
+{
+  "Discord": {
+    "Token": "YOUR_BOT_TOKEN"
+  }
+}
+```
+
+`appsettings.json` is ignored by Git, so the token stays local.
 
 Rune currently subscribes to:
 
@@ -253,7 +280,7 @@ Enable the **Message Content Intent** for the application in the Discord Develop
 
 Invite the application to the server where you want to test Rune and include the application-commands scope.
 
-### 9. Start Rune
+### 10. Start Rune
 
 Rune consists of two long-running processes. Both must use the same Redis instance and Firecracker root.
 
@@ -276,11 +303,6 @@ export RUNE_REDIS_URL="redis://127.0.0.1:6379/"
 export RUNE_FIRECRACKER_ROOT="$HOME/.local/share/rune/firecracker"
 ```
 
-The bot additionally needs:
-
-```bash
-export Discord__Token="YOUR_BOT_TOKEN"
-```
 
 Once both processes are running and the bot is online in Discord, Rune is ready for local testing.
 
