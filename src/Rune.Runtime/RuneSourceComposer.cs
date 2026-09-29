@@ -71,16 +71,19 @@ public static class RuneSourceComposer
             "/** @typedef {{ replyMessage: ReplyMessagePropertiesInput }} __RuneReplyArguments */\n" +
             "/** @typedef {{ method: string, arguments: __RuneReplyArguments }} __RuneAction */\n\n" +
             "/** @type {Array<__RuneAction>} */\n" +
-            "let __runeActions = [];\n\n" +
+            "let __runeActions = [];\n" +
+            "let __runePhase = \"startup\";\n\n" +
             "/**\n" +
             " * @param {ReplyMessagePropertiesInput} replyMessage\n" +
             " * @returns {Promise<RestMessage>}\n" +
             " */\n" +
             "async function __runeHostMessageReply(replyMessage) {\n" +
+            "    __runePhase = \"record reply action\";\n" +
             "    __runeActions.push({\n" +
             "        method: \"message.reply\",\n" +
             "        arguments: { replyMessage },\n" +
             "    });\n\n" +
+            "    __runePhase = \"hydrate reply\";\n" +
             "    return new RestMessage({\n" +
             "        id: \"0\",\n" +
             "        channelId: \"0\",\n" +
@@ -93,12 +96,14 @@ public static class RuneSourceComposer
             "        JSON.parse(readFileSync(0, \"utf8\"))\n" +
             "    );\n\n" +
             "    __runeActions = [];\n" +
+            "    __runePhase = \"hydrate event\";\n" +
             "    const " +
             argument +
             " = new " +
             payloadType +
             "(envelope.payload);\n\n" +
             "    try {\n" +
+            "        __runePhase = \"run rune\";\n" +
             "        await rune(" +
             argument +
             ");\n" +
@@ -106,7 +111,7 @@ public static class RuneSourceComposer
             "    } catch {\n" +
             "        console.log(JSON.stringify({\n" +
             "            actions: [],\n" +
-            "            error: \"Rune execution failed.\",\n" +
+            "            error: \"Rune execution failed during \" + __runePhase + \".\",\n" +
             "        }));\n" +
             "    }\n" +
             "}\n\n" +
