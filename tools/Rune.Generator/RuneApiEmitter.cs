@@ -90,7 +90,8 @@ public static class RuneApiEmitter
 
         text.Append(
             "class RuneHost {\n" +
-            "    /**\n");
+            "    /**\n" +
+            "     * @param {function(string): void} [trace]\n");
 
         foreach (var method in hostMethods)
         {
@@ -104,7 +105,8 @@ public static class RuneApiEmitter
 
         text.Append(
             "     */\n" +
-            "    constructor(\n");
+            "    constructor(\n" +
+            "        trace = () => {},\n");
 
         foreach (var method in hostMethods)
         {
@@ -116,7 +118,8 @@ public static class RuneApiEmitter
                 $"        {callback} = async () => {{ throw new Error(\"Rune host is not configured\"); }},\n");
         }
 
-        text.Append("    ) {\n");
+        text.Append("    ) {\n" +
+            "        this.__trace = trace;\n");
 
         foreach (var method in hostMethods)
         {
@@ -220,7 +223,10 @@ public static class RuneApiEmitter
 
                 text.Append(
                     $"    async {name}({parameters}) {{\n" +
-                    $"        const result = await this.__host.{TypeScriptHostCallbackName(method.HostName)}(");
+                    $"        this.__host.__trace(\"resolve {method.HostName}\");\n" +
+                    $"        const callback = this.__host.{TypeScriptHostCallbackName(method.HostName)};\n" +
+                    $"        this.__host.__trace(\"invoke {method.HostName}\");\n" +
+                    $"        const result = await callback(");
 
                 text.Append(
                     string.Join(
@@ -231,6 +237,7 @@ public static class RuneApiEmitter
 
                 text.Append(
                     ");\n" +
+                    $"        this.__host.__trace(\"hydrate {method.HostName}\");\n" +
                     $"        return {JavaScriptHydrate(method.Result, "result", model)};\n" +
                     "    }\n");
             }
