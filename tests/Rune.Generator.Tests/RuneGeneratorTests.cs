@@ -100,23 +100,11 @@ public sealed class RuneGeneratorTests
             javascript);
 
         Assert.Contains(
-            "@callback MessageReplyCallback",
+            "const result = await __runeHostMessageReply(replyMessage);",
             javascript);
 
-        Assert.Contains(
-            "let __runeHostMessageReply = null;",
-            javascript);
-
-        Assert.Contains(
-            "function __runeInstallMessageReply(callback)",
-            javascript);
-
-        Assert.Contains(
-            "const callback = __runeHostMessageReply;",
-            javascript);
-
-        Assert.Contains(
-            "const result = await callback(replyMessage);",
+        Assert.DoesNotContain(
+            "__runeInstallMessageReply",
             javascript);
 
         Assert.DoesNotContain(
