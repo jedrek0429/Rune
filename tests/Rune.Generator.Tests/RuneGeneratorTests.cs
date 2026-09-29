@@ -108,7 +108,11 @@ public sealed class RuneGeneratorTests
             javascript);
 
         Assert.Contains(
-            "await this.__host.messageReply(replyMessage)",
+            "const callback = this.__host.messageReply;",
+            javascript);
+
+        Assert.Contains(
+            "const result = await callback(replyMessage);",
             javascript);
 
         Assert.DoesNotContain(
