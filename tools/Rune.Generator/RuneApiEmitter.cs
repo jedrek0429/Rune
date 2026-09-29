@@ -60,49 +60,6 @@ public static class RuneApiEmitter
                 " */\n\n");
         }
 
-        foreach (var method in
-                 model.Types.SelectMany(
-                     type =>
-                         type.Methods))
-        {
-            text.Append(
-                "/**\n" +
-                $" * @callback {JavaScriptHostCallbackTypeName(method.HostName)}\n");
-
-            foreach (var parameter in method.Parameters)
-            {
-                text.Append(
-                    $" * @param {{{JavaScriptInputType(parameter.Type, model)}}} {Camel(parameter.Name)}\n");
-            }
-
-            text.Append(
-                $" * @returns {{Promise<{JavaScriptType(method.Result, model)}>}}\n" +
-                " */\n\n");
-        }
-
-        text.Append(
-            "class RuneHost {}\n\n");
-
-        foreach (var method in
-                 model.Types.SelectMany(
-                     type =>
-                         type.Methods))
-        {
-            var callback =
-                TypeScriptHostCallbackName(
-                    method.HostName);
-
-            text.Append(
-                $"/** @type {{{JavaScriptHostCallbackTypeName(method.HostName)}|null}} */\n" +
-                $"let __runeHost{char.ToUpperInvariant(callback[0])}{callback[1..]} = null;\n\n" +
-                "/**\n" +
-                $" * @param {{{JavaScriptHostCallbackTypeName(method.HostName)}}} callback\n" +
-                " */\n" +
-                $"function __runeInstall{char.ToUpperInvariant(callback[0])}{callback[1..]}(callback) {{\n" +
-                $"    __runeHost{char.ToUpperInvariant(callback[0])}{callback[1..]} = callback;\n" +
-                "}\n\n");
-        }
-
         foreach (var type in model.Types)
         {
             if (type.IsEnum)
@@ -183,22 +140,9 @@ public static class RuneApiEmitter
                             parameter =>
                                 Camel(parameter.Name)));
 
-                var callback =
-                    TypeScriptHostCallbackName(
-                        method.HostName);
-
-                var hostSlot =
-                    "__runeHost" +
-                    char.ToUpperInvariant(callback[0]) +
-                    callback[1..];
-
                 text.Append(
                     $"    async {name}({parameters}) {{\n" +
-                    $"        const callback = {hostSlot};\n" +
-                    "        if (callback === null) {\n" +
-                    "            throw new Error(\"Rune host is not configured\");\n" +
-                    "        }\n" +
-                    "        const result = await callback(");
+                    $"        const result = await {JavaScriptHostFunctionName(method.HostName)}(");
 
                 text.Append(
                     string.Join(
@@ -261,7 +205,7 @@ public static class RuneApiEmitter
         return value;
     }
 
-    private static string JavaScriptHostCallbackTypeName(
+    private static string JavaScriptHostFunctionName(
         string hostName)
     {
         var callback =
@@ -269,9 +213,9 @@ public static class RuneApiEmitter
                 hostName);
 
         return
+            "__runeHost" +
             char.ToUpperInvariant(callback[0]) +
-            callback[1..] +
-            "Callback";
+            callback[1..];
     }
 
     private static string JavaScriptInputType(
