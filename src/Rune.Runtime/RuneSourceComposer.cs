@@ -55,11 +55,10 @@ public static class RuneSourceComposer
             "import { readFileSync } from \"node:fs\";\n\n" +
             "/**\n" +
             $" * @param {{{payloadType}}} {argument}\n" +
-            " * @param {RuneHost} host\n" +
             " */\n" +
             "async function rune(" +
             argument +
-            ", host) {\n" +
+            ") {\n" +
             "// <rune-user-source>\n" +
             source +
             "\n// </rune-user-source>\n" +
@@ -72,22 +71,17 @@ public static class RuneSourceComposer
             "/** @typedef {{ replyMessage: ReplyMessagePropertiesInput }} __RuneReplyArguments */\n" +
             "/** @typedef {{ method: string, arguments: __RuneReplyArguments }} __RuneAction */\n\n" +
             "async function __runeMain() {\n" +
-            "    let phase = \"parse invocation\";\n" +
             "    const envelope = /** @type {__RuneEnvelope} */ (\n" +
             "        JSON.parse(readFileSync(0, \"utf8\"))\n" +
             "    );\n\n" +
             "    /** @type {Array<__RuneAction>} */\n" +
             "    const actions = [];\n" +
-            "    phase = \"create host\";\n" +
-            "    const host = new RuneHost(\n" +
-            "        (value) => { phase = value; },\n" +
+            "    __runeInstallMessageReply(\n" +
             "        async (replyMessage) => {\n" +
-            "            phase = \"record reply action\";\n" +
             "            actions.push({\n" +
             "                method: \"message.reply\",\n" +
             "                arguments: { replyMessage },\n" +
             "            });\n\n" +
-            "            phase = \"hydrate reply\";\n" +
             "            return new RestMessage({\n" +
             "                id: \"0\",\n" +
             "                channelId: \"0\",\n" +
@@ -96,23 +90,20 @@ public static class RuneSourceComposer
             "            });\n" +
             "        },\n" +
             "    );\n\n" +
-            "    phase = \"hydrate event\";\n" +
             "    const " +
             argument +
             " = new " +
             payloadType +
-            "(envelope.payload, host);\n\n" +
+            "(envelope.payload);\n\n" +
             "    try {\n" +
-            "        phase = \"run rune\";\n" +
             "        await rune(" +
             argument +
-            ", host);\n" +
-            "        phase = \"serialize result\";\n" +
+            ");\n" +
             "        console.log(JSON.stringify({ actions, error: null }));\n" +
             "    } catch {\n" +
             "        console.log(JSON.stringify({\n" +
             "            actions: [],\n" +
-            "            error: \"Rune execution failed during \" + phase + \".\",\n" +
+            "            error: \"Rune execution failed.\",\n" +
             "        }));\n" +
             "    }\n" +
             "}\n\n" +
