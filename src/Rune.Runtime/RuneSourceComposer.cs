@@ -80,6 +80,7 @@ public static class RuneSourceComposer
             "    const actions = [];\n" +
             "    phase = \"create host\";\n" +
             "    const host = new RuneHost(\n" +
+            "        (value) => { phase = value; },\n" +
             "        async (replyMessage) => {\n" +
             "            phase = \"record reply action\";\n" +
             "            actions.push({\n" +
