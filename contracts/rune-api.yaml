@@ -30,6 +30,9 @@ types:
     netcord: NetCord.Rest.RestMessage
     summary: A Discord message.
     examples:
+      javascript: |
+        console.log(message.content);
+        console.log(message.author.username);
       typescript: |
         console.log(message.content);
         console.log(message.author.username);
@@ -54,6 +57,10 @@ types:
         parameters:
           - replyMessage
         examples:
+          javascript: |
+            const reply = await message.reply({
+              content: "Hello from Rune!",
+            });
           typescript: |
             const reply = await message.reply({
               content: "Hello from Rune!",

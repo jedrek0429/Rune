@@ -24,7 +24,15 @@ public sealed class RuneGeneratorTests
             output.Keys);
 
         Assert.Contains(
+            "generated/javascript/rune-api.js",
+            output.Keys);
+
+        Assert.Contains(
             "generated/typescript/rune-api.ts",
+            output.Keys);
+
+        Assert.DoesNotContain(
+            "generated/javascript/rune-api.d.ts",
             output.Keys);
     }
 
@@ -62,6 +70,72 @@ public sealed class RuneGeneratorTests
         Assert.Contains(
             "guildId = value.GuildId is ulong guildIdSnowflake ? Snowflake(guildIdSnowflake) : null",
             csharp);
+    }
+
+    [Fact]
+    public void JavaScript_binding_is_static_and_untyped()
+    {
+        var javascript =
+            RuneApiEmitter.Emit(LoadApi())[
+                "generated/javascript/rune-api.js"];
+
+        Assert.Contains(
+            "// @ts-check",
+            javascript);
+
+        Assert.Contains(
+            "class Message extends RestMessage",
+            javascript);
+
+        var messageClass =
+            javascript[
+                javascript.IndexOf(
+                    "class Message extends RestMessage",
+                    StringComparison.Ordinal)..];
+
+        Assert.Contains(
+            "async reply(replyMessage)",
+            messageClass);
+
+        Assert.Contains(
+            "@typedef {",
+            javascript);
+
+        Assert.Contains(
+            "} ReplyMessagePropertiesInput",
+            javascript);
+
+        Assert.Contains(
+            "@param {ReplyMessagePropertiesInput} replyMessage",
+            javascript);
+
+        Assert.Contains(
+            "const result = await __runeHostMessageReply(replyMessage);",
+            javascript);
+
+        Assert.DoesNotContain(
+            "__runeInstallMessageReply",
+            javascript);
+
+        Assert.DoesNotContain(
+            "this.__host",
+            javascript);
+
+        Assert.DoesNotContain(
+            "interface RuneEventArguments",
+            javascript);
+
+        Assert.DoesNotContain(
+            "export class",
+            javascript);
+
+        Assert.DoesNotContain(
+            "readonly channelId:",
+            javascript);
+
+        Assert.DoesNotContain(
+            "payload: any",
+            javascript);
     }
 
     [Fact]
@@ -303,6 +377,14 @@ public sealed class RuneGeneratorTests
             message);
 
         Assert.Contains(
+            "<TabItem label=\"JavaScript\">",
+            message);
+
+        Assert.Contains(
+            "class Message extends RestMessage",
+            message);
+
+        Assert.Contains(
             "pub struct Message",
             message);
 
@@ -398,6 +480,10 @@ public sealed class RuneGeneratorTests
 
         Assert.Contains(
             "const reply = await message.reply",
+            restMessage);
+
+        Assert.Contains(
+            "```js",
             restMessage);
 
         Assert.Contains(

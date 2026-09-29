@@ -120,6 +120,21 @@ public static class RuneApiDocumentationEmitter
         text.AppendLine("```");
         text.AppendLine();
         text.AppendLine("  </TabItem>");
+        text.AppendLine("  <TabItem label=\"JavaScript\">");
+        text.AppendLine();
+        text.AppendLine("```js");
+        text.AppendLine("const RuneEventArguments = {");
+
+        foreach (var runeEvent in model.Events)
+        {
+            text.AppendLine(
+                $"    {runeEvent.Name}: {runeEvent.Payload},");
+        }
+
+        text.AppendLine("};");
+        text.AppendLine("```");
+        text.AppendLine();
+        text.AppendLine("  </TabItem>");
         text.AppendLine("  <TabItem label=\"Rust\">");
         text.AppendLine();
         text.AppendLine("```rust");
@@ -330,6 +345,14 @@ public static class RuneApiDocumentationEmitter
                       ? string.Empty
                       : $" extends {type.Base}");
 
+        var javascript =
+            type.IsEnum
+                ? $"const {type.Name} = {{ ... }}"
+                : $"class {type.Name}" +
+                  (type.Base is null
+                      ? string.Empty
+                      : $" extends {type.Base}");
+
         var rust =
             type.IsEnum
                 ? $"pub enum {type.Name}"
@@ -339,6 +362,11 @@ public static class RuneApiDocumentationEmitter
         text.AppendLine("  <TabItem label=\"TypeScript\">");
         text.AppendLine();
         text.AppendLine($"```ts\n{typeScript}\n```");
+        text.AppendLine();
+        text.AppendLine("  </TabItem>");
+        text.AppendLine("  <TabItem label=\"JavaScript\">");
+        text.AppendLine();
+        text.AppendLine($"```js\n{javascript}\n```");
         text.AppendLine();
         text.AppendLine("  </TabItem>");
         text.AppendLine("  <TabItem label=\"Rust\">");
@@ -361,20 +389,26 @@ public static class RuneApiDocumentationEmitter
         text.AppendLine();
         text.AppendLine("<Tabs syncKey=\"language\">");
 
-        foreach (var language in new[] { "typescript", "rust" })
+        foreach (var language in new[] { "typescript", "javascript", "rust" })
         {
             if (!examples.TryGetValue(language, out var example))
                 continue;
 
             var label =
-                language == "typescript"
-                    ? "TypeScript"
-                    : "Rust";
+                language switch
+                {
+                    "typescript" => "TypeScript",
+                    "javascript" => "JavaScript",
+                    _ => "Rust"
+                };
 
             var fence =
-                language == "typescript"
-                    ? "ts"
-                    : "rust";
+                language switch
+                {
+                    "typescript" => "ts",
+                    "javascript" => "js",
+                    _ => "rust"
+                };
 
             text.AppendLine($"  <TabItem label=\"{label}\">");
             text.AppendLine();
@@ -407,6 +441,22 @@ public static class RuneApiDocumentationEmitter
         {
             text.AppendLine(
                 $"`{RuneApiEmitter.TypeScriptTypeForDocumentation(valueType)}`");
+        }
+
+        text.AppendLine();
+        text.AppendLine("  </TabItem>");
+        text.AppendLine("  <TabItem label=\"JavaScript\">");
+        text.AppendLine();
+
+        if (valueType.IsSelectedType)
+        {
+            text.AppendLine(
+                $"[{valueType.Name}](../{Slug(valueType.Name)}/)");
+        }
+        else
+        {
+            text.AppendLine(
+                $"`{JavaScriptType(valueType)}`");
         }
 
         text.AppendLine();
@@ -455,6 +505,12 @@ public static class RuneApiDocumentationEmitter
             $"```ts\nreadonly {RuneApiEmitter.TypeScriptMemberForDocumentation(member.Name)}: {RuneApiEmitter.TypeScriptTypeForDocumentation(member.Type)};\n```");
         text.AppendLine();
         text.AppendLine("  </TabItem>");
+        text.AppendLine("  <TabItem label=\"JavaScript\">");
+        text.AppendLine();
+        text.AppendLine(
+            $"```js\n{RuneApiEmitter.TypeScriptMemberForDocumentation(member.Name)}\n```");
+        text.AppendLine();
+        text.AppendLine("  </TabItem>");
         text.AppendLine("  <TabItem label=\"Rust\">");
         text.AppendLine();
         text.AppendLine(
@@ -494,10 +550,16 @@ public static class RuneApiDocumentationEmitter
             $"```ts\n{RuneApiEmitter.TypeScriptMethodForDocumentation(method.Name)}({tsParameters}): Promise<{RuneApiEmitter.TypeScriptTypeForDocumentation(method.Result)}>;\n```");
         text.AppendLine();
         text.AppendLine("  </TabItem>");
+        text.AppendLine("  <TabItem label=\"JavaScript\">");
+        text.AppendLine();
+        text.AppendLine(
+            $"```js\n{RuneApiEmitter.TypeScriptMethodForDocumentation(method.Name)}({string.Join(", ", method.Parameters.Select(parameter => RuneApiEmitter.TypeScriptMemberForDocumentation(parameter.Name)))})\n```");
+        text.AppendLine();
+        text.AppendLine("  </TabItem>");
         text.AppendLine("  <TabItem label=\"Rust\">");
         text.AppendLine();
         text.AppendLine(
-            $"```rust\n{RuneApiEmitter.RustMethodForDocumentation(method.Name)}(&self, host: &mut dyn RuneHost{rustParameters}) -> Result<{RuneApiEmitter.RustTypeForDocumentation(method.Result)}, String>;\n```");
+            $"```rust\n{RuneApiEmitter.RustMethodForDocumentation(method.Name)}(&self{rustParameters}) -> Result<{RuneApiEmitter.RustTypeForDocumentation(method.Result)}, String>;\n```");
         text.AppendLine();
         text.AppendLine("  </TabItem>");
         text.AppendLine("</Tabs>");
@@ -584,6 +646,12 @@ public static class RuneApiDocumentationEmitter
             "TypeScript uses camelCase names and string Discord IDs.");
         text.AppendLine();
         text.AppendLine("  </TabItem>");
+        text.AppendLine("  <TabItem label=\"JavaScript\">");
+        text.AppendLine();
+        text.AppendLine(
+            "JavaScript uses camelCase names and string Discord IDs.");
+        text.AppendLine();
+        text.AppendLine("  </TabItem>");
         text.AppendLine("  <TabItem label=\"Rust\">");
         text.AppendLine();
         text.AppendLine(
@@ -592,6 +660,23 @@ public static class RuneApiDocumentationEmitter
         text.AppendLine("  </TabItem>");
         text.AppendLine("</Tabs>");
         text.AppendLine();
+    }
+
+    private static string JavaScriptType(
+        RuneApiValueType type)
+    {
+        var value =
+            type.Name switch
+            {
+                "u64" => "string",
+                "bool" => "boolean",
+                "string" => "string",
+                _ => type.Name
+            };
+
+        return type.Optional
+            ? value + " | null"
+            : value;
     }
 
     private static void AppendTypeFrontmatter(

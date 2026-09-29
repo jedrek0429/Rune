@@ -39,8 +39,8 @@ public sealed class FirecrackerBuildTests
                 RuneLanguage.TypeScript,
                 RuneApiEventType.MessageCreate,
                 "await message.reply({ content: \"hello\" });",
-                "declare class Message {}",
                 "class Message {}",
+                "",
                 "");
 
         Assert.Contains(
@@ -54,6 +54,39 @@ public sealed class FirecrackerBuildTests
         Assert.Contains(
             "await message.reply",
             typescript);
+
+        var javascript =
+            RuneSourceComposer.Compose(
+                RuneLanguage.JavaScript,
+                RuneApiEventType.MessageCreate,
+                "await message.reply({ content: \"hello\" });",
+                "",
+                "class Message {}",
+                "");
+
+        Assert.Contains(
+            "class Message {}",
+            javascript);
+
+        Assert.Contains(
+            "@param {Message} message",
+            javascript);
+
+        Assert.Contains(
+            "const envelope = /** @type {__RuneEnvelope} */ (",
+            javascript);
+
+        Assert.Contains(
+            "JSON.parse(readFileSync(0, \"utf8\"))",
+            javascript);
+
+        Assert.Contains(
+            "await message.reply",
+            javascript);
+
+        Assert.DoesNotContain(
+            "message: Message",
+            javascript);
 
         var rust =
             RuneSourceComposer.Compose(

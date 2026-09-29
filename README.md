@@ -10,7 +10,7 @@
 
 Rune builds uploaded scripts into executable artifacts and runs each invocation inside an isolated Firecracker microVM.
 
-The current build pipeline supports JavaScript, TypeScript, Python, Rust, C, and C++. Rune.Api is a deliberately selected subset of NetCord.
+The current build pipeline supports JavaScript, TypeScript, Python, Rust, C, and C++. Rune API is a deliberately selected subset of NetCord.
 
 ## Source layout
 
@@ -31,7 +31,7 @@ Cross-component contracts live separately from implementations:
     ├── rune-api.yaml   script-facing Rune.Api SSOT
     └── runtime.yaml    C# ↔ Rust runtime protocol SSOT
 
-`Rune.Generator` derives internal C# types/projections, Rust protocol types, TypeScript/Rust Rune.Api bindings and shared protocol constants from those contracts. Generated representations are not hand-maintained.
+`Rune.Generator` derives internal C# types/projections, Rust protocol types, JavaScript/TypeScript/Rust Rune API bindings and shared protocol constants from those contracts. Generated representations are not hand-maintained.
 
 ## Runtime architecture
 

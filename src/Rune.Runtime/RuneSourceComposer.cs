@@ -8,17 +8,22 @@ public static class RuneSourceComposer
         RuneLanguage language,
         RuneApiEventType eventType,
         string source,
-        string typeScriptDeclarations,
-        string javaScriptRuntime,
+        string typeScriptBinding,
+        string javaScriptBinding,
         string rustBinding) =>
         language switch
         {
+            RuneLanguage.JavaScript =>
+                ComposeJavaScript(
+                    eventType,
+                    source,
+                    javaScriptBinding),
+
             RuneLanguage.TypeScript =>
                 ComposeTypeScript(
                     eventType,
                     source,
-                    typeScriptDeclarations,
-                    javaScriptRuntime),
+                    typeScriptBinding),
 
             RuneLanguage.Rust =>
                 ComposeRust(
@@ -29,16 +34,95 @@ public static class RuneSourceComposer
             _ => source
         };
 
+    private static string ComposeJavaScript(
+        RuneApiEventType eventType,
+        string source,
+        string binding)
+    {
+        if (string.IsNullOrWhiteSpace(binding))
+        {
+            throw new InvalidOperationException(
+                "Generated JavaScript Rune API binding is missing. Run Rune.Generator before building runes.");
+        }
+
+        var (payloadType, argument) =
+            Event(eventType);
+
+        var payloadInputType =
+            payloadType + "Input";
+
+        return
+            "import { readFileSync } from \"node:fs\";\n\n" +
+            "/**\n" +
+            $" * @param {{{payloadType}}} {argument}\n" +
+            " */\n" +
+            "async function rune(" +
+            argument +
+            ") {\n" +
+            "// <rune-user-source>\n" +
+            source +
+            "\n// </rune-user-source>\n" +
+            "}\n\n" +
+            binding +
+            "\n\n" +
+            "/** @typedef {{ payload: " +
+            payloadInputType +
+            " }} __RuneEnvelope */\n" +
+            "/** @typedef {{ replyMessage: ReplyMessagePropertiesInput }} __RuneReplyArguments */\n" +
+            "/** @typedef {{ method: string, arguments: __RuneReplyArguments }} __RuneAction */\n\n" +
+            "/** @type {Array<__RuneAction>} */\n" +
+            "let __runeActions = [];\n" +
+            "let __runePhase = \"startup\";\n\n" +
+            "/**\n" +
+            " * @param {ReplyMessagePropertiesInput} replyMessage\n" +
+            " * @returns {Promise<RestMessage>}\n" +
+            " */\n" +
+            "async function __runeHostMessageReply(replyMessage) {\n" +
+            "    __runePhase = \"record reply action\";\n" +
+            "    __runeActions.push({\n" +
+            "        method: \"message.reply\",\n" +
+            "        arguments: { replyMessage },\n" +
+            "    });\n\n" +
+            "    __runePhase = \"hydrate reply\";\n" +
+            "    return new RestMessage({\n" +
+            "        id: \"0\",\n" +
+            "        channelId: \"0\",\n" +
+            "        content: replyMessage.content ?? \"\",\n" +
+            "        author: { id: \"0\", username: \"Rune\" },\n" +
+            "    });\n" +
+            "}\n\n" +
+            "async function __runeMain() {\n" +
+            "    const envelope = /** @type {__RuneEnvelope} */ (\n" +
+            "        JSON.parse(readFileSync(0, \"utf8\"))\n" +
+            "    );\n\n" +
+            "    __runeActions = [];\n" +
+            "    __runePhase = \"hydrate event\";\n" +
+            "    const " +
+            argument +
+            " = new " +
+            payloadType +
+            "(envelope.payload);\n\n" +
+            "    try {\n" +
+            "        __runePhase = \"run rune\";\n" +
+            "        await rune(" +
+            argument +
+            ");\n" +
+            "        console.log(JSON.stringify({ actions: __runeActions, error: null }));\n" +
+            "    } catch {\n" +
+            "        console.log(JSON.stringify({\n" +
+            "            actions: [],\n" +
+            "            error: \"Rune execution failed during \" + __runePhase + \".\",\n" +
+            "        }));\n" +
+            "    }\n" +
+            "}\n\n" +
+            "void __runeMain();\n";
+    }
+
     private static string ComposeTypeScript(
         RuneApiEventType eventType,
         string source,
-        string declarations,
-        string runtime)
+        string implementation)
     {
-        var implementation =
-            string.IsNullOrWhiteSpace(runtime)
-                ? declarations
-                : runtime;
 
         if (string.IsNullOrWhiteSpace(implementation))
         {
