@@ -70,26 +70,29 @@ public static class RuneSourceComposer
             " }} __RuneEnvelope */\n" +
             "/** @typedef {{ replyMessage: ReplyMessagePropertiesInput }} __RuneReplyArguments */\n" +
             "/** @typedef {{ method: string, arguments: __RuneReplyArguments }} __RuneAction */\n\n" +
+            "/** @type {Array<__RuneAction>} */\n" +
+            "let __runeActions = [];\n\n" +
+            "/**\n" +
+            " * @param {ReplyMessagePropertiesInput} replyMessage\n" +
+            " * @returns {Promise<RestMessage>}\n" +
+            " */\n" +
+            "async function __runeHostMessageReply(replyMessage) {\n" +
+            "    __runeActions.push({\n" +
+            "        method: \"message.reply\",\n" +
+            "        arguments: { replyMessage },\n" +
+            "    });\n\n" +
+            "    return new RestMessage({\n" +
+            "        id: \"0\",\n" +
+            "        channelId: \"0\",\n" +
+            "        content: replyMessage.content ?? \"\",\n" +
+            "        author: { id: \"0\", username: \"Rune\" },\n" +
+            "    });\n" +
+            "}\n\n" +
             "async function __runeMain() {\n" +
             "    const envelope = /** @type {__RuneEnvelope} */ (\n" +
             "        JSON.parse(readFileSync(0, \"utf8\"))\n" +
             "    );\n\n" +
-            "    /** @type {Array<__RuneAction>} */\n" +
-            "    const actions = [];\n" +
-            "    __runeInstallMessageReply(\n" +
-            "        async (replyMessage) => {\n" +
-            "            actions.push({\n" +
-            "                method: \"message.reply\",\n" +
-            "                arguments: { replyMessage },\n" +
-            "            });\n\n" +
-            "            return new RestMessage({\n" +
-            "                id: \"0\",\n" +
-            "                channelId: \"0\",\n" +
-            "                content: replyMessage.content ?? \"\",\n" +
-            "                author: { id: \"0\", username: \"Rune\" },\n" +
-            "            });\n" +
-            "        },\n" +
-            "    );\n\n" +
+            "    __runeActions = [];\n" +
             "    const " +
             argument +
             " = new " +
@@ -99,7 +102,7 @@ public static class RuneSourceComposer
             "        await rune(" +
             argument +
             ");\n" +
-            "        console.log(JSON.stringify({ actions, error: null }));\n" +
+            "        console.log(JSON.stringify({ actions: __runeActions, error: null }));\n" +
             "    } catch {\n" +
             "        console.log(JSON.stringify({\n" +
             "            actions: [],\n" +
