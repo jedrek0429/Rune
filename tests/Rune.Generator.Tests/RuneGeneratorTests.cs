@@ -87,6 +87,16 @@ public sealed class RuneGeneratorTests
             "class Message extends RestMessage",
             javascript);
 
+        var messageClass =
+            javascript[
+                javascript.IndexOf(
+                    "class Message extends RestMessage",
+                    StringComparison.Ordinal)..];
+
+        Assert.Contains(
+            "async reply(replyMessage)",
+            messageClass);
+
         Assert.Contains(
             "@typedef {",
             javascript);
