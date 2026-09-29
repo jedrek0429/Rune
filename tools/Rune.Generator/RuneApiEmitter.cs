@@ -116,7 +116,9 @@ public static class RuneApiEmitter
 
             text.Append("    }\n");
 
-            foreach (var method in type.Methods)
+            foreach (var method in AllMethods(
+                         model,
+                         type))
             {
                 var name =
                     Camel(WithoutAsync(method.Name));
