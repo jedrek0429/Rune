@@ -142,6 +142,7 @@ public static class RuneApiEmitter
 
                 text.Append(
                     $"    async {name}({parameters}) {{\n" +
+                    $"        __runePhase = \"dispatch {method.HostName}\";\n" +
                     $"        const result = await {JavaScriptHostFunctionName(method.HostName)}(");
 
                 text.Append(
