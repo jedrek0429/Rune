@@ -111,7 +111,7 @@ public static class RuneSourceComposer
             "    } catch (error) {\n" +
             "        console.log(JSON.stringify({\n" +
             "            actions: [],\n" +
-            "            error: \"Rune execution failed during \" + __runePhase + \": \" + String(error),\n" +
+            "            error: error instanceof Error ? error.message : String(error),\n" +
             "        }));\n" +
             "    }\n" +
             "}\n\n" +
