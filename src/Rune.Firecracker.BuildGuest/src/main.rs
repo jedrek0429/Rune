@@ -61,19 +61,11 @@ fn main() -> Result<()> {
             &["-O2", "/input/source.cpp", "-o", "/work/artifact"],
             &[],
         ),
-	"javascript" => (
-    	    "scriptc",
-    	    &[
-        	"build",
-        	"/input/source.js",
-        	"-o",
-        	"/work/artifact",
-    	    ],
-            &[
-                ("SCRIPTC_CC", "zigcc"),
-                ("SCRIPTC_TARGET", "x86_64-linux-gnu.2.36"),
-            ],
-	),
+        "javascript" => (
+            "rune-build-javascript",
+            &["/input/source.js", "/work/artifact"],
+            &[],
+        ),
 	"typescript" => (
             "scriptc",
             &["build", "/input/source.ts", "-o", "/work/artifact"],
