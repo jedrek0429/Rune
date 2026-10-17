@@ -60,7 +60,7 @@ RUN case "$POOL" in \
         tar -xzf /tmp/quickjs.tar.gz -C /tmp/quickjs --strip-components=1 && \
         cmake -S /tmp/quickjs -B /tmp/quickjs/build \
             -DCMAKE_BUILD_TYPE=Release -DQJS_BUILD_LIBC=ON && \
-        cmake --build /tmp/quickjs/build --target qjsc -j 2 && \
+        cmake --build /tmp/quickjs/build --target qjsc qjs_exe -j 2 && \
         cmake --install /tmp/quickjs/build && \
         case "$(dpkg --print-architecture)" in \
           amd64) node_arch=x64; zig_arch=x86_64 ;; \
