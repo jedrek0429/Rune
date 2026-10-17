@@ -11,6 +11,7 @@ case "$profile" in
   rust) base=rust:1-bookworm; size=1536 ;;
   clang) base=debian:bookworm-slim; size=768 ;;
   scriptc) base=debian:bookworm-slim; size=768 ;;
+  quickjs) base=debian:bookworm-slim; size=768 ;;
   python) base="debian:bookworm-slim"; size=1024 ;;
   *) echo "unsupported build profile: $profile" >&2; exit 2 ;;
 esac
