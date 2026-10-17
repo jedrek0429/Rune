@@ -69,7 +69,7 @@ public static class RuneSourceComposer
             payloadInputType +
             " }} __RuneEnvelope */\n" +
             "/** @typedef {{ replyMessage: ReplyMessagePropertiesInput }} __RuneReplyArguments */\n" +
-            "/** @typedef {{ method: string, arguments: __RuneReplyArguments }} __RuneAction */\n\n" +
+            "/** @typedef {{ method: string, \"arguments\": __RuneReplyArguments }} __RuneAction */\n\n" +
             "/** @type {Array<__RuneAction>} */\n" +
             "let __runeActions = [];\n" +
             "let __runePhase = \"startup\";\n\n" +
@@ -81,7 +81,7 @@ public static class RuneSourceComposer
             "    __runePhase = \"record reply action\";\n" +
             "    __runeActions.push({\n" +
             "        method: \"message.reply\",\n" +
-            "        arguments: { replyMessage },\n" +
+            "        \"arguments\": { replyMessage },\n" + // "arguments" is a reserved word in JS, so we need to quote it
             "    });\n\n" +
             "    __runePhase = \"hydrate reply\";\n" +
             "    return new RestMessage({\n" +
@@ -156,12 +156,12 @@ public static class RuneSourceComposer
             payloadShape +
             ";\n" +
             "    };\n\n" +
-            "    const actions: Array<{ method: string; arguments: { replyMessage: { content: string | null } } }> = [];\n" +
+            "    const actions: Array<{ method: string; \"arguments\": { replyMessage: { content: string | null } } }> = [];\n" +
             "    const host = new RuneHost(\n" +
             "        async (replyMessage: { content: string | null }): Promise<RestMessage> => {\n" +
             "            actions.push({\n" +
             "                method: \"message.reply\",\n" +
-            "                arguments: { replyMessage },\n" +
+            "                \"arguments\": { replyMessage },\n" + // "arguments" is a reserved word in JS, so we need to quote it
             "            });\n\n" +
             "            return new RestMessage({\n" +
             "                id: \"0\",\n" +
