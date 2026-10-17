@@ -30,6 +30,7 @@ command -v docker >/dev/null
 command -v mkfs.ext4 >/dev/null
 mkdir -p "$(dirname "$rootfs")"
 docker build \
+  --network=host \
   --file src/Rune.Firecracker/images/Dockerfile.build \
   --build-arg "BASE_IMAGE=$base" \
   --build-arg "POOL=$profile" \
