@@ -85,7 +85,7 @@ public sealed class FirecrackerBuildTests
             javascript);
 
         Assert.Contains(
-            "import * as std from \\"qjs:std\\";",
+            "import * as std from \"qjs:std\";",
             javascript);
 
         Assert.DoesNotContain(
