@@ -52,7 +52,7 @@ public static class RuneSourceComposer
             payloadType + "Input";
 
         return
-            "import { readFileSync } from \"node:fs\";\n\n" +
+            "import * as std from \"qjs:std\";\n\n" +
             "/**\n" +
             $" * @param {{{payloadType}}} {argument}\n" +
             " */\n" +
@@ -93,7 +93,7 @@ public static class RuneSourceComposer
             "}\n\n" +
             "async function __runeMain() {\n" +
             "    const envelope = /** @type {__RuneEnvelope} */ (\n" +
-            "        JSON.parse(readFileSync(0, \"utf8\"))\n" +
+            "        JSON.parse(std.in.readAsString())\n" +
             "    );\n\n" +
             "    __runeActions = [];\n" +
             "    __runePhase = \"hydrate event\";\n" +
@@ -107,12 +107,12 @@ public static class RuneSourceComposer
             "        await rune(" +
             argument +
             ");\n" +
-            "        console.log(JSON.stringify({ actions: __runeActions, error: null }));\n" +
+            "        std.out.puts(JSON.stringify({ actions: __runeActions, error: null }) + \"\\n\");\n" +
             "    } catch (error) {\n" +
-            "        console.log(JSON.stringify({\n" +
+            "        std.out.puts(JSON.stringify({\n" +
             "            actions: [],\n" +
             "            error: error instanceof Error ? error.message : String(error),\n" +
-            "        }));\n" +
+            "        }) + \"\\n\");\n" +
             "    }\n" +
             "}\n\n" +
             "void __runeMain();\n";
