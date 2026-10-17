@@ -8,7 +8,7 @@ source "$script_dir/generated-runtime.sh"
 MAX_SOURCE_BYTES=$((64 * 1024))
 
 if [[ $# -ne 3 ]]; then
-  echo "usage: $0 <rust|clang|scriptc|python> <rust|c|cpp|javascript|typescript|python> <source>" >&2
+  echo "usage: $0 <rust|clang|quickjs|scriptc|python> <rust|c|cpp|javascript|typescript|python> <source>" >&2
   exit 2
 fi
 
@@ -19,7 +19,7 @@ case "$pool/$language" in
   rust/rust) vcpu=2; mem_mib=1024; disk_mib=512; wall_seconds=45; pid_limit=128; fd_limit=256; input_name=source.rs ;;
   clang/c) vcpu=1; mem_mib=512; disk_mib=512; wall_seconds=20; pid_limit=128; fd_limit=256; input_name=source.c ;;
   clang/cpp) vcpu=1; mem_mib=512; disk_mib=512; wall_seconds=20; pid_limit=128; fd_limit=256; input_name=source.cpp ;;
-  scriptc/javascript) vcpu=2; mem_mib=1024; disk_mib=512; wall_seconds=45; pid_limit=128; fd_limit=256; input_name=source.js ;;
+  quickjs/javascript) vcpu=2; mem_mib=1024; disk_mib=512; wall_seconds=45; pid_limit=128; fd_limit=256; input_name=source.js ;;
   scriptc/typescript) vcpu=2; mem_mib=1024; disk_mib=512; wall_seconds=45; pid_limit=128; fd_limit=256; input_name=source.ts ;;
   python/python) vcpu=1; mem_mib=512; disk_mib=256; wall_seconds=20; pid_limit=128; fd_limit=256; input_name=source.py ;;
   *) echo "unsupported build target: $pool/$language" >&2; exit 2 ;;
