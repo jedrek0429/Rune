@@ -22,7 +22,7 @@ public sealed class FirecrackerRuneBuilder(
         language switch
         {
             RuneLanguage.JavaScript =>
-                ("scriptc", "javascript"),
+                ("quickjs", "javascript"),
             RuneLanguage.TypeScript =>
                 ("scriptc", "typescript"),
             RuneLanguage.Python =>
