@@ -1,0 +1,167 @@
+using System.Collections.Concurrent;
+
+namespace Rune.Runtime;
+
+public sealed class RuneInvocationReceiverRegistry
+{
+    private readonly ConcurrentDictionary<
+        Guid,
+        Entry> _entries = new();
+
+    public void Register(
+        Guid invocationId,
+        object receiver)
+    {
+        ArgumentNullException
+            .ThrowIfNull(receiver);
+
+        if (!_entries.TryAdd(
+                invocationId,
+                new Entry(receiver)))
+        {
+            throw new InvalidOperationException(
+                $"Invocation {invocationId} already has a registered receiver.");
+        }
+    }
+
+    public T GetRequired<T>(
+        Guid invocationId)
+        where T : class
+    {
+        if (!_entries.TryGetValue(
+                invocationId,
+                out var entry))
+        {
+            throw new InvalidOperationException(
+                $"Invocation {invocationId} has no registered receiver.");
+        }
+
+        if (entry.Receiver is not T typed)
+        {
+            throw new InvalidOperationException(
+                $"Invocation {invocationId} receiver is not a {typeof(T).FullName}.");
+        }
+
+        return typed;
+    }
+
+    public void Seal(
+        Guid invocationId,
+        int expectedExecutions)
+    {
+        ArgumentOutOfRangeException
+            .ThrowIfNegative(
+                expectedExecutions);
+
+        var entry =
+            GetEntry(invocationId);
+
+        var remove =
+            false;
+
+        lock (entry.Gate)
+        {
+            if (entry.Sealed)
+            {
+                throw new InvalidOperationException(
+                    $"Invocation {invocationId} receiver is already sealed.");
+            }
+
+            entry.Sealed = true;
+            entry.ExpectedExecutions =
+                expectedExecutions;
+
+            remove =
+                entry.CompletedExecutions >=
+                expectedExecutions;
+        }
+
+        if (remove)
+        {
+            Remove(
+                invocationId,
+                entry);
+        }
+    }
+
+    public bool CompleteExecution(
+        Guid invocationId)
+    {
+        if (!_entries.TryGetValue(
+                invocationId,
+                out var entry))
+        {
+            return false;
+        }
+
+        var remove =
+            false;
+
+        lock (entry.Gate)
+        {
+            entry.CompletedExecutions += 1;
+
+            remove =
+                entry.Sealed &&
+                entry.CompletedExecutions >=
+                    entry.ExpectedExecutions;
+        }
+
+        if (remove)
+        {
+            Remove(
+                invocationId,
+                entry);
+        }
+
+        return true;
+    }
+
+    public void Cancel(
+        Guid invocationId)
+    {
+        _entries.TryRemove(
+            invocationId,
+            out _);
+    }
+
+    private Entry GetEntry(
+        Guid invocationId)
+    {
+        if (_entries.TryGetValue(
+                invocationId,
+                out var entry))
+        {
+            return entry;
+        }
+
+        throw new InvalidOperationException(
+            $"Invocation {invocationId} has no registered receiver.");
+    }
+
+    private void Remove(
+        Guid invocationId,
+        Entry entry)
+    {
+        _entries.TryRemove(
+            new KeyValuePair<Guid, Entry>(
+                invocationId,
+                entry));
+    }
+
+    private sealed class Entry(
+        object receiver)
+    {
+        public object Gate { get; } =
+            new();
+
+        public object Receiver { get; } =
+            receiver;
+
+        public bool Sealed { get; set; }
+
+        public int ExpectedExecutions { get; set; }
+
+        public int CompletedExecutions { get; set; }
+    }
+}

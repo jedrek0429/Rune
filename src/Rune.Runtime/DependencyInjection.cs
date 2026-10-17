@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Rune.Runtime.Wasm;
 
 namespace Rune.Runtime;
 
@@ -10,13 +9,12 @@ public static class DependencyInjection
         Action<RuneRuntimeOptions>? configure = null)
     {
         var options = new RuneRuntimeOptions();
-
         configure?.Invoke(options);
 
         services
             .AddSingleton(options)
-            .AddSingleton<RuneWasmCache>()
-            .AddSingleton<RuneExecutor>();
+            .AddSingleton<IRuneBuilder, FirecrackerRuneBuilder>()
+            .AddSingleton<IRuneTransport, RedisRuneTransport>();
 
         return services;
     }

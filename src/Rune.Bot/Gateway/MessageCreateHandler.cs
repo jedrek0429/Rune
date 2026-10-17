@@ -1,17 +1,17 @@
-using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
-using NetCord.Rest;
-using Rune.Core.Invocations;
+
+using Rune.Api;
 using Rune.Runtime;
 
 namespace Rune.Bot.Gateway;
 
 public sealed class MessageCreateHandler(
-    RuneEventDispatcher dispatcher)
+    RuneEventDispatcher dispatcher,
+    RuneInvocationReceiverRegistry receivers)
     : IMessageCreateGatewayHandler
 {
     public async ValueTask HandleAsync(
-        Message message)
+        NetCord.Gateway.Message message)
     {
         if (message.GuildId is not ulong guildId ||
             message.Author.IsBot)
@@ -19,33 +19,52 @@ public sealed class MessageCreateHandler(
             return;
         }
 
-        var invocation =
-            new MessageCreateEventRuneInvocation(
-                Guid.NewGuid(),
-                guildId,
-                message.ChannelId,
-                message.Id,
-                message.Author.Id,
-                message.Author.Username,
-                message.Content);
+        var payload =
+            NetCordRuneApi.Project(message);
 
-        var failures =
-            await dispatcher.DispatchAsync(
-                invocation);
+        var invocationId =
+            Guid.NewGuid();
 
-        if (failures.Count == 0)
+        receivers.Register(
+            invocationId,
+            message);
+
+        RuneDispatchResult result;
+
+        try
+        {
+            result =
+                await dispatcher.DispatchAsync(
+                    new EventRuneInvocation(
+                        invocationId,
+                        guildId,
+                        RuneApiEventType.MessageCreate,
+                        RuneApiPayload.Serialize(payload)));
+
+            receivers.Seal(
+                invocationId,
+                result.QueuedExecutions);
+        }
+        catch
+        {
+            receivers.Cancel(invocationId);
+            throw;
+        }
+
+        if (result.Failures.Count == 0)
             return;
 
         var text =
             string.Join(
                 '\n',
-                failures
+                result.Failures
                     .Take(3)
-                    .Select(failure =>
-                        $"`{failure.RuneName}`: {failure.Message}"));
+                    .Select(
+                        failure =>
+                            $"{failure.RuneName}: {failure.Message}"));
 
         await message.ReplyAsync(
-            new ReplyMessageProperties
+            new NetCord.Rest.ReplyMessageProperties
             {
                 Content = text
             });

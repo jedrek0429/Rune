@@ -1,0 +1,197 @@
+---
+import { Image } from 'astro:assets';
+import runeLogo from '../assets/rune.png';
+
+const base = import.meta.env.BASE_URL;
+const href = (path) => `${base}${path.replace(/^\//, '')}`;
+const clientId = '1541130190392918126';
+const invite =
+  `https://discord.com/oauth2/authorize?client_id=${clientId}&scope=bot%20applications.commands`;
+---
+
+<section class="home-hero" aria-labelledby="rune-home-title">
+  <div class="hero-glow" aria-hidden="true"></div>
+
+  <div class="hero-inner">
+    <Image
+      class="hero-logo"
+      src={runeLogo}
+      alt="Rune"
+      width={384}
+      height={384}
+      format="webp"
+      quality={86}
+      loading="eager"
+      fetchpriority="high"
+    />
+
+    <div class="hero-copy">
+      <h1 id="rune-home-title">Rune</h1>
+      <p>Create Discord automations in any language.</p>
+    </div>
+
+    <nav class="hero-actions" aria-label="Get started with Rune">
+      <div class="hero-actions-primary">
+        <a class="primary-action" href={href('articles/quick-start/')}>Get Started</a>
+        <a class="primary-action" href={invite}>Add Bot</a>
+      </div>
+
+      <div class="hero-actions-secondary">
+        <a class="secondary-action" href={href('api/generated/')}>API Reference</a>
+        <a class="secondary-action" href={href('bot/generated/')}>Bot Reference</a>
+      </div>
+    </nav>
+  </div>
+</section>
+
+<style>
+  .home-hero {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: calc(100svh - 4.5rem);
+    margin-inline: calc(50% - 50vw);
+    padding: clamp(3rem, 8vh, 6rem) 1.5rem;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .hero-glow {
+    position: absolute;
+    z-index: -1;
+    width: min(46rem, 90vw);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background:
+      radial-gradient(
+        circle,
+        color-mix(in srgb, var(--rune-gold) 13%, transparent) 0%,
+        color-mix(in srgb, var(--rune-gold) 5%, transparent) 34%,
+        transparent 70%
+      );
+    filter: blur(1rem);
+    pointer-events: none;
+  }
+
+  .hero-inner {
+    display: flex;
+    width: min(56rem, 100%);
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .hero-logo {
+    width: clamp(7.5rem, 14vw, 10.5rem);
+    height: auto;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--rune-gold) 52%, transparent),
+      0 0 2.5rem color-mix(in srgb, var(--rune-gold) 20%, transparent);
+  }
+
+  .hero-copy {
+    margin-top: 1.8rem;
+  }
+
+  .hero-copy h1 {
+    margin: 0;
+    color: var(--sl-color-white);
+    font-size: clamp(3.5rem, 9vw, 6.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.055em;
+  }
+
+  .hero-copy p {
+    max-width: 42rem;
+    margin: 1.25rem auto 0;
+    color: var(--sl-color-gray-2);
+    font-size: clamp(1.05rem, 2.3vw, 1.35rem);
+    line-height: 1.55;
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+    margin-top: 2.25rem;
+  }
+
+  .hero-actions-primary,
+  .hero-actions-secondary {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+
+  .hero-actions a {
+    display: inline-flex;
+    min-width: 11.5rem;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.7rem 1.2rem;
+    border-radius: 0.65rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition:
+      transform 120ms ease,
+      background-color 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease;
+  }
+
+  .hero-actions .primary-action {
+    border: 1px solid var(--rune-gold-bright);
+    background: var(--rune-gold-bright);
+    color: #17130b;
+    box-shadow: 0 0.35rem 1.2rem rgba(0, 0, 0, 0.16);
+  }
+
+  .hero-actions .secondary-action {
+    min-height: 2.7rem;
+    border: 1px solid var(--rune-surface-border);
+    background: var(--rune-surface);
+    color: var(--sl-color-text);
+    font-weight: 650;
+  }
+
+  .hero-actions .primary-action:hover {
+    border-color: var(--rune-ivory);
+    background: var(--rune-ivory);
+    color: #17130b;
+    transform: translateY(-1px);
+  }
+
+  .hero-actions .secondary-action:hover {
+    border-color: var(--rune-gold);
+    background: var(--rune-surface-soft);
+    color: var(--sl-color-text-accent);
+    transform: translateY(-1px);
+  }
+
+  .hero-actions a:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--rune-gold-bright) 50%, white);
+    outline-offset: 3px;
+  }
+  @media (max-width: 40rem) {
+    .hero-actions,
+    .hero-actions-primary,
+    .hero-actions-secondary {
+      width: min(100%, 22rem);
+    }
+
+    .hero-actions-primary,
+    .hero-actions-secondary {
+      flex-direction: column;
+    }
+
+    .hero-actions a {
+      width: 100%;
+    }
+  }
+</style>

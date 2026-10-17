@@ -1,24 +1,19 @@
-using System.Text.Json;
-
-using Rune.Core.Invocations;
-using Rune.Core.Runes;
-using Rune.Runtime.Exceptions;
-using Rune.Runtime.Wasm;
-
 namespace Rune.Runtime;
 
 public sealed class RuneEventDispatcher(
     RuneRegistry registry,
-    RuneExecutor executor,
-    IRuneHostRequestHandler hostRequestHandler)
+    IRuneTransport transport)
 {
-    public async ValueTask<IReadOnlyList<RuneFailure>>
+    public async ValueTask<RuneDispatchResult>
         DispatchAsync(
             EventRuneInvocation invocation,
             CancellationToken cancellationToken = default)
     {
         var failures =
             new List<RuneFailure>();
+
+        var queuedExecutions =
+            0;
 
         var runes =
             registry.GetEventRunes(
@@ -27,79 +22,69 @@ public sealed class RuneEventDispatcher(
 
         foreach (var rune in runes)
         {
-            if (invocation is not
-                MessageCreateEventRuneInvocation message)
+            cancellationToken
+                .ThrowIfCancellationRequested();
+
+            if (rune.Artifact is null)
             {
+                failures.Add(
+                    new RuneFailure(
+                        rune.Name,
+                        "The rune has not been built yet."));
+
                 continue;
             }
 
-            var input =
-                JsonSerializer.SerializeToUtf8Bytes(
-                    new
-                    {
-                        message = new
-                        {
-                            id = message.MessageId,
-                            channelId =
-                                message.ChannelId,
-                            content =
-                                message.Content,
+            if (rune.Artifact.SizeBytes == 0 ||
+                rune.Artifact.SizeBytes >
+                    (ulong)RuntimeProtocol.MaxArtifactBytes)
+            {
+                failures.Add(
+                    new RuneFailure(
+                        rune.Name,
+                        "The built rune artifact is invalid."));
 
-                            author = new
-                            {
-                                id =
-                                    message.AuthorId,
-
-                                username =
-                                    message.AuthorUsername
-                            }
-                        }
-                    });
+                continue;
+            }
 
             try
             {
-                var result =
-                    await executor.ExecuteAsync(
-                        rune,
+                await transport.EnqueueAsync(
+                    new RuneInvocationEnvelope(
+                        Guid.NewGuid(),
                         invocation.InvocationId,
-                        input,
-                        cancellationToken);
+                        rune.Id,
+                        rune.Name,
+                        invocation.GuildId,
+                        rune.EventType,
+                        rune.Artifact,
+                        invocation.Payload,
+                        DateTimeOffset.UtcNow),
+                    cancellationToken);
 
-                // Commit host operations only after the
-                // WASM invocation completed successfully.
-                foreach (var request in result.Requests)
-                {
-                    await hostRequestHandler.HandleAsync(
-                        invocation,
-                        request,
-                        cancellationToken);
-                }
+                queuedExecutions += 1;
             }
-            catch (RuneTimeoutException exception)
+            catch (Exception exception)
+                when (
+                    exception is not
+                        OperationCanceledException)
             {
                 failures.Add(
                     new RuneFailure(
                         rune.Name,
-                        exception.Message));
-            }
-            catch (RuneExecutionException exception)
-            {
-                failures.Add(
-                    new RuneFailure(
-                        rune.Name,
-                        exception.Message));
-            }
-            catch (OperationCanceledException)
-                when (!cancellationToken.IsCancellationRequested)
-            {
-                // Rune was disabled/removed/updated while
-                // this event was being dispatched.
+                        "The invocation could not be queued."));
             }
         }
 
-        return failures;
+        return new RuneDispatchResult(
+            failures,
+            queuedExecutions);
     }
 }
+
+public sealed record RuneDispatchResult(
+    IReadOnlyList<RuneFailure> Failures,
+    int QueuedExecutions);
 
 public sealed record RuneFailure(
     string RuneName,

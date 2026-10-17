@@ -1,0 +1,29 @@
+#pragma once
+
+/* Rune runs compiled .mpy code only. */
+#define MICROPY_ENABLE_EXTERNAL_IMPORT (0)
+#define MICROPY_PERSISTENT_CODE_LOAD (1)
+
+/* Normal Python functionality exposed by Rune. */
+#define MICROPY_FLOAT_IMPL (MICROPY_FLOAT_IMPL_DOUBLE)
+#define MICROPY_LONGINT_IMPL (MICROPY_LONGINT_IMPL_MPZ)
+
+#define MICROPY_PY_JSON (1)
+#define MICROPY_PY_MATH (1)
+
+#define MICROPY_PY_COLLECTIONS_DEQUE (1)
+#define MICROPY_PY_COLLECTIONS_DEQUE_ITER (1)
+#define MICROPY_PY_COLLECTIONS_DEQUE_SUBSCR (1)
+
+#define MICROPY_PY_RE (1)
+
+#define MICROPY_PY_RANDOM (1)
+#define MICROPY_PY_RANDOM_EXTRA_FUNCS (1)
+
+#define MICROPY_PY_TIME (1)
+#define MICROPY_PY_TIME_GMTIME_LOCALTIME_MKTIME (1)
+#define MICROPY_PY_TIME_TIME_TIME_NS (1)
+
+#define MICROPY_PY_TIME_INCLUDEFILE "port/rune_time.h"
+
+#define MICROPY_EPOCH_IS_1970 (1)

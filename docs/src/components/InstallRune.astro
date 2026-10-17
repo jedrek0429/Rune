@@ -1,0 +1,31 @@
+---
+const clientId = '1541130190392918126';
+const invite =
+  `https://discord.com/oauth2/authorize?client_id=${clientId}&scope=bot%20applications.commands`;
+---
+
+<a class="install-rune" href={invite}>Add Rune to server</a>
+
+<style>
+  .install-rune {
+    display: flex;
+    width: fit-content;
+    margin: 0.8rem 0 0.55rem;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.65rem 1rem;
+    border: 1px solid var(--rune-gold);
+    border-radius: 0.6rem;
+    background: var(--rune-gold-bright);
+    color: #17130b;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .install-rune:hover {
+    background: var(--rune-ivory);
+    border-color: var(--rune-ivory);
+    color: #17130b;
+  }
+</style>

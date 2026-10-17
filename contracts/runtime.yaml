@@ -1,0 +1,38 @@
+schema: 1
+streams:
+  invocations: rune:invocations
+  results: rune:results
+  runner-consumer-group: rune-runners
+limits:
+  max-artifact-bytes: 16777216
+  max-invocation-bytes: 131072
+  max-result-bytes: 262144
+types:
+  BuiltRuneArtifact:
+    fields:
+      - { name: Id, type: string }
+      - { name: Digest, type: string }
+      - { name: Entrypoint, type: string }
+      - { name: SizeBytes, type: u64 }
+  RuneInvocationEnvelope:
+    fields:
+      - { name: ExecutionId, type: guid }
+      - { name: InvocationId, type: guid }
+      - { name: RuneId, type: guid }
+      - { name: RuneName, type: string }
+      - { name: GuildId, type: u64 }
+      - { name: EventType, type: rune-api-event }
+      - { name: Artifact, type: BuiltRuneArtifact }
+      - { name: Payload, type: json }
+      - { name: EnqueuedAt, type: datetime }
+  RuneHostAction:
+    fields:
+      - { name: Method, type: string }
+      - { name: Arguments, type: json }
+  RuneResultEnvelope:
+    fields:
+      - { name: ExecutionId, type: guid }
+      - { name: InvocationId, type: guid }
+      - { name: RuneId, type: guid }
+      - { name: Actions, type: "list<RuneHostAction>" }
+      - { name: Error, type: "string?" }

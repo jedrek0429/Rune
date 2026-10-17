@@ -2,6 +2,8 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 jobs:
@@ -20,52 +22,24 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
 
       - name: Verify Rust toolchain
         run: |
           rustc --version
           cargo --version
-          rustup target list --installed | grep wasm32-unknown-unknown
 
-      - name: Install Binaryen
-        env:
-          BINARYEN_VERSION: "131"
+      - name: Generate contracts
+        run: dotnet run --project tools/Rune.Generator --configuration Release -- generate
+
+      - name: Verify generated contracts are current
         run: |
-          curl -fsSL \
-            -o binaryen.tar.gz \
-            "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz"
-
-          echo "b5bf1f0eaf17c63ee588ff7a5954dc8f6ce2c26989051c66f24dfe9ece3e46db  binaryen.tar.gz" \
-            | sha256sum --check
-
-          tar -xzf binaryen.tar.gz
-
-          BINARYEN_BIN="$PWD/binaryen-version_${BINARYEN_VERSION}/bin"
-
-          echo "$BINARYEN_BIN" >> "$GITHUB_PATH"
-          export PATH="$BINARYEN_BIN:$PATH"
-
-          wasm-opt --version
-          wasm-merge --version
-
-      - name: Install Extism compilers
-        run: |
-          mkdir -p "$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          export PATH="$HOME/.local/bin:$PATH"
-
-          curl -fsSLO \
-            https://raw.githubusercontent.com/extism/js-pdk/main/install.sh
-          bash install.sh
-          rm install.sh
-
-          curl -fsSL \
-            https://raw.githubusercontent.com/extism/python-pdk/main/install.sh \
-            | bash
-
-          extism-js --help >/dev/null
-          extism-py --help >/dev/null
+          git diff --exit-code -- \
+            src/Rune.Api/Generated \
+            src/Rune.Runtime/Generated \
+            src/Rune.Firecracker.Runner/src/generated_protocol.rs \
+            src/Rune.Firecracker.Guest/src/generated_runtime.rs \
+            src/Rune.Firecracker/generated-runtime.sh
 
       - name: Restore
         run: dotnet restore
@@ -75,3 +49,130 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build --configuration Release
+
+      - name: Test build diagnostic formatter
+        run: python3 tests/firecracker/build-diagnostics.test.py
+
+      - name: Test Firecracker invocation contract
+        run: bash tests/firecracker/invocation-feature.test.sh
+
+      - name: Test microVM runtime cutover contract
+        run: bash tests/firecracker/runtime-cutover-feature.test.sh
+
+      - name: Test runner and warm-pool contract
+        run: bash tests/firecracker/runner-feature.test.sh
+
+      - name: Test build sandbox contract
+        run: bash tests/firecracker/build-sandbox-feature.test.sh
+
+      - name: Test Rust build contract
+        run: bash tests/firecracker/rust-build-feature.test.sh
+
+      - name: Test C build contract
+        run: bash tests/firecracker/c-build-feature.test.sh
+
+      - name: Test C++ build contract
+        run: bash tests/firecracker/cpp-build-feature.test.sh
+
+      - name: Check runner
+        run: cargo check --manifest-path src/Rune.Firecracker.Runner/Cargo.toml
+
+      - name: Lint runner
+        run: cargo clippy --manifest-path src/Rune.Firecracker.Runner/Cargo.toml --all-targets -- -D warnings
+
+      - name: Test runner
+        run: cargo test --manifest-path src/Rune.Firecracker.Runner/Cargo.toml
+
+      - name: Check runner formatting
+        run: cargo fmt --manifest-path src/Rune.Firecracker.Runner/Cargo.toml -- --check
+
+  firecracker-smoke:
+    runs-on: ubuntu-latest
+    env:
+      RUNE_FIRECRACKER_ROOT: /tmp/rune-firecracker
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Generate contracts
+        run: dotnet run --project tools/Rune.Generator --configuration Release -- generate
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y e2fsprogs redis-server
+          test -e /dev/kvm
+          sudo chmod a+rw /dev/kvm
+
+      - name: Install Firecracker and kernel
+        env:
+          FIRECRACKER_VERSION: v1.16.1
+        run: |
+          arch="$(uname -m)"
+
+          curl -fsSL \
+            "https://github.com/firecracker-microvm/firecracker/releases/download/${FIRECRACKER_VERSION}/firecracker-${FIRECRACKER_VERSION}-${arch}.tgz" \
+            | tar -xz
+
+          mkdir -p "$RUNNER_TEMP/bin" "$RUNE_FIRECRACKER_ROOT"
+
+          install \
+            "release-${FIRECRACKER_VERSION}-${arch}/firecracker-${FIRECRACKER_VERSION}-${arch}" \
+            "$RUNNER_TEMP/bin/firecracker"
+
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+          s3="https://s3.amazonaws.com/spec.ccfc.min"
+
+          ci_prefix="$(
+            curl -fsSL "$s3?list-type=2&prefix=firecracker-ci/&delimiter=/" \
+              | grep -oP '(?<=<Prefix>)firecracker-ci/[0-9]{8}-[^/]+/(?=</Prefix>)' \
+              | sort \
+              | tail -1
+          )"
+
+          kernel_key="$(
+            curl -fsSL "$s3?list-type=2&prefix=${ci_prefix}${arch}/vmlinux-6.1" \
+              | grep -oP "(?<=<Key>)${ci_prefix}${arch}/vmlinux-6\\.1\\.[0-9]+(?=</Key>)" \
+              | sort -V \
+              | tail -1
+          )"
+
+          test -n "$kernel_key"
+
+          curl -fsSL \
+            -o "$RUNE_FIRECRACKER_ROOT/vmlinux" \
+            "$s3/$kernel_key"
+
+      - name: Execute prebuilt ELF in Firecracker
+        run: bash tests/firecracker/invocation-e2e.sh
+
+      - name: Execute Redis runner round trip
+        run: bash tests/firecracker/runner-e2e.sh
+
+      - name: Build and execute Rust runes
+        run: bash tests/firecracker/rust-build-e2e.sh
+
+      - name: Build and execute C runes
+        run: bash tests/firecracker/c-build-e2e.sh
+
+      - name: Build and execute C++ runes
+        run: bash tests/firecracker/cpp-build-e2e.sh
+
+      - name: Build and execute JavaScript runes
+        run: bash tests/firecracker/javascript-build-e2e.sh
+
+      - name: Build and execute TypeScript runes
+        run: bash tests/firecracker/typescript-build-e2e.sh
+
+      - name: Build and execute Python runes
+        run: bash tests/firecracker/python-build-e2e.sh
+
+      - name: Build and execute Python runes library baseline
+        run: bash tests/firecracker/python-baseline-e2e.sh
