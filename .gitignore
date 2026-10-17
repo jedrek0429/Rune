@@ -9,3 +9,4 @@ docs/src/data/generated/
 docs/src/content/docs/api/generated/
 docs/src/content/docs/bot/generated/
 **/target/
+generated/
