@@ -46,14 +46,9 @@ RUN case "$POOL" in \
             > /usr/local/bin/rustc && \
         chmod 0755 /usr/local/bin/rustc \
         ;; \
-      scriptc) \
+      quickjs) \
         apt-get update && \
-        apt-get install -y --no-install-recommends \
-            ca-certificates \
-            curl \
-            xz-utils \
-            build-essential \
-            cmake && \
+        apt-get install -y --no-install-recommends ca-certificates curl build-essential cmake && \
         curl -fsSL -o /tmp/quickjs.tar.gz \
             "https://github.com/quickjs-ng/quickjs/archive/refs/tags/${QUICKJS_VERSION}.tar.gz" && \
         mkdir -p /tmp/quickjs && \
@@ -62,6 +57,14 @@ RUN case "$POOL" in \
             -DCMAKE_BUILD_TYPE=Release -DQJS_BUILD_LIBC=ON -DCMAKE_INSTALL_LIBDIR=lib && \
         cmake --build /tmp/quickjs/build --target qjsc qjs_exe -j 2 && \
         cmake --install /tmp/quickjs/build && \
+        rm -rf /var/lib/apt/lists/* /tmp/quickjs /tmp/quickjs.tar.gz \
+        ;; \
+      scriptc) \
+        apt-get update && \
+        apt-get install -y --no-install-recommends \
+            ca-certificates \
+            curl \
+            xz-utils && \
         case "$(dpkg --print-architecture)" in \
           amd64) node_arch=x64; zig_arch=x86_64 ;; \
           arm64) node_arch=arm64; zig_arch=aarch64 ;; \
@@ -76,7 +79,7 @@ RUN case "$POOL" in \
         tar -xJf /tmp/zig.tar.xz -C /opt/zig --strip-components=1 && \
         ln -s /opt/zig/zig /usr/local/bin/zig && \
         npm install -g --allow-scripts=scriptc "scriptc@${SCRIPTC_VERSION}" && \
-        rm -rf /var/lib/apt/lists/* /tmp/node.tar.xz /tmp/zig.tar.xz /tmp/quickjs /tmp/quickjs.tar.gz \
+        rm -rf /var/lib/apt/lists/* /tmp/node.tar.xz /tmp/zig.tar.xz \
         ;; \
       python) \
         apt-get update && \
