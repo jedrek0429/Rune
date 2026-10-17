@@ -108,10 +108,10 @@ public static class RuneSourceComposer
             argument +
             ");\n" +
             "        console.log(JSON.stringify({ actions: __runeActions, error: null }));\n" +
-            "    } catch {\n" +
+            "    } catch (error) {\n" +
             "        console.log(JSON.stringify({\n" +
             "            actions: [],\n" +
-            "            error: \"Rune execution failed during \" + __runePhase + \".\",\n" +
+            "            error: \"Rune execution failed during \" + __runePhase + \": \" + String(error),\n" +
             "        }));\n" +
             "    }\n" +
             "}\n\n" +
