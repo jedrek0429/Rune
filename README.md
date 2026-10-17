@@ -189,6 +189,7 @@ Rune uses separate isolated build images for its compiler toolchains:
 ```bash
 bash src/Rune.Firecracker/build-rootfs.sh build rust
 bash src/Rune.Firecracker/build-rootfs.sh build clang
+bash src/Rune.Firecracker/build-rootfs.sh build quickjs
 bash src/Rune.Firecracker/build-rootfs.sh build scriptc
 bash src/Rune.Firecracker/build-rootfs.sh build python
 ```
@@ -199,7 +200,8 @@ The profiles provide:
 | --- | --- |
 | `rust` | Rust |
 | `clang` | C, C++ |
-| `scriptc` | JavaScript, TypeScript |
+| `quickjs` | JavaScript |
+| `scriptc` | TypeScript |
 | `python` | Python |
 
 These images only need to be rebuilt when their toolchains or build environment change.
