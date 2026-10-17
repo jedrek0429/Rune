@@ -11,11 +11,13 @@ FROM ${BASE_IMAGE}
 ARG POOL
 ARG NODE_VERSION=24.15.0
 ARG SCRIPTC_VERSION=0.0.35
+ARG QUICKJS_VERSION=v0.17.0
 ARG ZIG_VERSION=0.16.0
 ARG MICROPYTHON_VERSION=v1.29.0
 
 COPY src/Rune.Firecracker/build-tools/python.sh /usr/local/bin/rune-build-python
 COPY src/Rune.Firecracker/build-tools/rust.sh /usr/local/bin/rune-build-rust
+COPY src/Rune.Firecracker/build-tools/javascript.sh /usr/local/bin/rune-build-javascript
 COPY src/Rune.Firecracker/build-tools/build-python-runtime.sh /usr/local/bin/build-python-runtime
 COPY src/Rune.Firecracker/python/rune_port.c /opt/rune/python/rune_port.c
 COPY src/Rune.Firecracker/python/rune_time.h /opt/rune/python/rune_time.h
@@ -23,6 +25,7 @@ COPY src/Rune.Firecracker/python/mpconfigrune.h /opt/rune/python/mpconfigrune.h
 RUN chmod 0755 \
     /usr/local/bin/rune-build-python \
     /usr/local/bin/rune-build-rust \
+    /usr/local/bin/rune-build-javascript \
     /usr/local/bin/build-python-runtime
 
 RUN case "$POOL" in \
@@ -48,7 +51,17 @@ RUN case "$POOL" in \
         apt-get install -y --no-install-recommends \
             ca-certificates \
             curl \
-            xz-utils && \
+            xz-utils \
+            build-essential \
+            cmake && \
+        curl -fsSL -o /tmp/quickjs.tar.gz \
+            "https://github.com/quickjs-ng/quickjs/archive/refs/tags/${QUICKJS_VERSION}.tar.gz" && \
+        mkdir -p /tmp/quickjs && \
+        tar -xzf /tmp/quickjs.tar.gz -C /tmp/quickjs --strip-components=1 && \
+        cmake -S /tmp/quickjs -B /tmp/quickjs/build \
+            -DCMAKE_BUILD_TYPE=Release -DQJS_BUILD_LIBC=ON && \
+        cmake --build /tmp/quickjs/build --target qjsc -j 2 && \
+        cmake --install /tmp/quickjs/build && \
         case "$(dpkg --print-architecture)" in \
           amd64) node_arch=x64; zig_arch=x86_64 ;; \
           arm64) node_arch=arm64; zig_arch=aarch64 ;; \
@@ -63,7 +76,7 @@ RUN case "$POOL" in \
         tar -xJf /tmp/zig.tar.xz -C /opt/zig --strip-components=1 && \
         ln -s /opt/zig/zig /usr/local/bin/zig && \
         npm install -g --allow-scripts=scriptc "scriptc@${SCRIPTC_VERSION}" && \
-        rm -rf /var/lib/apt/lists/* /tmp/node.tar.xz /tmp/zig.tar.xz \
+        rm -rf /var/lib/apt/lists/* /tmp/node.tar.xz /tmp/zig.tar.xz /tmp/quickjs /tmp/quickjs.tar.gz \
         ;; \
       python) \
         apt-get update && \
