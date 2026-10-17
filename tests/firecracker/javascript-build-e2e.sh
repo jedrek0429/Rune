@@ -13,7 +13,7 @@ cat >"$tmp/rune.js" <<'EOF'
 console.log(JSON.stringify({ actions: [], error: null }));
 EOF
 
-bash src/Rune.Firecracker/build-rootfs.sh build scriptc
+bash src/Rune.Firecracker/build-rootfs.sh build quickjs
 
 descriptor="$(bash src/Rune.Firecracker/run-build-vm.sh scriptc javascript "$tmp/rune.js")"
 read -r id _ _ <<<"$descriptor"
