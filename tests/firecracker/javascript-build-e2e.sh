@@ -15,7 +15,7 @@ EOF
 
 bash src/Rune.Firecracker/build-rootfs.sh build quickjs
 
-descriptor="$(bash src/Rune.Firecracker/run-build-vm.sh scriptc javascript "$tmp/rune.js")"
+descriptor="$(bash src/Rune.Firecracker/run-build-vm.sh quickjs javascript "$tmp/rune.js")"
 read -r id _ _ <<<"$descriptor"
 
 [[ "$id" == sha256:* ]]
@@ -39,7 +39,7 @@ cat >"$tmp/invalid.js" <<'EOF'
 const value = ;
 EOF
 
-if output="$(bash src/Rune.Firecracker/run-build-vm.sh scriptc javascript "$tmp/invalid.js" 2>&1)"; then
+if output="$(bash src/Rune.Firecracker/run-build-vm.sh quickjs javascript "$tmp/invalid.js" 2>&1)"; then
   echo "javascript invalid source unexpectedly built" >&2
   exit 1
 fi
