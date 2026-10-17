@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-for file in   src/Rune.Firecracker.BuildGuest/Cargo.toml   src/Rune.Firecracker.BuildGuest/src/main.rs   src/Rune.Firecracker/images/Dockerfile.build   src/Rune.Firecracker/build-rootfs.sh   src/Rune.Firecracker/run-build-vm.sh   src/Rune.Firecracker/generated-runtime.sh; do
+for file in   src/Rune.Firecracker.BuildGuest/Cargo.toml   src/Rune.Firecracker.BuildGuest/src/main.rs   src/Rune.Firecracker/images/Dockerfile.build   src/Rune.Firecracker/build-rootfs.sh   src/Rune.Firecracker/run-build-vm.sh   src/Rune.Firecracker/build-tools/javascript.sh   src/Rune.Firecracker/generated-runtime.sh; do
   test -f "$file"
 done
 
@@ -24,5 +24,10 @@ if grep -q -- '--dynamic' "$guest"; then
   echo 'ScriptC builds must stay on the static tier' >&2
   exit 1
 fi
+
+grep -q '"rune-build-javascript"' "$guest"
+grep -q 'qjsc -m -e' src/Rune.Firecracker/build-tools/javascript.sh
+grep -q '"typescript" => (' "$guest"
+grep -q 'scriptc' "$guest"
 
 echo 'Firecracker build sandbox contract OK'
