@@ -77,11 +77,15 @@ public sealed class FirecrackerBuildTests
             javascript);
 
         Assert.Contains(
-            "JSON.parse(readFileSync(0, \"utf8\"))",
+            "JSON.parse(std.in.readAsString())",
             javascript);
 
         Assert.Contains(
             "await message.reply",
+            javascript);
+
+        Assert.Contains(
+            "import * as std from \\"qjs:std\\";",
             javascript);
 
         Assert.DoesNotContain(
