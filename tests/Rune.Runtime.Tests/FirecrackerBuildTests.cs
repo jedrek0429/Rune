@@ -7,7 +7,7 @@ namespace Rune.Runtime.Tests;
 public sealed class FirecrackerBuildTests
 {
     [Theory]
-    [InlineData(RuneLanguage.JavaScript, "scriptc", "javascript")]
+    [InlineData(RuneLanguage.JavaScript, "quickjs", "javascript")]
     [InlineData(RuneLanguage.TypeScript, "scriptc", "typescript")]
     [InlineData(RuneLanguage.Python, "python", "python")]
     [InlineData(RuneLanguage.Rust, "rust", "rust")]
