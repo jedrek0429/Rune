@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -ne 2 || "$1" != build ]]; then
-  echo "usage: $0 build <rust|clang|scriptc|python>" >&2
+  echo "usage: $0 build <rust|clang|quickjs|scriptc|python>" >&2
   exit 2
 fi
 
