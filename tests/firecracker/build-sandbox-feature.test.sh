@@ -26,6 +26,8 @@ if grep -q -- '--dynamic' "$guest"; then
 fi
 
 grep -q '"rune-build-javascript"' "$guest"
+grep -q 'quickjs/javascript)' "$launcher"
+grep -q 'scriptc/typescript)' "$launcher"
 grep -q 'qjsc -m -e' src/Rune.Firecracker/build-tools/javascript.sh
 grep -q '"typescript" => (' "$guest"
 grep -q 'scriptc' "$guest"
