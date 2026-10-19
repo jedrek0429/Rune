@@ -100,7 +100,7 @@ jobs:
           grep -F "${RUNE_DOCS_BASE}api/generated/types/user/" docs/dist/api/generated/types/restmessage/index.html >/dev/null
 
       - name: Upload documentation artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rune-docs
           path: docs/dist
